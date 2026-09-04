@@ -1,0 +1,42 @@
+/*
+|-----------------------------------------
+| setting up page.tsx for the App
+| @author: Toufiquer Rahman<toufiquer.0@gmail.com>
+| @copyright: Toufiquer, 14 August 2026
+|-----------------------------------------
+*/
+
+import Link from "next/link";
+
+import { PageBlocks } from "@/components/pages/PageBlocks";
+import { PwaControls } from "@/components/pwa-controls";
+import { getPublishedPage } from "@/lib/pages/server";
+
+export default async function Home() {
+  const page = await getPublishedPage("/");
+  if (page) {
+    return (
+      <main className="flex-1">
+        <PageBlocks blocks={page.blocks} pageId={page.id} />
+      </main>
+    );
+  }
+
+  return (
+    <main className="flex flex-1 items-center justify-center bg-zinc-50 px-6 py-16 font-sans dark:bg-zinc-950">
+      <section className="w-full max-w-xl rounded-3xl bg-white p-8 shadow-sm ring-1 ring-zinc-950/5 dark:bg-zinc-900 dark:ring-white/10 sm:p-10">
+        <p className="text-sm font-semibold tracking-[0.2em] text-blue-600">SPEED BOX</p>
+        <h1 className="mt-3 text-4xl font-bold tracking-tight text-zinc-950 dark:text-white">
+          Your app, ready to install.
+        </h1>
+        <p className="mt-4 text-lg leading-8 text-zinc-600 dark:text-zinc-300">
+          Install Speed Box for an app-like experience and opt in to receive push notifications.
+        </p>
+        <Link className="mt-5 inline-block text-sm font-semibold text-blue-600 hover:underline" href="/login">
+          Sign in or create an account
+        </Link>
+        <PwaControls />
+      </section>
+    </main>
+  );
+}
