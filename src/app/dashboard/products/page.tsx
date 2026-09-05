@@ -1,0 +1,1446 @@
+/*
+|-----------------------------------------
+| setting up page.tsx for the App
+| @author: Toufiquer Rahman<toufiquer.0@gmail.com>
+| @copyright: Toufiquer, 01 September, 2026
+|-----------------------------------------
+*/
+
+"use client";
+
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  ImagePlus,
+  Loader2,
+  PackageOpen,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Search,
+  Sparkles,
+  Trash2,
+  X,
+} from "lucide-react";
+import Image from "next/image";
+import { FormEvent, useMemo, useState } from "react";
+
+import { useConfirmDelete } from "@/components/confirm-delete-provider";
+import ImagePickerModal from "@/components/dashboard-ui/ImagePickerModal";
+import { RichTextEditor, RichTextPreview } from "@/components/sections/section-1/RichTextEditor";
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "@/components/ui/global-toast";
+import { createProductDefaults, normalizeSlug } from "@/lib/dashboard/catalog";
+import { buildDemoProductPayload, DEMO_PRODUCTS } from "@/lib/dashboard/demoProductsData";
+import { useGetCategoriesQuery } from "@/redux/features/dashboard/categories/categoriesSlice";
+import { useGetMediaQuery } from "@/redux/features/dashboard/media/mediaSlice";
+import {
+  type ProductInput,
+  type ProductItem,
+  type ProductListParams,
+  useBulkDeleteProductsMutation,
+  useBulkUpdateProductStatusMutation,
+  useCreateProductMutation,
+  useDeleteProductMutation,
+  useGetProductsQuery,
+  useUpdateProductMutation,
+} from "@/redux/features/dashboard/products/productsSlice";
+
+const errorMessage = (error: unknown, fallback: string) =>
+  typeof error === "object" &&
+  error &&
+  "data" in error &&
+  typeof (error as { data?: { error?: string } }).data?.error === "string"
+    ? (error as { data: { error: string } }).data.error
+    : fallback;
+const initialQuery: ProductListParams = { limit: 10, page: 1, search: "", status: "" };
+
+export type DemoProgress = {
+  active: boolean;
+  current: number;
+  total: number;
+  percentage: number;
+  currentName: string;
+  currentPrice: number;
+  statusMessage: string;
+  isWaitingRateLimit: boolean;
+  waitCountdown: number;
+};
+
+export default function ProductsPage() {
+  const [query, setQuery] = useState<ProductListParams>(initialQuery);
+  const { data, error, isFetching, isLoading, refetch } = useGetProductsQuery(query);
+  const { data: categoriesData } = useGetCategoriesQuery();
+  const { data: mediaData } = useGetMediaQuery();
+  const [create, createState] = useCreateProductMutation();
+  const [update, updateState] = useUpdateProductMutation();
+  const [remove, removeState] = useDeleteProductMutation();
+  const [bulkRemove, bulkRemoveState] = useBulkDeleteProductsMutation();
+  const [bulkUpdateStatus, bulkUpdateStatusState] = useBulkUpdateProductStatusMutation();
+  const confirmDelete = useConfirmDelete();
+  const [editing, setEditing] = useState<ProductItem | null>(null);
+  const [viewing, setViewing] = useState<ProductItem | null>(null);
+  const [open, setOpen] = useState(false);
+  const [demoModalOpen, setDemoModalOpen] = useState(false);
+  const [demoProgress, setDemoProgress] = useState<DemoProgress | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkStatus, setBulkStatus] = useState<ProductItem["status"]>("draft");
+  const busy =
+    createState.isLoading ||
+    updateState.isLoading ||
+    removeState.isLoading ||
+    bulkRemoveState.isLoading ||
+    bulkUpdateStatusState.isLoading ||
+    Boolean(demoProgress?.active);
+  const categoryNames = useMemo(
+    () => new Map((categoriesData?.items ?? []).map((item) => [item.id, item.name])),
+    [categoriesData],
+  );
+  const defaultCategoryId = (categoriesData?.items ?? []).find((item) => item.status === "active")?.id ?? "";
+  const defaultImageUrl = (mediaData?.items ?? []).find((item) => item.type === "picture")?.url ?? "";
+
+  async function handleAddDemoProducts(count: 10 | 25 | 50) {
+    const activeCategories = (categoriesData?.items ?? []).filter((item) => item.status === "active");
+    const fallbackCategory = activeCategories[0] || (categoriesData?.items ?? [])[0];
+    if (!fallbackCategory) {
+      toast.error("Please create at least one category before adding demo products.");
+      return;
+    }
+
+    const mediaPictures = (mediaData?.items ?? []).filter((item) => item.type === "picture" && item.url);
+    const productsToAdd = DEMO_PRODUCTS.slice(0, count);
+
+    setDemoProgress({
+      active: true,
+      current: 0,
+      total: count,
+      percentage: 0,
+      currentName: productsToAdd[0]?.name ?? "",
+      currentPrice: productsToAdd[0]?.discountPrice ?? 0,
+      statusMessage: `Starting creation of ${count} demo products...`,
+      isWaitingRateLimit: false,
+      waitCountdown: 0,
+    });
+
+    let createdCount = 0;
+
+    for (let i = 0; i < count; i++) {
+      const demo = productsToAdd[i];
+      const assignedCategory =
+        activeCategories.length > 0 ? activeCategories[i % activeCategories.length].id : fallbackCategory.id;
+      const assignedImage = mediaPictures.length > 0 ? mediaPictures[i % mediaPictures.length].url : demo.image;
+
+      let payload = buildDemoProductPayload({
+        demo,
+        index: i,
+        categoryId: assignedCategory,
+        imageUrl: assignedImage,
+      });
+
+      setDemoProgress({
+        active: true,
+        current: i,
+        total: count,
+        percentage: Math.round((i / count) * 100),
+        currentName: demo.name,
+        currentPrice: demo.discountPrice,
+        statusMessage: `Creating product ${i + 1} of ${count}: "${demo.name}"`,
+        isWaitingRateLimit: false,
+        waitCountdown: 0,
+      });
+
+      let success = false;
+      let retries = 0;
+      const maxRetries = 6;
+
+      while (!success && retries < maxRetries) {
+        try {
+          const token =
+            typeof window !== "undefined" ? window.localStorage.getItem("token")?.replaceAll('"', "") : null;
+          const res = await fetch("/api/dashboard/products/v1", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(token ? { authorization: `Bearer ${token}` } : {}),
+            },
+            credentials: "include",
+            body: JSON.stringify(payload),
+          });
+
+          if (res.status === 429) {
+            const retryHeader = res.headers.get("Retry-After");
+            let waitSec = retryHeader ? parseInt(retryHeader, 10) : 3;
+            if (isNaN(waitSec) || waitSec <= 0) waitSec = 3;
+
+            for (let sec = waitSec; sec > 0; sec--) {
+              setDemoProgress((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      isWaitingRateLimit: true,
+                      waitCountdown: sec,
+                      statusMessage: `Rate limit reached. Waiting ${sec}s to retry product ${i + 1}...`,
+                    }
+                  : null,
+              );
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+            retries++;
+            continue;
+          }
+
+          if (res.status === 409) {
+            // Slug or SKU conflict, generate new unique seed and retry
+            payload = buildDemoProductPayload({
+              demo,
+              index: i + Math.floor(Math.random() * 10000) + 1,
+              categoryId: assignedCategory,
+              imageUrl: assignedImage,
+            });
+            retries++;
+            continue;
+          }
+
+          if (!res.ok) {
+            const body = await res.json().catch(() => ({}));
+            throw new Error(body.error || `HTTP ${res.status}`);
+          }
+
+          success = true;
+          createdCount++;
+        } catch (err: unknown) {
+          retries++;
+          if (retries >= maxRetries) {
+            const msg = err instanceof Error ? err.message : "Network error";
+            toast.error(`Failed to create "${demo.name}": ${msg}`);
+            break;
+          }
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      }
+
+      // Small pacing delay to avoid hitting rate limits
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+
+    setDemoProgress({
+      active: false,
+      current: count,
+      total: count,
+      percentage: 100,
+      currentName: "",
+      currentPrice: 0,
+      statusMessage: `Successfully added ${createdCount} of ${count} demo products!`,
+      isWaitingRateLimit: false,
+      waitCountdown: 0,
+    });
+
+    toast.success(`Successfully created ${createdCount} demo product${createdCount === 1 ? "" : "s"}!`);
+    await refetch();
+    setSelectedIds([]);
+    setQuery((current) => ({ ...current, page: 1 }));
+
+    setTimeout(() => {
+      setDemoProgress(null);
+      setDemoModalOpen(false);
+    }, 1200);
+  }
+
+  function openCreate() {
+    if (!defaultCategoryId || !defaultImageUrl) {
+      toast.error("Add at least one active category and one Media Library image before creating a product.");
+      return;
+    }
+    setEditing(null);
+    setOpen(true);
+  }
+
+  async function save(form: ProductInput) {
+    try {
+      if (editing) await update({ ...form, id: editing.id }).unwrap();
+      else await create(form).unwrap();
+      setOpen(false);
+      toast.success(editing ? "Product updated successfully." : "Product created successfully.");
+    } catch (cause) {
+      toast.error(errorMessage(cause, "Could not save product."));
+    }
+  }
+
+  async function destroy(item: ProductItem) {
+    if (!(await confirmDelete(`Delete “${item.name}”? This cannot be undone.`))) return;
+    try {
+      await remove(item.id).unwrap();
+      setSelectedIds((current) => current.filter((id) => id !== item.id));
+      toast.success("Product deleted successfully.");
+    } catch (cause) {
+      toast.error(errorMessage(cause, "Could not delete product."));
+    }
+  }
+
+  const items = data?.items ?? [];
+  const selectedOnPage = items.filter((item) => selectedIds.includes(item.id));
+  const allOnPageSelected = items.length > 0 && selectedOnPage.length === items.length;
+  const updateQuery = (next: ProductListParams) => {
+    setSelectedIds([]);
+    setQuery(next);
+  };
+  const toggleItem = (id: string, checked: boolean) =>
+    setSelectedIds((current) => (checked ? [...new Set([...current, id])] : current.filter((itemId) => itemId !== id)));
+  const togglePage = (checked: boolean) => setSelectedIds(checked ? items.map((item) => item.id) : []);
+
+  async function deleteSelected() {
+    if (!selectedIds.length) return;
+    if (
+      !(await confirmDelete(
+        `Delete ${selectedIds.length} selected product${selectedIds.length === 1 ? "" : "s"}? This cannot be undone.`,
+      ))
+    )
+      return;
+    try {
+      const result = await bulkRemove(selectedIds).unwrap();
+      setSelectedIds([]);
+      toast.success(`${result.deletedCount} product${result.deletedCount === 1 ? "" : "s"} deleted successfully.`);
+    } catch (cause) {
+      toast.error(errorMessage(cause, "Could not delete the selected products."));
+    }
+  }
+
+  async function updateSelectedStatus() {
+    if (!selectedIds.length) return;
+    try {
+      const result = await bulkUpdateStatus({ ids: selectedIds, status: bulkStatus }).unwrap();
+      setSelectedIds([]);
+      toast.success(`${result.updatedCount} product${result.updatedCount === 1 ? "" : "s"} updated to ${bulkStatus}.`);
+    } catch (cause) {
+      toast.error(errorMessage(cause, "Could not update the selected products."));
+    }
+  }
+
+  return (
+    <main className="min-h-[calc(100vh-65px)] flex-1 bg-[#fffaf0] px-4 py-6 sm:px-6 lg:px-10">
+      <section className="mx-auto max-w-7xl rounded-sm border border-[#eadfca] bg-white p-4 shadow-[0_16px_40px_-30px_rgba(120,53,15,.35)] sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold text-stone-900">Products</h1>
+            <p className="mt-1 text-sm text-stone-600">
+              Manage catalog details, inventory, categories, rich descriptions, and images.
+            </p>
+          </div>
+          <button className="primary-button" onClick={openCreate} type="button">
+            <Plus className="h-4 w-4" /> Add product
+          </button>
+        </div>
+        <div className="mt-5 grid gap-3 rounded-sm bg-[#fffaf0] p-3 md:grid-cols-[minmax(0,1fr)_11rem_12rem]">
+          <label className="relative">
+            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-stone-400" />
+            <input
+              aria-label="Search products"
+              className="input pl-9"
+              onChange={(event) => updateQuery({ ...query, page: 1, search: event.target.value })}
+              placeholder="Search name, slug, or SKU"
+              value={query.search}
+            />
+          </label>
+          <select
+            aria-label="Filter by status"
+            className="input"
+            onChange={(event) =>
+              updateQuery({ ...query, page: 1, status: event.target.value as ProductListParams["status"] })
+            }
+            value={query.status}
+          >
+            <option value="">All statuses</option>
+            <option value="draft">Draft</option>
+            <option value="active">Active</option>
+            <option value="out_of_stock">Out of stock</option>
+            <option value="archived">Archived</option>
+          </select>
+          <select
+            aria-label="Filter by category"
+            className="input"
+            onChange={(event) => updateQuery({ ...query, category: event.target.value || undefined, page: 1 })}
+            value={query.category ?? ""}
+          >
+            <option value="">All categories</option>
+            {(categoriesData?.items ?? []).map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        {selectedIds.length ? (
+          <div className="mt-4 flex flex-col gap-3 rounded-sm border border-amber-200 bg-amber-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-semibold text-amber-950">
+              {selectedIds.length} product{selectedIds.length === 1 ? "" : "s"} selected
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <select
+                aria-label="Bulk product status"
+                className="h-9 rounded-sm border border-amber-200 bg-white px-3 text-sm"
+                onChange={(event) => setBulkStatus(event.target.value as ProductItem["status"])}
+                value={bulkStatus}
+              >
+                <option value="draft">Set draft</option>
+                <option value="active">Set active</option>
+                <option value="out_of_stock">Set out of stock</option>
+                <option value="archived">Set archived</option>
+              </select>
+              <button
+                className="secondary-button"
+                disabled={busy}
+                onClick={() => void updateSelectedStatus()}
+                type="button"
+              >
+                Update status
+              </button>
+              <button
+                className="secondary-button border-red-200 text-red-700 hover:bg-red-50"
+                disabled={busy}
+                onClick={() => void deleteSelected()}
+                type="button"
+              >
+                Delete selected
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {error && (
+          <p className="mt-5 rounded-sm bg-red-50 p-3 text-sm text-red-700">
+            {errorMessage(error, "Could not load products.")}
+          </p>
+        )}
+        {demoProgress && (
+          <div className="mt-5 overflow-hidden rounded-sm border border-amber-300 bg-amber-50/90 p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                {demoProgress.isWaitingRateLimit ? (
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-200 text-amber-900 animate-pulse">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                  </div>
+                ) : demoProgress.percentage === 100 ? (
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-200 text-emerald-900">
+                    <CheckCircle2 className="h-4 w-4" />
+                  </div>
+                ) : (
+                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-800">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  </div>
+                )}
+                <div>
+                  <h4 className="text-sm font-semibold text-stone-900">
+                    {demoProgress.isWaitingRateLimit
+                      ? `Rate limit reached. Retrying in ${demoProgress.waitCountdown}s...`
+                      : demoProgress.percentage === 100
+                        ? "Demo products creation completed!"
+                        : `Creating Demo Products (${demoProgress.current + 1} of ${demoProgress.total})`}
+                  </h4>
+                  <p className="text-xs text-stone-600">
+                    {demoProgress.currentName ? (
+                      <>
+                        Adding: <span className="font-medium text-stone-800">{demoProgress.currentName}</span>
+                        {demoProgress.currentPrice > 0 && ` (৳${demoProgress.currentPrice.toFixed(2)})`}
+                      </>
+                    ) : (
+                      demoProgress.statusMessage
+                    )}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-sm border border-amber-200 bg-white px-2.5 py-1 text-xs font-bold text-amber-900 shadow-xs">
+                  {demoProgress.percentage}%
+                </span>
+              </div>
+            </div>
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-amber-200/70">
+              <div
+                className={`h-full transition-all duration-300 ease-out ${
+                  demoProgress.isWaitingRateLimit
+                    ? "bg-amber-500 animate-pulse"
+                    : "bg-emerald-600"
+                }`}
+                style={{ width: `${demoProgress.percentage}%` }}
+              />
+            </div>
+          </div>
+        )}
+        {isLoading ? (
+          <div className="mt-5 grid gap-3" role="status">
+            {Array.from({ length: 5 }).map((_, index) => (
+              <div className="h-24 animate-pulse rounded-sm bg-amber-50" key={index} />
+            ))}
+          </div>
+        ) : !items.length ? (
+          <div className="my-8 flex min-h-[380px] flex-col items-center justify-center rounded-sm border border-dashed border-[#d9c9aa] bg-[#fffaf0]/60 px-6 py-12 text-center shadow-inner">
+            <div className="grid h-16 w-16 place-items-center rounded-full bg-amber-100/90 text-amber-800 shadow-xs">
+              <PackageOpen className="h-8 w-8 stroke-[1.5]" />
+            </div>
+            <h3 className="mt-4 text-lg font-semibold text-stone-900">No products found</h3>
+            <p className="mt-1.5 max-w-md text-sm text-stone-600">
+              {query.search || query.status || query.category
+                ? "No products match your current search or filter criteria. You can clear filters or add demo products."
+                : "Your product catalog is empty. You can add demo products with unique names and prices to quickly populate your store, or add a product manually."}
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <button
+                className="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-sm border border-amber-600 bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-amber-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={Boolean(demoProgress?.active)}
+                onClick={() => setDemoModalOpen(true)}
+                type="button"
+              >
+                <Sparkles className="h-4 w-4" />
+                Add Demo Products
+              </button>
+              <button
+                className="primary-button min-h-9 px-4 py-2"
+                disabled={busy || Boolean(demoProgress?.active)}
+                onClick={openCreate}
+                type="button"
+              >
+                <Plus className="h-4 w-4" /> Add product
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-5 overflow-hidden rounded-sm border border-stone-200">
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full min-w-[920px] text-left text-sm">
+                <thead className="bg-[#f8f0df] text-xs uppercase text-stone-500">
+                  <tr>
+                    <th className="w-12 p-3">
+                      <Checkbox
+                        aria-label="Select all products on this page"
+                        checked={allOnPageSelected}
+                        onCheckedChange={togglePage}
+                      />
+                    </th>
+                    <th className="p-3">Product</th>
+                    <th className="p-3">SKU</th>
+                    <th className="p-3">Categories</th>
+                    <th className="p-3">Price / Stock</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <ProductRow
+                      categories={categoryNames}
+                      edit={() => {
+                        setEditing(item);
+                        setOpen(true);
+                      }}
+                      item={item}
+                      key={item.id}
+                      remove={() => void destroy(item)}
+                      selected={selectedIds.includes(item.id)}
+                      toggle={(checked) => toggleItem(item.id, checked)}
+                      view={() => setViewing(item)}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="grid gap-3 p-3 lg:hidden">
+              {items.map((item) => (
+                <ProductCard
+                  categories={categoryNames}
+                  edit={() => {
+                    setEditing(item);
+                    setOpen(true);
+                  }}
+                  item={item}
+                  key={item.id}
+                  remove={() => void destroy(item)}
+                  selected={selectedIds.includes(item.id)}
+                  toggle={(checked) => toggleItem(item.id, checked)}
+                  view={() => setViewing(item)}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-stone-600">
+          <span>{data ? `${data.total} product${data.total === 1 ? "" : "s"}` : ""}</span>
+          <div className="flex items-center gap-2">
+            <button
+              aria-label="Previous page"
+              className="icon-button"
+              disabled={!data || data.page <= 1}
+              onClick={() => updateQuery({ ...query, page: Math.max(1, (query.page ?? 1) - 1) })}
+              type="button"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span>
+              {data?.page ?? 1} / {data?.totalPages ?? 1}
+            </span>
+            <button
+              aria-label="Next page"
+              className="icon-button"
+              disabled={!data || data.page >= data.totalPages}
+              onClick={() => updateQuery({ ...query, page: (query.page ?? 1) + 1 })}
+              type="button"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            {isFetching && <span className="text-xs text-stone-400">Updating…</span>}
+          </div>
+        </div>
+      </section>
+      {open && (
+        <ProductForm
+          busy={busy}
+          categories={categoriesData?.items ?? []}
+          defaultCategoryId={defaultCategoryId}
+          defaultImageUrl={defaultImageUrl}
+          close={() => setOpen(false)}
+          initial={editing}
+          save={save}
+        />
+      )}
+      {viewing && <ProductViewModal categories={categoryNames} close={() => setViewing(null)} item={viewing} />}
+      {demoModalOpen && (
+        <DemoProductsModal
+          busy={busy}
+          close={() => {
+            if (!demoProgress?.active) setDemoModalOpen(false);
+          }}
+          onAdd={handleAddDemoProducts}
+          progress={demoProgress}
+        />
+      )}
+    </main>
+  );
+}
+
+function DemoProductsModal({
+  busy,
+  close,
+  onAdd,
+  progress,
+}: {
+  busy: boolean;
+  close: () => void;
+  onAdd: (count: 10 | 25 | 50) => Promise<void>;
+  progress: DemoProgress | null;
+}) {
+  const isRunning = Boolean(progress?.active);
+
+  return (
+    <div className="fixed inset-0 z-[95] grid place-items-center bg-stone-950/40 p-4 backdrop-blur-xs">
+      <div
+        aria-modal="true"
+        className="w-full max-w-lg rounded-sm border border-[#eadfca] bg-[#fffaf0] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+        role="dialog"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-sm bg-amber-100 text-amber-800">
+              <Sparkles className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-stone-900">Add Demo Products</h2>
+              <p className="text-xs text-stone-500">Choose how many sample products to create in your store.</p>
+            </div>
+          </div>
+          <button
+            aria-label="Close"
+            className="icon-button shrink-0"
+            disabled={isRunning}
+            onClick={close}
+            type="button"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        {progress ? (
+          <div className="mt-5 rounded-sm border border-amber-300 bg-amber-50/90 p-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                {progress.isWaitingRateLimit ? (
+                  <RefreshCw className="h-4 w-4 animate-spin text-amber-700" />
+                ) : progress.percentage === 100 ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-700" />
+                ) : (
+                  <Loader2 className="h-4 w-4 animate-spin text-amber-700" />
+                )}
+                <span className="text-xs font-semibold text-stone-900">
+                  {progress.isWaitingRateLimit
+                    ? `Rate limit reached. Retrying in ${progress.waitCountdown}s...`
+                    : progress.percentage === 100
+                      ? "Completed!"
+                      : `Creating product ${progress.current + 1} of ${progress.total}`}
+                </span>
+              </div>
+              <span className="text-xs font-bold text-amber-900">{progress.percentage}%</span>
+            </div>
+
+            {/* Real status bar */}
+            <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-amber-200/70">
+              <div
+                className={`h-full transition-all duration-300 ease-out ${
+                  progress.isWaitingRateLimit ? "bg-amber-500 animate-pulse" : "bg-emerald-600"
+                }`}
+                style={{ width: `${progress.percentage}%` }}
+              />
+            </div>
+
+            {progress.currentName && (
+              <p className="mt-2.5 truncate text-xs text-stone-600">
+                Current: <span className="font-medium text-stone-900">{progress.currentName}</span>
+                {progress.currentPrice > 0 && (
+                  <span className="font-medium text-emerald-700"> (৳{progress.currentPrice.toFixed(2)})</span>
+                )}
+              </p>
+            )}
+
+            {progress.isWaitingRateLimit && (
+              <div className="mt-2.5 flex items-center gap-1.5 rounded-xs bg-amber-100/90 px-2 py-1 text-[11px] text-amber-900">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-800" />
+                <span>API rate limit encountered (60 req/min). Waiting to safely resume without errors.</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="mt-4 text-xs leading-relaxed text-stone-600">
+            Each product is generated with a unique name, unique price, custom SKU, rich description, and category.
+            Products are added one-by-one via the product API.
+          </p>
+        )}
+
+        <div className="mt-5 grid gap-3">
+          <button
+            className="group flex w-full items-center justify-between rounded-sm border border-stone-200 bg-white p-3.5 text-left transition hover:border-amber-400 hover:bg-amber-50/50 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={busy || isRunning}
+            onClick={() => void onAdd(10)}
+            type="button"
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-stone-900">10 Demo Products</span>
+                <span className="rounded-xs bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                  Quick Test
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-stone-500">10 unique products with varied prices (~5-10 sec)</p>
+            </div>
+            <span className="text-xs font-semibold text-amber-700 transition-transform group-hover:translate-x-0.5">
+              Add 10 →
+            </span>
+          </button>
+
+          <button
+            className="group flex w-full items-center justify-between rounded-sm border border-amber-300 bg-amber-50/40 p-3.5 text-left transition hover:border-amber-500 hover:bg-amber-100/50 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={busy || isRunning}
+            onClick={() => void onAdd(25)}
+            type="button"
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-stone-900">25 Demo Products</span>
+                <span className="rounded-xs bg-amber-200 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                  Recommended
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-stone-500">25 unique items across categories (~15-25 sec)</p>
+            </div>
+            <span className="text-xs font-semibold text-amber-800 transition-transform group-hover:translate-x-0.5">
+              Add 25 →
+            </span>
+          </button>
+
+          <button
+            className="group flex w-full items-center justify-between rounded-sm border border-stone-200 bg-white p-3.5 text-left transition hover:border-amber-400 hover:bg-amber-50/50 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={busy || isRunning}
+            onClick={() => void onAdd(50)}
+            type="button"
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-stone-900">50 Demo Products</span>
+                <span className="rounded-xs bg-purple-100 px-1.5 py-0.5 text-[10px] font-semibold text-purple-800">
+                  Full Catalog
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-stone-500">50 complete items with unique prices & specs (~35-50 sec)</p>
+            </div>
+            <span className="text-xs font-semibold text-amber-700 transition-transform group-hover:translate-x-0.5">
+              Add 50 →
+            </span>
+          </button>
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <button
+            className="secondary-button"
+            disabled={isRunning}
+            onClick={close}
+            type="button"
+          >
+            {isRunning ? "Creating…" : "Cancel"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ProductRow({
+  categories,
+  edit,
+  item,
+  remove,
+  selected,
+  toggle,
+  view,
+}: {
+  categories: Map<string, string>;
+  edit: () => void;
+  item: ProductItem;
+  remove: () => void;
+  selected: boolean;
+  toggle: (checked: boolean) => void;
+  view: () => void;
+}) {
+  return (
+    <tr className="border-t border-stone-100">
+      <td className="p-3">
+        <Checkbox aria-label={`Select ${item.name}`} checked={selected} onCheckedChange={toggle} />
+      </td>
+      <td className="p-3">
+        <div className="flex items-center gap-3">
+          <Image
+            alt=""
+            className="h-11 w-11 rounded-sm border object-cover"
+            height={44}
+            src={item.primaryImage}
+            unoptimized
+            width={44}
+          />
+          <div className="min-w-0">
+            <p className="max-w-48 truncate font-medium text-stone-900">{item.name}</p>
+            <p className="max-w-48 truncate text-xs text-stone-500">{item.slug}</p>
+          </div>
+        </div>
+      </td>
+      <td className="p-3 text-stone-600">{item.sku}</td>
+      <td className="max-w-48 p-3 text-stone-600">
+        {item.categories.map((id) => categories.get(id) ?? "Unknown").join(", ")}
+      </td>
+      <td className="p-3 text-stone-600">
+        ৳{item.discountPrice.toFixed(2)} <span className="text-xs line-through">৳{item.realPrice.toFixed(2)}</span>{" "}
+        <span className="text-xs">/ {item.stock} in stock</span>
+      </td>
+      <td className="p-3">
+        <Status status={item.status} />
+      </td>
+      <td className="p-3">
+        <Actions edit={edit} remove={remove} view={view} />
+      </td>
+    </tr>
+  );
+}
+function ProductCard({
+  categories,
+  edit,
+  item,
+  remove,
+  selected,
+  toggle,
+  view,
+}: {
+  categories: Map<string, string>;
+  edit: () => void;
+  item: ProductItem;
+  remove: () => void;
+  selected: boolean;
+  toggle: (checked: boolean) => void;
+  view: () => void;
+}) {
+  return (
+    <article className="flex gap-3 rounded-sm border border-stone-200 p-3">
+      <Checkbox aria-label={`Select ${item.name}`} checked={selected} onCheckedChange={toggle} />
+      <Image
+        alt=""
+        className="h-16 w-16 shrink-0 rounded-sm object-cover"
+        height={64}
+        src={item.primaryImage}
+        unoptimized
+        width={64}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate font-medium">{item.name}</p>
+            <p className="truncate text-xs text-stone-500">{item.sku}</p>
+          </div>
+          <Actions edit={edit} remove={remove} view={view} />
+        </div>
+        <p className="mt-2 text-xs text-stone-600">
+          {item.categories.map((id) => categories.get(id) ?? "Unknown").join(", ")}
+        </p>
+        <div className="mt-2 flex items-center justify-between">
+          <span className="text-sm">
+            ৳{item.discountPrice.toFixed(2)} · {item.stock} stock
+          </span>
+          <Status status={item.status} />
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ProductForm({
+  busy,
+  categories,
+  defaultCategoryId,
+  defaultImageUrl,
+  close,
+  initial,
+  save,
+}: {
+  busy: boolean;
+  categories: { id: string; name: string; status: "active" | "inactive" }[];
+  defaultCategoryId: string;
+  defaultImageUrl: string;
+  close: () => void;
+  initial: ProductItem | null;
+  save: (form: ProductInput) => Promise<void>;
+}) {
+  const [form, setForm] = useState<ProductInput>(
+    initial ? { ...initial } : createProductDefaults({ categoryId: defaultCategoryId, imageUrl: defaultImageUrl }),
+  );
+  const [categorySearch, setCategorySearch] = useState("");
+  const [picker, setPicker] = useState<"primary" | "gallery" | null>(null);
+  const visibleCategories = categories.filter((category) =>
+    category.name.toLowerCase().includes(categorySearch.trim().toLowerCase()),
+  );
+  function selectImage(url: string) {
+    if (picker === "primary") setForm({ ...form, primaryImage: url, images: [...new Set([...form.images, url])] });
+    if (picker === "gallery")
+      setForm({ ...form, images: [...new Set([...form.images, url])], primaryImage: form.primaryImage || url });
+    setPicker(null);
+  }
+  function toggleCategory(id: string) {
+    setForm({
+      ...form,
+      categories: form.categories.includes(id)
+        ? form.categories.filter((value) => value !== id)
+        : [...form.categories, id],
+    });
+  }
+  function removeImage(url: string) {
+    const images = form.images.filter((image) => image !== url);
+    setForm({ ...form, images, primaryImage: form.primaryImage === url ? (images[0] ?? "") : form.primaryImage });
+  }
+  function updatePrices(realPrice: number, discountPrice: number) {
+    const discount = realPrice > 0 ? Number((((realPrice - discountPrice) / realPrice) * 100).toFixed(2)) : 0;
+    setForm({ ...form, realPrice, discountPrice, discount });
+  }
+  return (
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-stone-950/30 p-4 backdrop-blur-sm">
+      <form
+        aria-modal="true"
+        className="max-h-[calc(100vh-2rem)] w-full max-w-5xl overflow-y-auto rounded-sm border border-[#eadfca] bg-[#fffaf0] p-5 shadow-2xl"
+        onSubmit={(event: FormEvent) => {
+          event.preventDefault();
+          void save(form);
+        }}
+        role="dialog"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">{initial ? "Edit product" : "Add product"}</h2>
+            <p className="mt-1 text-sm text-stone-500">
+              Use the Media Library for images and select one or more categories.
+            </p>
+          </div>
+          <button aria-label="Close" className="icon-button" onClick={close} type="button">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="mt-5 grid gap-5 lg:grid-cols-2">
+          <section className="grid content-start gap-4">
+            <Field label="Product name">
+              <input
+                autoFocus
+                className="input"
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    name: event.target.value,
+                    slug: initial ? form.slug : normalizeSlug(event.target.value),
+                  })
+                }
+                required
+                value={form.name}
+              />
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Slug">
+                <input
+                  className="input"
+                  onChange={(event) => setForm({ ...form, slug: normalizeSlug(event.target.value) })}
+                  required
+                  value={form.slug}
+                />
+              </Field>
+              <Field label="SKU">
+                <input
+                  className="input"
+                  onChange={(event) => setForm({ ...form, sku: event.target.value })}
+                  required
+                  value={form.sku}
+                />
+              </Field>
+            </div>
+            <Field label="Short description">
+              <textarea
+                className="input min-h-24 resize-y"
+                maxLength={500}
+                onChange={(event) => setForm({ ...form, shortDescription: event.target.value })}
+                required
+                rows={4}
+                value={form.shortDescription}
+              />
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Real price">
+                <input
+                  className="input"
+                  min="0"
+                  onChange={(event) =>
+                    updatePrices(Number(event.target.value), Math.min(Number(event.target.value), form.discountPrice))
+                  }
+                  required
+                  step="0.01"
+                  type="number"
+                  value={form.realPrice}
+                />
+              </Field>
+              <Field label="Discount price">
+                <input
+                  className="input"
+                  max={form.realPrice}
+                  min="0"
+                  onChange={(event) => updatePrices(form.realPrice, Number(event.target.value))}
+                  required
+                  step="0.01"
+                  type="number"
+                  value={form.discountPrice}
+                />
+              </Field>
+              <Field label="Discount (%)">
+                <input className="input cursor-not-allowed bg-stone-100" readOnly type="number" value={form.discount} />
+              </Field>
+              <Field label="Stock">
+                <input
+                  className="input"
+                  min="0"
+                  onChange={(event) => setForm({ ...form, stock: Number(event.target.value) })}
+                  required
+                  step="1"
+                  type="number"
+                  value={form.stock}
+                />
+              </Field>
+              <Field label="Average rating">
+                <input
+                  className="input"
+                  max="5"
+                  min="0"
+                  onChange={(event) => setForm({ ...form, star: Number(event.target.value) })}
+                  required
+                  step="0.1"
+                  type="number"
+                  value={form.star}
+                />
+              </Field>
+              <Field label="Brand">
+                <input
+                  className="input"
+                  onChange={(event) => setForm({ ...form, brand: event.target.value })}
+                  required
+                  value={form.brand}
+                />
+              </Field>
+            </div>
+            <Field label="Status">
+              <select
+                className="input"
+                onChange={(event) => setForm({ ...form, status: event.target.value as ProductInput["status"] })}
+                value={form.status}
+              >
+                <option value="draft">Draft</option>
+                <option value="active">Active</option>
+                <option value="out_of_stock">Out of stock</option>
+                <option value="archived">Archived</option>
+              </select>
+            </Field>
+            <label className="flex cursor-pointer items-center gap-2 rounded-sm border border-[#eadfca] bg-white p-3 text-sm font-medium text-stone-700">
+              <input
+                checked={form.isFeatured}
+                onChange={(event) => setForm({ ...form, isFeatured: event.target.checked })}
+                type="checkbox"
+              />{" "}
+              Featured product
+            </label>
+            <Field label="Description">
+              <RichTextEditor
+                onChange={(description) => setForm((current) => ({ ...current, description }))}
+                value={form.description}
+              />
+            </Field>
+          </section>
+          <section className="grid content-start gap-4">
+            <Field label="Categories">
+              <div className="rounded-sm border border-[#eadfca] bg-white p-3">
+                <input
+                  className="input"
+                  onChange={(event) => setCategorySearch(event.target.value)}
+                  placeholder="Search categories"
+                  value={categorySearch}
+                />
+                <div className="mt-3 max-h-44 space-y-1 overflow-y-auto">
+                  {visibleCategories.map((category) => (
+                    <label
+                      className="flex cursor-pointer items-center gap-2 rounded-sm p-2 text-sm hover:bg-amber-50"
+                      key={category.id}
+                    >
+                      <input
+                        checked={form.categories.includes(category.id)}
+                        disabled={category.status !== "active" && !form.categories.includes(category.id)}
+                        onChange={() => toggleCategory(category.id)}
+                        type="checkbox"
+                      />
+                      <span>{category.name}</span>
+                      {category.status === "inactive" && <span className="text-xs text-stone-400">Inactive</span>}
+                    </label>
+                  ))}
+                  {!visibleCategories.length && <p className="p-2 text-sm text-stone-500">No categories found.</p>}
+                </div>
+                <p className="mt-2 text-xs text-stone-500">{form.categories.length} selected</p>
+              </div>
+            </Field>
+            <Field label="Delivery time">
+              <input
+                className="input"
+                onChange={(event) => setForm({ ...form, deliveryTime: event.target.value })}
+                required
+                value={form.deliveryTime}
+              />
+            </Field>
+            <Field label="Warranty">
+              <textarea
+                className="input min-h-24 resize-y"
+                onChange={(event) => setForm({ ...form, warranty: event.target.value })}
+                required
+                rows={4}
+                value={form.warranty}
+              />
+            </Field>
+            <Field label="Product video (optional YouTube URL)">
+              <input
+                className="input"
+                onChange={(event) => setForm({ ...form, video: event.target.value })}
+                placeholder="https://youtu.be/..."
+                value={form.video}
+              />
+            </Field>
+            <Field label="Main features (one per line)">
+              <textarea
+                className="input min-h-36 resize-y"
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    mainFeatures: event.target.value
+                      .split("\n")
+                      .map((feature) => feature.trim())
+                      .filter(Boolean),
+                  })
+                }
+                required
+                rows={6}
+                value={form.mainFeatures.join("\n")}
+              />
+            </Field>
+            <Field label="Primary image">
+              <ImageSelect label="Choose primary image" onClick={() => setPicker("primary")} url={form.primaryImage} />
+            </Field>
+            <Field label="Product images">
+              <div className="rounded-sm border border-[#eadfca] bg-white p-3">
+                <button className="secondary-button" onClick={() => setPicker("gallery")} type="button">
+                  <ImagePlus className="h-4 w-4" /> Add from Media Library
+                </button>
+                {form.images.length ? (
+                  <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-4">
+                    {form.images.map((url) => (
+                      <div className="group relative aspect-square" key={url}>
+                        <Image
+                          alt="Product gallery image"
+                          className={`h-full w-full rounded-sm border object-cover ${url === form.primaryImage ? "border-amber-500 ring-2 ring-amber-200" : "border-stone-200"}`}
+                          fill
+                          sizes="150px"
+                          src={url}
+                          unoptimized
+                        />
+                        <button
+                          aria-label="Remove image"
+                          className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-sm bg-red-700 text-white opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                          onClick={() => removeImage(url)}
+                          type="button"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm text-stone-500">Select one or more images from the Media Library.</p>
+                )}
+              </div>
+            </Field>
+          </section>
+        </div>
+        <div className="mt-6 flex justify-end gap-2">
+          <button className="secondary-button" onClick={close} type="button">
+            Cancel
+          </button>
+          <button className="primary-button" disabled={busy} type="submit">
+            {busy ? "Saving…" : "Save product"}
+          </button>
+        </div>
+      </form>
+      {picker && (
+        <ImagePickerModal
+          close={() => setPicker(null)}
+          description={
+            picker === "primary"
+              ? "Choose the image shown first for this product."
+              : "Choose an image to add to this product gallery."
+          }
+          onSelect={selectImage}
+          selectedUrl={picker === "primary" ? form.primaryImage : ""}
+          title={picker === "primary" ? "Choose primary image" : "Add product image"}
+          uploadLabel="Upload product image"
+        />
+      )}
+    </div>
+  );
+}
+
+function ImageSelect({ label, onClick, url }: { label: string; onClick: () => void; url: string }) {
+  return (
+    <div className="rounded-sm border border-[#eadfca] bg-white p-3">
+      {url ? (
+        <div className="relative aspect-video overflow-hidden rounded-sm">
+          <Image
+            alt="Primary product image"
+            className="object-cover"
+            fill
+            sizes="(max-width: 768px) 100vw, 520px"
+            src={url}
+            unoptimized
+          />
+        </div>
+      ) : (
+        <div className="grid aspect-video place-items-center rounded-sm bg-amber-50 text-sm text-stone-500">
+          No primary image selected
+        </div>
+      )}
+      <button className="secondary-button mt-3" onClick={onClick} type="button">
+        <ImagePlus className="h-4 w-4" /> {label}
+      </button>
+    </div>
+  );
+}
+function Actions({ edit, remove, view }: { edit: () => void; remove: () => void; view: () => void }) {
+  return (
+    <div className="flex justify-end gap-1">
+      <button aria-label="View product" className="icon-button" onClick={view} type="button">
+        <Eye className="h-4 w-4" />
+      </button>
+      <button aria-label="Edit product" className="icon-button" onClick={edit} type="button">
+        <Pencil className="h-4 w-4" />
+      </button>
+      <button
+        aria-label="Delete product"
+        className="icon-button border-red-100 text-red-700 hover:bg-red-50"
+        onClick={remove}
+        type="button"
+      >
+        <Trash2 className="h-4 w-4" />
+      </button>
+    </div>
+  );
+}
+
+function ProductViewModal({
+  categories,
+  close,
+  item,
+}: {
+  categories: Map<string, string>;
+  close: () => void;
+  item: ProductItem;
+}) {
+  const videoUrl = youtubeEmbedUrl(item.video);
+  const details = [
+    ["SKU", item.sku],
+    ["Brand", item.brand],
+    ["Stock", `${item.stock} available`],
+    ["Rating", `${item.star.toFixed(1)} / 5`],
+    ["Delivery", item.deliveryTime],
+    ["Warranty", item.warranty],
+    ["Featured", item.isFeatured ? "Yes" : "No"],
+    ["Created", new Date(item.createdAt).toLocaleString()],
+    ["Updated", new Date(item.updatedAt).toLocaleString()],
+  ];
+  return (
+    <div className="fixed inset-0 z-[100] grid place-items-center bg-stone-950/35 p-4 backdrop-blur-sm">
+      <section
+        aria-modal="true"
+        aria-labelledby="product-details-title"
+        className="max-h-[calc(100vh-2rem)] w-full max-w-5xl overflow-y-auto rounded-sm border border-[#eadfca] bg-[#fffaf0] p-5 shadow-2xl sm:p-6"
+        role="dialog"
+      >
+        <header className="flex items-start justify-between gap-4 border-b border-[#eadfca] pb-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <Image
+              alt={item.name}
+              className="h-14 w-14 shrink-0 rounded-sm border border-[#eadfca] object-cover"
+              height={56}
+              src={item.primaryImage}
+              unoptimized
+              width={56}
+            />
+            <div className="min-w-0">
+              <h2 className="truncate text-xl font-semibold text-stone-900" id="product-details-title">
+                {item.name}
+              </h2>
+              <p className="mt-1 truncate text-sm text-stone-500">{item.slug}</p>
+            </div>
+          </div>
+          <button aria-label="Close product details" className="icon-button shrink-0" onClick={close} type="button">
+            <X className="h-4 w-4" />
+          </button>
+        </header>
+        <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(18rem,.9fr)]">
+          <div className="space-y-5">
+            <div className="relative aspect-video overflow-hidden rounded-sm border border-[#eadfca] bg-white">
+              <Image
+                alt={item.name}
+                className="object-cover"
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 620px"
+                src={item.primaryImage}
+                unoptimized
+              />
+            </div>
+            <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
+              {item.images.map((url) => (
+                <div className="relative aspect-square overflow-hidden rounded-sm border border-[#eadfca]" key={url}>
+                  <Image
+                    alt={`${item.name} gallery image`}
+                    className="object-cover"
+                    fill
+                    sizes="120px"
+                    src={url}
+                    unoptimized
+                  />
+                </div>
+              ))}
+            </div>
+            <section className="rounded-sm border border-[#eadfca] bg-white p-4">
+              <h3 className="font-semibold text-stone-900">Description</h3>
+              <p className="mt-2 text-sm text-stone-600">{item.shortDescription}</p>
+              <div className="mt-4 border-t border-stone-100 pt-4">
+                <RichTextPreview value={item.description} />
+              </div>
+            </section>
+            {videoUrl && (
+              <section className="overflow-hidden rounded-sm border border-[#eadfca] bg-white">
+                <iframe allowFullScreen className="aspect-video w-full" src={videoUrl} title={`${item.name} video`} />
+              </section>
+            )}
+          </div>
+          <div className="space-y-4">
+            <section className="rounded-sm border border-[#eadfca] bg-white p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <Status status={item.status} />
+                <span className="rounded-sm bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-900">
+                  {item.discount}% off
+                </span>
+              </div>
+              <div className="mt-4">
+                <p className="text-2xl font-semibold text-stone-900">৳{item.discountPrice.toFixed(2)}</p>
+                <p className="mt-1 text-sm text-stone-500 line-through">৳{item.realPrice.toFixed(2)}</p>
+              </div>
+            </section>
+            <section className="rounded-sm border border-[#eadfca] bg-white p-4">
+              <h3 className="font-semibold text-stone-900">Categories</h3>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {item.categories.map((id) => (
+                  <span className="rounded-sm bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800" key={id}>
+                    {categories.get(id) ?? "Unknown category"}
+                  </span>
+                ))}
+              </div>
+            </section>
+            <section className="rounded-sm border border-[#eadfca] bg-white p-4">
+              <h3 className="font-semibold text-stone-900">Main features</h3>
+              <ul className="mt-3 space-y-2 text-sm text-stone-700">
+                {item.mainFeatures.map((feature) => (
+                  <li className="flex gap-2" key={feature}>
+                    <span className="text-emerald-700">✓</span>
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+            <dl className="overflow-hidden rounded-sm border border-[#eadfca] bg-white">
+              {details.map(([label, value]) => (
+                <div
+                  className="grid grid-cols-[7rem_minmax(0,1fr)] gap-3 border-b border-stone-100 p-3 text-sm last:border-0"
+                  key={label}
+                >
+                  <dt className="font-medium text-stone-500">{label}</dt>
+                  <dd className="break-words text-stone-900">{value}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function youtubeEmbedUrl(value: string) {
+  const id = value.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/i)?.[1];
+  return id ? `https://www.youtube-nocookie.com/embed/${id}` : "";
+}
+function Field({ children, label }: { children: React.ReactNode; label: string }) {
+  return (
+    <label className="block text-sm font-medium text-stone-700">
+      <span className="mb-1.5 block">{label}</span>
+      {children}
+    </label>
+  );
+}
+function Status({ status }: { status: ProductItem["status"] }) {
+  const color =
+    status === "active"
+      ? "bg-emerald-100 text-emerald-800"
+      : status === "draft"
+        ? "bg-amber-100 text-amber-900"
+        : "bg-stone-100 text-stone-600";
+  return <span className={`inline-flex rounded-sm px-2 py-1 text-xs font-medium ${color}`}>{status}</span>;
+}

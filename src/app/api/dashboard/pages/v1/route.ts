@@ -18,8 +18,10 @@ import { pageCacheTag } from "@/lib/pages/server";
 
 export type PageBlock = {
   id: string;
-  type: "form" | "section" | "all-page" | "rich-text";
+  type: "form" | "section" | "all-page" | "rich-text" | "container";
   variant:
+    | "container-1"
+    | "container-2"
     | "form-1"
     | "form-2"
     | "form-3"
@@ -96,7 +98,7 @@ export type PageBlock = {
     | "all-team-member"
     | "all-terms"
     | "rich-text";
-  data: Record<string, string>;
+  data: Record<string, unknown>;
 };
 export type SitePage = {
   _id?: ObjectId;
@@ -129,6 +131,58 @@ function refresh(path: string) {
   revalidatePath("/", "layout");
   revalidateTag(pageCacheTag(path), "max");
   revalidateTag("site-pages", "max");
+}
+
+const pageBlockTypes = new Set<PageBlock["type"]>(["form", "section", "all-page", "rich-text", "container"]);
+const pageBlockVariants = new Set<PageBlock["variant"]>([
+  "container-1",
+  "container-2",
+  "form-1",
+  "form-2",
+  "form-3",
+  ...(Array.from({ length: 48 }, (_, index) => `section-${index + 1}`) as PageBlock["variant"][]),
+  "all-home",
+  "company-story",
+  "whatsapp-faq",
+  "site-privacy-policy",
+  "site-terms-and-conditions",
+  "delivery-policy",
+  "site-refund-policy",
+  "leadership-team",
+  "country-directory",
+  "about-the-country",
+  "details-page",
+  "visa-requirements",
+  "visa-services",
+  "visa-consultancy",
+  "visa-service-catalogue",
+  "visa-insights",
+  "all-about-us",
+  "all-contact-us",
+  "all-frequently-ask-questions",
+  "all-privacy",
+  "all-refund",
+  "all-team-member",
+  "all-terms",
+  "rich-text",
+]);
+
+function areValidPageBlocks(value: unknown): value is PageBlock[] {
+  return (
+    Array.isArray(value) &&
+    value.every((block) => {
+      if (!block || typeof block !== "object") return false;
+      const entry = block as Partial<PageBlock>;
+      return (
+        typeof entry.id === "string" &&
+        pageBlockTypes.has(entry.type as PageBlock["type"]) &&
+        pageBlockVariants.has(entry.variant as PageBlock["variant"]) &&
+        Boolean(entry.data) &&
+        typeof entry.data === "object" &&
+        !Array.isArray(entry.data)
+      );
+    })
+  );
 }
 
 export async function GET(request: Request) {
@@ -176,6 +230,11 @@ export async function PUT(request: Request) {
     return Response.json({ error: authorization?.state.message ?? "Unauthorized." }, { status: 403 });
   const body = (await request.json().catch(() => null)) as Partial<SitePage> | null;
   if (!body?.id) return Response.json({ error: "Page id is required." }, { status: 400 });
+  if (body.blocks !== undefined && !areValidPageBlocks(body.blocks))
+    return Response.json(
+      { error: "Page blocks must use a supported type, variant, and data object." },
+      { status: 400 },
+    );
   const old = await pages().findOne({ id: body.id });
   if (!old) return Response.json({ error: "Page not found." }, { status: 404 });
   const path = body.path ? normalizePath(body.path) : old.path;

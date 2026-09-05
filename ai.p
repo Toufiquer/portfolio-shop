@@ -79,45 +79,10 @@ I want to only Update Mutation.tsx with the following instructions.
 1. Create a global Image picker form modal and it will load full media and reuse it in all Mutation if needed with same design. also there is a button 'Edit' and it will open the modal and I can edit the select image. 
 2. If there is any layout is need to change for Good Looking Editor UI than change it. 
 ---------------------------------------------------------
-Now pleas generate 9 step of  prompt. and at the top please add a line 'Please do the following task one after another. and after completing one then do the next one.
+Now pleas generate step by step of  prompt. and at the top please add a line 'Please do the following task one after another. and after completing one then do the next one.
 
 ============================================================================================================================
 ============================================================================================================================
 ============================================================================================================================
 
-Only create the plan; do not execute any task.
-
-Review the work involving folders and prepare a short, step-by-step plan in Bangla. Ensure the plan covers checking every folder, updating files where necessary, and verifying that everything works.
-
-For each step, provide:
-1. The task in Bangla
-2. A ready-to-use English prompt for that step
-
-I will execute each step later, one by one.
-
-Here is the problem That I want to solve:
-Implement a complete public search flow using the existing search UI and current page data source.
-
-Requirements:
-
-1. Home SearchBox
-- Keep the existing SearchBox UI.
-- Connect it to backend search across all pages and their section data.
-- Show up to 6 matching results.
-- If more than 6 results exist, show a “Search Page” button that navigates to `/search?q=<query>`.
-
-2. Search page: `/search?q=<query>`
-- Create a page with a search bar at the top.
-- Read `q` from the URL.
-- Fetch all pages and their section data, following the existing admin pages data-fetching approach in `src/app/dashboard/admin/pages/...`.
-- Match the query against page and section content.
-- Render all matching results individually.
-- Each result must include a link to `/search/result?q=<query>`.
-
-3. Search result page: `/search/result?q=<query>`
-- Display only the matching sections for the submitted query.
-- Do not render unrelated page layout/content.
-
-Preserve existing behavior, routes, data contracts, and the current SearchBox design. Handle empty queries, no results, loading, and error states.
-
- 
+Look at the page '/dashboard/products' and inside the page You found a button name 'Add Product' and take a look ho to add product. Now Your task is if there is No product found in the page. Then render a div at the middle  of the page with the following instructions.  at the middle there is div with a button 'Add Demo Products' it will open a Modal Inside the modal there is three button '10 Demo Products', '25 Demo Products', '50 Demo Products'.  and make  sure all button will add products one  by one  with Unique price and Name, and it will add data one by one throw add product api. and make sure you do not create a new api.  and also look at the rate limit in the api. so If it git rate limit then  wait and  also add loader to the  page when  demo data is creating with real status bar. 

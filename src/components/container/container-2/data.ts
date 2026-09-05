@@ -35,6 +35,7 @@ export interface TemplateItem {
   rating: number;
   image: string;
   url?: string;
+  visible?: boolean;
 }
 
 export interface IContainerData {
@@ -50,6 +51,12 @@ export interface IContainerData {
   showBottomNavigation: boolean;
   viewMoreText?: string;
   buyButtonText: string;
+  paddingX?: string;
+  paddingY?: string;
+  titleFontFamily?: string;
+  titleFontSize?: string;
+  titleFontColor?: string;
+  titleFontWeight?: string;
   templates: TemplateItem[];
 }
 
@@ -73,6 +80,12 @@ export const defaultDataContainer2: IContainerData = {
   showSeeMore: true,
   showBottomNavigation: true,
   buyButtonText: "Buy Now",
+  paddingX: "0",
+  paddingY: "0",
+  titleFontFamily: "inherit",
+  titleFontSize: "24",
+  titleFontColor: "#2563eb",
+  titleFontWeight: "700",
   templates: [
     {
       id: 1,

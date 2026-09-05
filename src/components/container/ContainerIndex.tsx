@@ -21,7 +21,11 @@ export type ContainerData = IContainerData | IContainerTwoData;
 type Definition = {
   defaultData: ContainerData;
   description: string;
-  Mutation: ComponentType<{ data?: ContainerData; onSubmit: (values: ContainerData) => void }>;
+  Mutation: ComponentType<{
+    data?: ContainerData;
+    onChange?: (values: ContainerData) => void;
+    onSubmit: (values: ContainerData) => void;
+  }>;
   Query: ComponentType<{ data?: ContainerData | string }>;
   title: string;
 };
@@ -50,9 +54,8 @@ export const containerContainers = Object.entries(containerIndex).map(([variant,
 
 export const getContainerDefinition = (variant: string) => containerIndex[variant as ContainerVariant];
 
-export const getContainerDefaults = (variant: ContainerVariant): ContainerData => ({
-  ...containerIndex[variant].defaultData,
-});
+export const getContainerDefaults = (variant: ContainerVariant): ContainerData =>
+  structuredClone(containerIndex[variant].defaultData);
 
 export function ContainerQuery({ variant, data }: { variant: ContainerVariant; data?: ContainerData | string }) {
   const Query = getContainerDefinition(variant)?.Query;
@@ -62,12 +65,14 @@ export function ContainerQuery({ variant, data }: { variant: ContainerVariant; d
 export function ContainerMutation({
   variant,
   data,
+  onChange,
   onSubmit,
 }: {
   variant: ContainerVariant;
   data?: ContainerData;
+  onChange?: (values: ContainerData) => void;
   onSubmit: (values: ContainerData) => void;
 }) {
   const Mutation = getContainerDefinition(variant)?.Mutation;
-  return Mutation ? <Mutation data={data} onSubmit={onSubmit} /> : null;
+  return Mutation ? <Mutation data={data} onChange={onChange} onSubmit={onSubmit} /> : null;
 }

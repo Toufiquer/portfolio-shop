@@ -354,7 +354,7 @@ function ProfilePictureModal({ close, onSelect }: { close: () => void; onSelect:
             <UploadButton
               appearance={{
                 button:
-                  "bg-stone-900 text-white px-4 py-2 rounded-sm cursor-pointer transition duration-700 hover:bg-amber-800",
+                  "cursor-pointer rounded-sm bg-slate-600 px-3 py-2 text-sm font-medium text-amber-950 transition hover:bg-slate-800 text-sm",
               }}
               content={{ button: uploading ? "Uploading…" : "Upload" }}
               endpoint="imageUploader"
@@ -378,7 +378,14 @@ function ProfilePictureModal({ close, onSelect }: { close: () => void; onSelect:
                   onClick={() => onSelect(item.url)}
                   type="button"
                 >
-                  <Image alt={item.name} className="aspect-square w-full object-cover" height={160} src={item.url} unoptimized width={160} />
+                  <Image
+                    alt={item.name}
+                    className="aspect-square w-full object-cover"
+                    height={160}
+                    src={item.url}
+                    unoptimized
+                    width={160}
+                  />
                   <span className="block truncate p-2 text-xs font-medium text-stone-700">{item.name}</span>
                 </button>
               ))}

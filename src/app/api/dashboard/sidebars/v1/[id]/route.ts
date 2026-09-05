@@ -109,7 +109,6 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     .collection("sidebar")
     .deleteMany({ id: { $in: ids } });
   if (!result.deletedCount) return Response.json({ error: "Sidebar item not found." }, { status: 404 });
-
   if (ids.length) {
     const unsets: Record<string, string> = {};
     for (const item of ids) {
@@ -117,7 +116,6 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     }
     await client.db().collection("role").updateMany({}, { $unset: unsets });
   }
-
   await invalidateDashboardCache(redisKeys.sidebars, redisKeys.roles);
   return Response.json({ deletedCount: result.deletedCount });
 }

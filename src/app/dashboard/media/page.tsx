@@ -59,8 +59,28 @@ function youtubeThumbnail(url: string) {
 
 function previewFor(item: MediaItem) {
   const youtubeImage = item.uploadPlane === "Youtube" ? youtubeThumbnail(item.url) : null;
-  if (youtubeImage) return <Image alt={item.name} className="h-full w-full object-cover" height={240} src={youtubeImage} unoptimized width={320} />;
-  if (item.type === "picture") return <Image alt={item.name} className="h-full w-full object-cover" height={240} src={item.url} unoptimized width={320} />;
+  if (youtubeImage)
+    return (
+      <Image
+        alt={item.name}
+        className="h-full w-full object-cover"
+        height={240}
+        src={youtubeImage}
+        unoptimized
+        width={320}
+      />
+    );
+  if (item.type === "picture")
+    return (
+      <Image
+        alt={item.name}
+        className="h-full w-full object-cover"
+        height={240}
+        src={item.url}
+        unoptimized
+        width={320}
+      />
+    );
   if (item.type === "video") return <Video className="h-8 w-8 text-violet-700" />;
   if (item.type === "audio") return <Music className="h-8 w-8 text-emerald-700" />;
   if (item.type === "zip") return <Package className="h-8 w-8 text-amber-700" />;
@@ -816,7 +836,11 @@ function DocumentTextUploadTile({
         Documents
       </b>
       <UploadButton
-        appearance={{ allowedContent: "text-stone-700" }}
+        appearance={{
+          allowedContent: "text-stone-700",
+          button:
+            "cursor-pointer rounded-sm bg-slate-600 px-3 py-2 text-sm font-medium text-amber-950 transition hover:bg-slate-800 text-sm",
+        }}
         className="mt-3"
         content={{ button: "Upload file", allowedContent: "DOC, DOCX or TXT" }}
         endpoint="documentTextUploader"
@@ -895,7 +919,11 @@ function UploadTile({
         {label}
       </b>
       <UploadButton
-        appearance={{ allowedContent: "text-stone-700" }}
+        appearance={{
+          allowedContent: "text-stone-700",
+          button:
+            "cursor-pointer rounded-sm bg-slate-600 px-3 py-2 text-sm font-medium text-amber-950 transition hover:bg-slate-800 text-sm",
+        }}
         className="mt-3"
         content={{ allowedContent }}
         endpoint={endpoint}

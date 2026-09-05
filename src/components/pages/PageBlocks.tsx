@@ -9,6 +9,7 @@
 "use client";
 import { type PageBlock } from "@/redux/features/dashboard/pages/pagesSlice";
 
+import { ContainerQuery, type ContainerVariant } from "../container/ContainerIndex";
 import { FormQuery, type FormVariant } from "../form/FormIndex";
 import { SectionPreview, type SectionVariant } from "../sections/SectionIndex";
 
@@ -42,19 +43,48 @@ export function PageBlocks({
   preview?: boolean;
 }) {
   return (
-    <div className="mx-auto grid max-w-7xl md:px-4">
+    <div className="mx-auto grid max-w-7xl">
       {blocks.map((block) => {
         if (block.type === "all-page")
-          return <PagePreview data={block.data} key={block.id} kind={block.variant as AllPageKind} />;
+          return (
+            <PagePreview
+              data={block.data as Record<string, string>}
+              key={block.id}
+              kind={block.variant as AllPageKind}
+            />
+          );
         if (block.type === "section")
-          return <SectionPreview data={block.data} key={block.id} kind={block.variant as SectionVariant} />;
+          return (
+            <SectionPreview
+              data={block.data as Record<string, string>}
+              key={block.id}
+              kind={block.variant as SectionVariant}
+            />
+          );
+        if (block.type === "container")
+          return (
+            <ContainerQuery data={block.data as never} key={block.id} variant={block.variant as ContainerVariant} />
+          );
         if (block.type === "rich-text")
-          return <SectionPreview data={{ content: block.data.content ?? "" }} key={block.id} kind="section-1" />;
+          return (
+            <SectionPreview
+              data={{ content: typeof block.data.content === "string" ? block.data.content : "" }}
+              key={block.id}
+              kind="section-1"
+            />
+          );
 
         const onSubmit = preview
           ? undefined
           : (values: Record<string, string>) => submitPageForm(pageId, block.id, values);
-        return <FormQuery data={block.data} key={block.id} kind={block.variant as FormVariant} onSubmit={onSubmit} />;
+        return (
+          <FormQuery
+            data={block.data as Record<string, string>}
+            key={block.id}
+            kind={block.variant as FormVariant}
+            onSubmit={onSubmit}
+          />
+        );
       })}
     </div>
   );

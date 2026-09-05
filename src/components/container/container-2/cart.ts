@@ -8,32 +8,9 @@
 
 "use client";
 
-export interface ContainerCartItem {
-  productId: number;
-  containerUid: string;
-  containerName: string;
-  title: string;
-  price: string;
-  image: string;
-}
+import { addToCart, type CartItemInput } from "@/lib/cart";
 
-const CART_STORAGE_KEY = "speed-box:container-cart";
+export type ContainerCartItem = Omit<CartItemInput, "quantity">;
 
-export const addContainerItemToCart = (item: ContainerCartItem) => {
-  if (typeof window === "undefined") return;
-
-  const storedItems = window.localStorage.getItem(CART_STORAGE_KEY);
-  const cartItems = storedItems ? (JSON.parse(storedItems) as ContainerCartItem[]) : [];
-  const existingItemIndex = cartItems.findIndex(
-    (cartItem) => cartItem.productId === item.productId && cartItem.containerUid === item.containerUid,
-  );
-
-  if (existingItemIndex >= 0) {
-    cartItems[existingItemIndex] = item;
-  } else {
-    cartItems.push(item);
-  }
-
-  window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cartItems));
-  window.dispatchEvent(new CustomEvent("speed-box:container-cart-updated", { detail: cartItems }));
-};
+/** Legacy producer entrypoint retained for persisted container renderers. */
+export const addContainerItemToCart = (item: ContainerCartItem) => addToCart(item);

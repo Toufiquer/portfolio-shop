@@ -45,6 +45,20 @@ const sortTemplates = (templates: TemplateItem[], sortMode: IContainerData["sort
   });
 };
 
+const normalizeTemplate = (template: Partial<TemplateItem>, index: number): TemplateItem => ({
+  id: Number.isFinite(Number(template.id)) ? Number(template.id) : index + 1,
+  sourceProductId: typeof template.sourceProductId === "string" ? template.sourceProductId : undefined,
+  productUID: typeof template.productUID === "string" ? template.productUID : "",
+  title: typeof template.title === "string" && template.title.trim() ? template.title : "Untitled Product",
+  price: typeof template.price === "string" ? template.price : "0৳",
+  views: typeof template.views === "string" ? template.views : "0",
+  rating: Math.min(5, Math.max(0, Number(template.rating) || 0)),
+  image:
+    typeof template.image === "string" && template.image ? template.image : defaultDataContainer2.templates[0].image,
+  url: typeof template.url === "string" ? template.url : "",
+  visible: template.visible ?? true,
+});
+
 const resolveData = (data?: IContainerData | string): IContainerData => {
   if (!data) return defaultDataContainer2;
 
@@ -59,17 +73,25 @@ const resolveData = (data?: IContainerData | string): IContainerData => {
       mobileGridLayout: parsedData.mobileGridLayout || defaultDataContainer2.mobileGridLayout,
       showSeeMore: parsedData.showSeeMore ?? defaultDataContainer2.showSeeMore,
       showBottomNavigation: parsedData.showBottomNavigation ?? defaultDataContainer2.showBottomNavigation,
+      paddingX: String(Math.max(-300, Math.min(300, Number(parsedData.paddingX ?? defaultDataContainer2.paddingX) || 0))),
+      paddingY: String(Math.max(-300, Math.min(300, Number(parsedData.paddingY ?? defaultDataContainer2.paddingY) || 0))),
+      titleFontFamily: parsedData.titleFontFamily || defaultDataContainer2.titleFontFamily,
+      titleFontSize: parsedData.titleFontSize || defaultDataContainer2.titleFontSize,
+      titleFontColor: parsedData.titleFontColor || defaultDataContainer2.titleFontColor,
+      titleFontWeight: parsedData.titleFontWeight || defaultDataContainer2.titleFontWeight,
       seeMore: {
         ...defaultDataContainer2.seeMore,
         ...(parsedData.seeMore || {}),
         name: parsedData.seeMore?.name || parsedData.viewMoreText || defaultDataContainer2.seeMore.name,
       },
-      templates: parsedData.templates?.length ? parsedData.templates : defaultDataContainer2.templates,
+      templates: (parsedData.templates?.length ? parsedData.templates : defaultDataContainer2.templates).map(
+        normalizeTemplate,
+      ),
     };
 
     return {
       ...settings,
-      templates: sortTemplates(settings.templates, settings.sortMode),
+      templates: sortTemplates(settings.templates, settings.sortMode).filter((template) => template.visible),
     };
   } catch {
     return defaultDataContainer2;
@@ -97,6 +119,16 @@ const QueryContainer2 = ({ data }: ContainerProps) => {
   const isDesktop = useIsDesktop();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+
+  const paddingX = Math.max(0, Number(settings.paddingX) || 0);
+  const paddingY = Math.max(0, Number(settings.paddingY) || 0);
+
+  const titleStyle: React.CSSProperties = {
+    fontFamily: settings.titleFontFamily && settings.titleFontFamily !== "inherit" ? settings.titleFontFamily : undefined,
+    fontSize: settings.titleFontSize ? `${settings.titleFontSize}px` : undefined,
+    color: settings.titleFontColor || undefined,
+    fontWeight: settings.titleFontWeight || undefined,
+  };
 
   const visibleItems = isDesktop
     ? desktopItemsPerSlide[settings.gridLayout] || desktopItemsPerSlide[defaultDataContainer2.gridLayout]
@@ -134,14 +166,19 @@ const QueryContainer2 = ({ data }: ContainerProps) => {
   if (settings.templates.length === 0) return null;
 
   return (
-    <section className="custom-parent-border w-full border-x-1 border-[#eadfca] bg-white">
-      <div className="mx-auto w-full max-w-7xl">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-xl font-bold text-blue-600 md:text-3xl">{settings.title}</h2>
+    <section
+      className="custom-parent-border max-w-106.25 md:max-w-7xl w-full bg-white"
+      style={{ paddingInline: `${paddingX}px`, paddingBlock: `${paddingY}px` }}
+    >
+      <div className="mx-auto w-full px-3 py-4 sm:px-4 md:px-6 md:py-6">
+        <div className="mb-3 flex items-center justify-between gap-3 md:mb-4">
+          <h2 className="text-xl font-bold text-blue-600 md:text-3xl" style={titleStyle}>
+            {settings.title}
+          </h2>
           {settings.showSeeMore && (
             <Link
               href={settings.seeMore.url || "#"}
-              className="cursor-pointer rounded-sm bg-amber-100 text-sm font-semibold text-amber-950 transition duration-700 hover:bg-amber-200"
+              className="cursor-pointer rounded-sm bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-950 transition duration-500 hover:bg-amber-200"
             >
               {settings.seeMore.name}
             </Link>
@@ -167,14 +204,19 @@ const QueryContainer2 = ({ data }: ContainerProps) => {
               className="flex items-stretch transition-transform duration-500 ease-in-out will-change-transform"
               style={{ transform: `translateX(-${safeCurrentIndex * (100 / visibleItems)}%)` }}
             >
-              {settings.templates.map((template) => (
+              {settings.templates.map((template, index) => (
                 <div
                   key={template.id}
                   className={cn("flex min-w-0 shrink-0 px-2 py-1")}
                   style={{ flexBasis: itemWidth, maxWidth: itemWidth }}
                 >
                   <div className="flex h-full w-full min-w-0">
-                    <RenderItem item={template} settings={settings} />
+                    <RenderItem
+                      item={template}
+                      priority={index === 0}
+                      loading={index < 4 ? "eager" : "lazy"}
+                      settings={settings}
+                    />
                   </div>
                 </div>
               ))}

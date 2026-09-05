@@ -2,7 +2,7 @@
 2. Footer    -> 3 
 3. Form      -> 3
 4. Menu      -> 3
-5. Pages     -> 25
+5. Pages     -> 24
 6. Sections  -> 48
 7. TopBanner -> 3
 -----------------------------

@@ -43,13 +43,16 @@ export const sidebarDefaults: ImportSidebarDefault[] = [
       { name: "Menu", url: "/dashboard/admin/menu", icon: "Menu" },
       { name: "Pages", url: "/dashboard/admin/pages", icon: "FileText" },
       { name: "Top Banner", url: "/dashboard/admin/topbanner", icon: "FileBadge" },
-      { name: "Build", url: "/dashboard/admin/build", icon: "Hourglass" },
+      { name: "Build", url: "/dashboard/admin/build", icon: "BiSolidHourglassBottom" },
       { name: "Tracking", url: "/dashboard/admin/tracking", icon: "Activity" },
       { name: "WhatsApp", url: "/dashboard/admin/whatsapp", icon: "MessageCircle" },
     ],
   },
   { name: "Media", url: "/dashboard/media", icon: "Image" },
   { name: "Profile", url: "/dashboard/profile", icon: "User" },
+  { name: "Products", url: "/dashboard/products", icon: "Package" },
+  { name: "Category", url: "/dashboard/category", icon: "ShoppingCart" },
+  { name: "Orders", url: "/dashboard/orders", icon: "DollarSign" },
   { name: "Install", url: "/dashboard/install", icon: "Download" },
 ];
 export const pageDefaults: ImportPageDefault[] = [

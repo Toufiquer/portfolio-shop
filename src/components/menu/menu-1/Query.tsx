@@ -14,6 +14,7 @@ import { useEffect, useRef, useState, type CSSProperties, type RefObject } from 
 
 import { authClient } from "@/app/api/lib/auth-client";
 import { Icon } from "@/components/all-icons/all-icons";
+import { CartButton } from "@/components/cart/CartButton";
 import CroppedLogo from "@/components/menu/CroppedLogo";
 import { normalizeSearchQuery, useSiteSearch } from "@/components/search/use-site-search";
 
@@ -262,6 +263,7 @@ export default function MenuOneQuery({ data, pending }: { data: MenuData; pendin
             >
               <Icon name="Search" />
             </button>
+            <CartButton className="border-[#eadfca] hover:bg-amber-100" />
             <Link
               className={`menu-action-button inline-flex items-center gap-1 px-[var(--button-padding-x-mobile)] py-[var(--button-padding-y-mobile)] mx-[var(--button-margin-x-mobile)] my-[var(--button-margin-y-mobile)] md:px-[var(--button-padding-x-desktop)] md:py-[var(--button-padding-y-desktop)] md:mx-[var(--button-margin-x-desktop)] md:my-[var(--button-margin-y-desktop)] ${borderClass[data.button.border ?? "none"]} ${radiusClass[data.button.radius]}`}
               href={button.url}

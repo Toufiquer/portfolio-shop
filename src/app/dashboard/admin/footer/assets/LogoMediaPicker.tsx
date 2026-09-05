@@ -94,7 +94,7 @@ export default function LogoMediaPicker({
             <UploadButton
               appearance={{
                 button:
-                  "cursor-pointer rounded-sm bg-amber-100 px-3 py-2 text-sm font-medium text-amber-950 transition duration-700 hover:bg-amber-200",
+                  "cursor-pointer rounded-sm bg-slate-600 px-3 py-2 text-sm font-medium text-amber-950 transition hover:bg-slate-800 text-sm",
                 allowedContent: "text-stone-500",
               }}
               content={{ button: uploading ? "Uploading…" : uploadLabel, allowedContent: "Images only" }}
@@ -119,7 +119,14 @@ export default function LogoMediaPicker({
                   onClick={() => onSelect(item.url)}
                   type="button"
                 >
-                  <Image alt={item.name} className="aspect-square w-full object-contain p-2" height={160} src={item.url} unoptimized width={160} />
+                  <Image
+                    alt={item.name}
+                    className="aspect-square w-full object-contain p-2"
+                    height={160}
+                    src={item.url}
+                    unoptimized
+                    width={160}
+                  />
                   <span className="block truncate border-t border-stone-100 px-2 py-2 text-xs text-stone-600">
                     {item.name}
                   </span>

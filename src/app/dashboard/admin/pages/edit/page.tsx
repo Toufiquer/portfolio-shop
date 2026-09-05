@@ -12,6 +12,13 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import {
+  ContainerMutation,
+  ContainerQuery,
+  containerContainers,
+  getContainerDefaults,
+  type ContainerVariant,
+} from "@/components/container/ContainerIndex";
+import {
   FormMutation,
   FormPreview,
   FormQuery,
@@ -94,7 +101,7 @@ function FullScreenEditModal({
 }
 
 type PickerColumns = 1 | 2 | 3;
-type PickerItem<T extends string> = { variant: T; label: string };
+type PickerItem<T extends string> = { description?: string; label: string; variant: T };
 type BlockViewMode = "hidden" | "partial" | "full";
 
 function TemplatePicker<T extends string>({
@@ -203,6 +210,7 @@ function TemplatePicker<T extends string>({
                     >
                       {index + 1}. {item.label}
                     </p>
+                    {item.description && <p className="text-xs text-stone-500">{item.description}</p>}
                     <div className="grid grid-cols-2 gap-2 sm:flex sm:shrink-0">
                       <Button
                         className="w-full sm:w-auto"
@@ -311,7 +319,7 @@ function PageEditor({ page }: { page: SitePage }) {
     ),
   );
   const [description, setDescription] = useState(page.description);
-  const [choice, setChoice] = useState<"form" | "section" | "all-page" | null>(null);
+  const [choice, setChoice] = useState<"form" | "section" | "all-page" | "container" | null>(null);
   const [editing, setEditing] = useState<PageBlock | null>(null);
   const [deleting, setDeleting] = useState<PageBlock | null>(null);
   const [blockViewMode, setBlockViewMode] = useState<BlockViewMode>("hidden");
@@ -329,8 +337,13 @@ function PageEditor({ page }: { page: SitePage }) {
         ? allPageDefaults(variant as AllPageKind)
         : type === "section"
           ? sectionDefaults(variant as SectionVariant)
-          : formDefaults(variant as FormVariant);
-    setBlocks((b) => [...b, { id: crypto.randomUUID(), type, variant, data }]);
+          : type === "container"
+            ? getContainerDefaults(variant as ContainerVariant)
+            : formDefaults(variant as FormVariant);
+    setBlocks((b) => [
+      ...b,
+      { id: crypto.randomUUID(), type, variant, data: data as unknown as Record<string, unknown> },
+    ]);
     setChoice(null);
   };
   const save = async () => {
@@ -350,7 +363,7 @@ function PageEditor({ page }: { page: SitePage }) {
     }
   };
   const blockTitle = (block: PageBlock) =>
-    `${block.type === "all-page" ? "Page" : block.type === "form" ? "Form" : "Section"} · ${block.variant.replace(/-/g, " ")}`;
+    `${block.type === "all-page" ? "Page" : block.type === "form" ? "Form" : block.type === "container" ? "Container" : "Section"} · ${block.variant.replace(/-/g, " ")}`;
   return (
     <main className="flex-1 bg-[#fffaf0] p-5 sm:p-8">
       <Toast message={message} />
@@ -479,11 +492,13 @@ function PageEditor({ page }: { page: SitePage }) {
                 }`}
               >
                 {block.type === "all-page" ? (
-                  <PagePreview data={block.data} kind={block.variant as AllPageKind} />
+                  <PagePreview data={block.data as Record<string, string>} kind={block.variant as AllPageKind} />
                 ) : block.type === "form" ? (
-                  <FormQuery data={block.data} kind={block.variant as FormVariant} />
+                  <FormQuery data={block.data as Record<string, string>} kind={block.variant as FormVariant} />
+                ) : block.type === "container" ? (
+                  <ContainerQuery data={block.data as never} variant={block.variant as ContainerVariant} />
                 ) : (
-                  <SectionPreview data={block.data} kind={block.variant as SectionVariant} />
+                  <SectionPreview data={block.data as Record<string, string>} kind={block.variant as SectionVariant} />
                 )}
               </div>
             </article>
@@ -499,6 +514,9 @@ function PageEditor({ page }: { page: SitePage }) {
             </Button>
             <Button size="sm" variant="outline" onClick={() => setChoice("all-page")}>
               All Pages
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setChoice("container")}>
+              Container
             </Button>
           </div>
           <div className="flex gap-2">
@@ -543,6 +561,18 @@ function PageEditor({ page }: { page: SitePage }) {
           renderPreview={(variant) => <FormPreview data={formDefaults(variant)} kind={variant} />}
           renderForm={(variant) => <FormQuery data={formDefaults(variant)} kind={variant} />}
         />
+      ) : choice === "container" ? (
+        <TemplatePicker
+          close={() => setChoice(null)}
+          items={containerContainers.map((container) => ({
+            description: container.description,
+            label: container.title,
+            variant: container.variant,
+          }))}
+          title="Container"
+          onAdd={(variant) => add(variant)}
+          renderPreview={(variant) => <ContainerQuery data={getContainerDefaults(variant)} variant={variant} />}
+        />
       ) : null}
       {editing && (
         <FullScreenEditModal
@@ -555,27 +585,34 @@ function PageEditor({ page }: { page: SitePage }) {
         >
           {editing.type === "all-page" ? (
             <PageMutation
-              data={editing.data}
+              data={editing.data as Record<string, string>}
               kind={editing.variant as AllPageKind}
               onChange={(data) => setEditing({ ...editing, data })}
             />
           ) : editing.type === "form" ? (
             editing.variant === "form-1" ? (
               <FormMutation
-                data={editing.data}
+                data={editing.data as Record<string, string>}
                 kind={editing.variant as FormVariant}
                 onChange={(data) => setEditing({ ...editing, data })}
               />
             ) : (
               <FormMutation
-                data={editing.data}
+                data={editing.data as Record<string, string>}
                 kind={editing.variant as FormVariant}
                 onChange={(data) => setEditing({ ...editing, data })}
               />
             )
+          ) : editing.type === "container" ? (
+            <ContainerMutation
+              data={editing.data as never}
+              variant={editing.variant as ContainerVariant}
+              onChange={(data) => setEditing({ ...editing, data: data as unknown as Record<string, unknown> })}
+              onSubmit={(data) => setEditing({ ...editing, data: data as unknown as Record<string, unknown> })}
+            />
           ) : (
             <SectionMutation
-              data={editing.data}
+              data={editing.data as Record<string, string>}
               kind={editing.variant as SectionVariant}
               onChange={(data) => setEditing({ ...editing, data })}
             />

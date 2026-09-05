@@ -55,7 +55,6 @@ function cleanEmail(email?: string | null) {
   return email?.trim().toLowerCase() ?? "";
 }
 
-
 // These accounts are explicitly trusted for maintenance-only tools. They must
 // still have a valid Better Auth session; this is not an anonymous bypass.
 export function canAccessMaintenanceTools(session: SessionUser) {
@@ -194,6 +193,9 @@ function apiResourcePaths(pathname: string, method: string) {
     pages: ["/dashboard/admin/pages"],
     build: ["/dashboard/admin/build"],
     tracking: ["/dashboard/admin/tracking"],
+    categories: ["/dashboard/category"],
+    products: ["/dashboard/products"],
+    orders: ["/dashboard/orders"],
     navigation: ["/dashboard/developer/navigation"],
   };
   return resources[resource] ?? [];
@@ -211,6 +213,7 @@ function pageResourcePaths(pathname: string) {
   const parents = [
     ...(pathname.startsWith("/dashboard/admin/menu/") ? ["/dashboard/admin/menu"] : []),
     ...(pathname.startsWith("/dashboard/admin/pages/") ? ["/dashboard/admin/pages"] : []),
+    ...(pathname.startsWith("/dashboard/orders/") ? ["/dashboard/orders"] : []),
   ];
   return [pathname, ...(aliases[pathname] ?? []), ...parents];
 }
