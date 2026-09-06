@@ -8,7 +8,7 @@
 
 /*
 |-----------------------------------------
-| WES Associates creamy global study hero
+| NexaMart creamy global study hero
 |-----------------------------------------
 */
 

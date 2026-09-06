@@ -1,4 +1,4 @@
-# Speed Box implementation notes
+# NexaMart implementation notes
 
 Use this folder as the compact build handbook for this repository. It records the current architecture and reusable implementation patterns; source code remains the final authority.
 

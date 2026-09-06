@@ -43,13 +43,13 @@ export interface Section38Props {
 
 export const defaultDataSection38: Section38Data = {
   id: "section-uid-38",
-  missionEyebrow: "WES Associates",
+  missionEyebrow: "NexaMart",
   showMissionEyebrow: true,
   missionTitle: "Our",
   missionHighlightedTitle: "Mission",
   missionDescription:
-    "Our mission is to empower students across Bangladesh with trusted, personalized guidance for studying abroad. WES Associates simplifies university selection, applications, documentation, visa guidance, and pre-departure preparation so every student can move forward with confidence.",
-  visionEyebrow: "WES Associates",
+    "Our mission is to empower students across Bangladesh with trusted, personalized guidance for studying abroad. NexaMart simplifies university selection, applications, documentation, visa guidance, and pre-departure preparation so every student can move forward with confidence.",
+  visionEyebrow: "NexaMart",
   showVisionEyebrow: true,
   visionTitle: "Our",
   visionHighlightedTitle: "Vision",

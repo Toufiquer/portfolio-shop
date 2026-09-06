@@ -118,7 +118,7 @@ const MutationSection46 = ({ data, onChange }: Section46FormProps) => {
         level: "UNDERGRADUATE",
         imageUrl: "/images/all-pages-placeholder.png",
         imageAlt: "University campus",
-        buttonText: "Apply via WES Associates →",
+        buttonText: "Apply via NexaMart →",
         buttonUrl: "/applicaton",
       },
     ]);

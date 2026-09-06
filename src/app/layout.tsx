@@ -33,11 +33,11 @@ const geistMono = Geist_Mono({
 
 export async function generateMetadata(): Promise<Metadata> {
   return {
-    title: "Speed Box",
-    description: "Speed Box progressive web application",
-    applicationName: "Speed Box",
+    title: "NexaMart",
+    description: "NexaMart progressive web application",
+    applicationName: "NexaMart",
     icons: { icon: "/Logo.png" },
-    appleWebApp: { capable: true, statusBarStyle: "default", title: "Speed Box" },
+    appleWebApp: { capable: true, statusBarStyle: "default", title: "NexaMart" },
     formatDetection: { telephone: false },
   };
 }

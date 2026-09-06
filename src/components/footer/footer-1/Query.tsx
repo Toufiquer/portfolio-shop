@@ -8,8 +8,50 @@
 
 "use client";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
+import { Icon } from "@/components/all-icons/all-icons";
+import { Button } from "@/components/ui/button";
 import type { FooterOneData } from "./data";
+
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
+
+function InstallButton() {
+  const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    const capture = (event: Event) => {
+      event.preventDefault();
+      setInstallEvent(event as BeforeInstallPromptEvent);
+    };
+    window.addEventListener("beforeinstallprompt", capture);
+    return () => window.removeEventListener("beforeinstallprompt", capture);
+  }, []);
+
+  async function install() {
+    if (!installEvent) {
+      window.location.assign("/dashboard/install");
+      return;
+    }
+    await installEvent.prompt();
+    setInstallEvent(null);
+  }
+
+  return (
+    <Button
+      className="mt-2 w-fit cursor-pointer rounded-sm bg-orange-100 text-orange-950 transition duration-200 hover:-translate-y-0.5 hover:bg-orange-200"
+      onClick={() => void install()}
+      size="sm"
+      type="button"
+    >
+      <Icon name="Download" />
+      Install
+    </Button>
+  );
+}
 
 export default function Query({ data }: { data: FooterOneData }) {
   if (!data.isVisible) return null;
@@ -69,6 +111,7 @@ export default function Query({ data }: { data: FooterOneData }) {
             >
               {data.phone}
             </a>
+            <InstallButton />
           </div>
         )}
       </div>

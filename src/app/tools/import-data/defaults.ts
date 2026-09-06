@@ -79,7 +79,7 @@ export const pageDefaults: ImportPageDefault[] = [
   {
     title: "Team Members",
     path: "/team-member",
-    description: "Meet the people behind Speed Box.",
+    description: "Meet the people behind NexaMart.",
     variant: "all-team-member",
   },
   {

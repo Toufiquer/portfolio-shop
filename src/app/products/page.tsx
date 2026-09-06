@@ -6,11 +6,12 @@
 |-----------------------------------------
 */
 
-import { ArrowRight, PackageOpen, Sparkles, Star } from "lucide-react";
+import { ArrowRight, PackageOpen, Star } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
+import { ProductCategoryNav } from "@/components/products/ProductCategoryNav";
 import { getPublicCategories, getPublicProducts } from "@/lib/products/server";
 
 export const metadata: Metadata = { title: "Products", description: "Explore our curated technology collection." };
@@ -33,37 +34,17 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         </div>
       </section>
       <section className="mx-auto max-w-7xl px-5 pb-20 sm:px-8">
-        <div className="grid gap-8 lg:grid-cols-[15rem_minmax(0,1fr)] lg:items-start">
-          <aside className="lg:sticky lg:top-6">
-            <nav
-              aria-label="Product categories"
-              className="overflow-x-auto rounded-sm bg-white p-3 ring-1 ring-stone-200 lg:overflow-visible"
-            >
-              <p className="px-3 pb-2 pt-1 text-xs font-bold uppercase tracking-[0.18em] text-stone-500">Categories</p>
-              <div className="flex gap-2 lg:flex-col">
-                <Link
-                  className={`whitespace-nowrap rounded-sm px-3 py-2.5 text-sm font-semibold transition ${!categorySlug ? "bg-stone-950 text-white" : "text-stone-600 hover:bg-amber-50 hover:text-stone-950"}`}
-                  href="/products"
-                >
-                  All products
-                </Link>
-                {categories.map((item) => (
-                  <Link
-                    className={`whitespace-nowrap rounded-sm px-3 py-2.5 text-sm font-semibold transition ${category?.id === item.id ? "bg-stone-950 text-white" : "text-stone-600 hover:bg-amber-50 hover:text-stone-950"}`}
-                    href={`/products?category=${item.slug}`}
-                    key={item.id}
-                  >
-                    {item.name}
-                  </Link>
-                ))}
-              </div>
-            </nav>
-          </aside>
+        <div className="grid gap-0 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8 lg:items-start">
+          <ProductCategoryNav
+            activeCategoryId={category?.id}
+            categories={categories}
+            hasCategoryFilter={Boolean(categorySlug)}
+          />
           <div className="min-w-0">
-            <div className="mb-7 flex items-end justify-between gap-4"></div>
+            <div className="mb-7 hidden items-end justify-between gap-4 lg:flex"></div>
             {items.length ? (
               <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-                {items.map((product) => (
+                {items.map((product, index) => (
                   <Link
                     className="group overflow-hidden rounded-sm bg-white ring-1 ring-stone-200 transition duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-amber-950/10"
                     href={`/products/${product.slug}`}
@@ -75,6 +56,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                           alt={product.name}
                           className="object-contain p-7 transition duration-500 group-hover:scale-105"
                           fill
+                          loading={index === 0 ? "eager" : "lazy"}
                           sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                           src={product.primaryImage}
                           unoptimized

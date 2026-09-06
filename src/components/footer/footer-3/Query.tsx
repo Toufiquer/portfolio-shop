@@ -7,8 +7,50 @@
 */
 "use client";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
+import { Icon } from "@/components/all-icons/all-icons";
+import { Button } from "@/components/ui/button";
 import type { FooterThreeData, FooterThreeLink } from "./data";
+
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
+
+function InstallButton() {
+  const [installEvent, setInstallEvent] = useState<BeforeInstallPromptEvent | null>(null);
+
+  useEffect(() => {
+    const capture = (event: Event) => {
+      event.preventDefault();
+      setInstallEvent(event as BeforeInstallPromptEvent);
+    };
+    window.addEventListener("beforeinstallprompt", capture);
+    return () => window.removeEventListener("beforeinstallprompt", capture);
+  }, []);
+
+  async function install() {
+    if (!installEvent) {
+      window.location.assign("/dashboard/install");
+      return;
+    }
+    await installEvent.prompt();
+    setInstallEvent(null);
+  }
+
+  return (
+    <Button
+      className="mt-2 w-fit cursor-pointer rounded-sm bg-orange-100 text-orange-950 transition duration-200 hover:-translate-y-0.5 hover:bg-orange-200"
+      onClick={() => void install()}
+      size="sm"
+      type="button"
+    >
+      <Icon name="Download" />
+      Install
+    </Button>
+  );
+}
 const Links = ({ links }: { links: FooterThreeLink[] }) => (
   <div className="mt-4 grid gap-2 text-sm">
     {links
@@ -54,6 +96,7 @@ export default function Query({ data }: { data: FooterThreeData }) {
           <div className="mt-4 grid gap-3 text-sm">
             <a href={`mailto:${data.email}`}>{data.email}</a>
             <a href={`tel:${data.phone.replace(/[^+\d]/g, "")}`}>{data.phone}</a>
+            <InstallButton />
           </div>
         </div>
       </div>

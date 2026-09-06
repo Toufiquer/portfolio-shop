@@ -2,7 +2,7 @@
 |-----------------------------------------
 | setting up ContainerIndex for the App
 | @author: Toufiquer Rahman<toufiquer.0@gmail.com>
-| @copyright: Speed Box, August, 2026
+| @copyright: NexaMart, August, 2026
 |-----------------------------------------
 */
 

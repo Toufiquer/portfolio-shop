@@ -48,7 +48,7 @@ export async function sendNotification(message: string) {
     await webpush.sendNotification(
       subscription,
       JSON.stringify({
-        title: "Speed Box",
+        title: "NexaMart",
         body: message.trim() || "You have a new notification.",
         icon: "/Logo.png",
         url: "/",

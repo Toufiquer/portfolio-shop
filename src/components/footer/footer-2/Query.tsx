@@ -112,7 +112,7 @@ export default function Query({ data }: { data: FooterTwoData }) {
             </div>
           </div>
           <aside className="w-full max-w-sm rounded-sm border border-orange-200 bg-orange-50/70 p-5 shadow-[0_20px_60px_-35px_rgba(154,52,18,.32)]">
-            <h2 className="text-xl font-bold text-stone-950">Shop Speed Box anywhere</h2>
+            <h2 className="text-xl font-bold text-stone-950">Shop NexaMart anywhere</h2>
             <p className="mt-2 text-sm leading-6 text-stone-600">
               Install the app for faster browsing, simple reorders, and quick access to your cart.
             </p>
