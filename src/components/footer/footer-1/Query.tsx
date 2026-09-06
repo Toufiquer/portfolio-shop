@@ -42,7 +42,7 @@ function InstallButton() {
 
   return (
     <Button
-      className="mt-4 h-12 w-full cursor-pointer rounded-sm bg-orange-500 px-6 text-base font-bold text-white shadow-lg shadow-orange-950/15 transition duration-200 hover:-translate-y-0.5 hover:bg-orange-600"
+      className="mt-4 h-12 w-full cursor-pointer rounded-sm border border-stone-200 bg-white px-6 text-base font-bold text-stone-900 shadow-lg shadow-stone-900/10 transition duration-200 hover:-translate-y-0.5 hover:bg-[#fffaf0]"
       onClick={() => void install()}
       size="sm"
       type="button"
@@ -115,9 +115,9 @@ export default function Query({ data }: { data: FooterOneData }) {
         )}
       </div>
       <div className="mx-auto max-w-7xl px-4 pb-10 md:px-6 lg:pb-12">
-        <div className="flex flex-col items-start justify-between gap-5 rounded-sm border border-orange-200 bg-orange-50 p-5 shadow-[0_18px_50px_-30px_rgba(154,52,18,.35)] sm:flex-row sm:items-center sm:p-6">
+        <div className="flex flex-col items-start justify-between gap-5 rounded-sm border border-[#eadfce] bg-[#fffaf0] p-5 shadow-[0_18px_50px_-30px_rgba(87,83,78,.18)] sm:flex-row sm:items-center sm:p-6">
           <div className="flex items-start gap-4">
-            <div className="flex size-12 shrink-0 items-center justify-center rounded-sm bg-orange-500 text-white shadow-md shadow-orange-950/15">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-sm border border-stone-200 bg-white text-stone-800 shadow-md shadow-stone-900/10">
               <Icon name="Download" />
             </div>
             <div>

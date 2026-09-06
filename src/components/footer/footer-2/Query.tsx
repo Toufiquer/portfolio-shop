@@ -45,7 +45,7 @@ function InstallButton() {
 
   return (
     <Button
-      className="mt-5 h-12 w-full cursor-pointer rounded-sm bg-orange-500 px-6 text-base font-bold text-white shadow-lg shadow-orange-950/15 transition duration-200 hover:-translate-y-0.5 hover:bg-orange-600"
+      className="mt-5 h-12 w-full cursor-pointer rounded-sm border border-stone-200 bg-white px-6 text-base font-bold text-stone-900 shadow-lg shadow-stone-900/10 transition duration-200 hover:-translate-y-0.5 hover:bg-[#fffaf0]"
       onClick={() => void install()}
       size="sm"
       type="button"
@@ -111,9 +111,9 @@ export default function Query({ data }: { data: FooterTwoData }) {
               </a>
             </div>
           </div>
-          <aside className="w-full max-w-sm rounded-sm border border-orange-200 bg-orange-50 p-5 shadow-[0_20px_60px_-35px_rgba(154,52,18,.32)] sm:p-6">
+          <aside className="w-full max-w-sm rounded-sm border border-[#eadfce] bg-[#fffaf0] p-5 shadow-[0_20px_60px_-35px_rgba(87,83,78,.18)] sm:p-6">
             <div className="flex items-center gap-3">
-              <div className="flex size-11 items-center justify-center rounded-sm bg-orange-500 text-white shadow-md shadow-orange-950/15">
+              <div className="flex size-11 items-center justify-center rounded-sm border border-stone-200 bg-white text-stone-800 shadow-md shadow-stone-900/10">
                 <Icon name="Download" />
               </div>
               <h2 className="text-xl font-bold text-stone-950">Shop NexaMart anywhere</h2>

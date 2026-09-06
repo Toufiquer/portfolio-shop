@@ -41,7 +41,7 @@ function InstallButton() {
 
   return (
     <Button
-      className="mt-2 w-fit cursor-pointer rounded-sm bg-orange-100 text-orange-950 transition duration-200 hover:-translate-y-0.5 hover:bg-orange-200"
+      className="mt-4 h-12 w-full cursor-pointer rounded-sm border border-stone-200 bg-white px-6 text-base font-bold text-stone-900 shadow-lg shadow-stone-900/10 transition duration-200 hover:-translate-y-0.5 hover:bg-[#fffaf0]"
       onClick={() => void install()}
       size="sm"
       type="button"
@@ -96,6 +96,23 @@ export default function Query({ data }: { data: FooterThreeData }) {
           <div className="mt-4 grid gap-3 text-sm">
             <a href={`mailto:${data.email}`}>{data.email}</a>
             <a href={`tel:${data.phone.replace(/[^+\d]/g, "")}`}>{data.phone}</a>
+          </div>
+        </div>
+      </div>
+      <div className="mx-auto max-w-7xl px-4 pb-8 md:px-6">
+        <div className="flex flex-col items-start justify-between gap-5 rounded-sm border border-[#eadfce] bg-[#fffaf0] p-5 shadow-[0_18px_50px_-30px_rgba(87,83,78,.18)] sm:flex-row sm:items-center sm:p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-sm border border-stone-200 bg-white text-stone-800 shadow-md shadow-stone-900/10">
+              <Icon name="Download" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-stone-900">Take us with you</h2>
+              <p className="mt-1 max-w-xl text-sm leading-6 text-stone-600">
+                Install our app for faster browsing, easy reorders, and quick access wherever you shop.
+              </p>
+            </div>
+          </div>
+          <div className="w-full shrink-0 sm:w-48">
             <InstallButton />
           </div>
         </div>
