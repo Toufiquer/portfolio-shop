@@ -39,8 +39,8 @@ import { createProductDefaults, defaultImportCategories, normalizeSlug } from "@
 import {
   buildDemoProductPayload,
   DEMO_PRODUCTS,
-  getDemo12Products,
-  getDemo24Products,
+  getDemo16Products,
+  getDemo8Products,
   type RawDemoProduct,
 } from "@/lib/dashboard/demoProductsData";
 import {
@@ -135,7 +135,9 @@ export default function ProductsPage() {
             // ignore duplicate
           }
         }
-        const updated = await refetchCategories().unwrap().catch(() => null);
+        const updated = await refetchCategories()
+          .unwrap()
+          .catch(() => null);
         activeCategories = (updated?.items ?? []).filter((item) => item.status === "active");
       } catch {
         // fallback
@@ -175,7 +177,7 @@ export default function ProductsPage() {
           item.slug.toLowerCase() === demo.categorySlug.toLowerCase() ||
           item.name.toLowerCase() === demo.categoryName.toLowerCase(),
       );
-      const assignedCategory = matchedCategory ? matchedCategory.id : (activeCategories[0]?.id || fallbackCategory.id);
+      const assignedCategory = matchedCategory ? matchedCategory.id : activeCategories[0]?.id || fallbackCategory.id;
       const assignedImage = demo.image;
 
       let payload = buildDemoProductPayload({
@@ -404,12 +406,7 @@ export default function ProductsPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button
-              className="secondary-button"
-              disabled={busy}
-              onClick={() => setDemoModalOpen(true)}
-              type="button"
-            >
+            <button className="secondary-button" disabled={busy} onClick={() => setDemoModalOpen(true)} type="button">
               <Sparkles className="h-4 w-4 text-amber-600" /> Demo products
             </button>
             <button className="primary-button" onClick={openCreate} type="button">
@@ -543,9 +540,7 @@ export default function ProductsPage() {
             <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-amber-200/70">
               <div
                 className={`h-full transition-all duration-300 ease-out ${
-                  demoProgress.isWaitingRateLimit
-                    ? "bg-amber-500 animate-pulse"
-                    : "bg-emerald-600"
+                  demoProgress.isWaitingRateLimit ? "bg-amber-500 animate-pulse" : "bg-emerald-600"
                 }`}
                 style={{ width: `${demoProgress.percentage}%` }}
               />
@@ -724,8 +719,8 @@ function DemoProductsModal({
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isSettingUpCategories, setIsSettingUpCategories] = useState(false);
 
-  const preset12 = useMemo(() => getDemo12Products(), []);
-  const preset24 = useMemo(() => getDemo24Products(), []);
+  const preset8 = useMemo(() => getDemo8Products(), []);
+  const preset16 = useMemo(() => getDemo16Products(), []);
   const presetAll = DEMO_PRODUCTS;
 
   const filteredProducts = useMemo(() => {
@@ -776,8 +771,8 @@ function DemoProductsModal({
                     No active categories found on the Category page
                   </p>
                   <p className="mt-1 text-xs text-amber-900">
-                    Demo products are organized by categories (Software, Web Templates, Fashion, Electronics, etc.). You
-                    can auto-import the standard 12 categories now, or manage them on the Categories page.
+                    Demo products are organized by eight gadget categories. You can auto-import those categories now, or
+                    manage them on the Categories page.
                   </p>
                   <div className="mt-2.5 flex flex-wrap items-center gap-2">
                     <button
@@ -790,7 +785,7 @@ function DemoProductsModal({
                       }}
                       type="button"
                     >
-                      {isSettingUpCategories ? "Importing categories…" : "Auto-Import 12 Categories"}
+                      {isSettingUpCategories ? "Importing categories…" : "Auto-Import 8 Gadget Categories"}
                     </button>
                     <Link
                       className="inline-flex items-center gap-1 text-xs font-medium text-amber-900 underline underline-offset-2 hover:text-amber-950"
@@ -901,44 +896,44 @@ function DemoProductsModal({
             <button
               className="group flex flex-col justify-between rounded-sm border border-stone-200 bg-white p-3 text-left transition hover:border-amber-400 hover:bg-amber-50/40 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={busy || isRunning}
-              onClick={() => void onAdd(preset12)}
+              onClick={() => void onAdd(preset8)}
               type="button"
             >
               <div>
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-sm font-semibold text-stone-900">12 Products</span>
+                  <span className="text-sm font-semibold text-stone-900">8 Products</span>
                   <span className="rounded-xs bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800">
                     1 per Category
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-stone-500">
-                  1 item each across all 12 Digital & Physical categories with real photos (~6 sec).
+                  1 item each across all 8 gadget categories with real product photos (~4 sec).
                 </p>
               </div>
               <span className="mt-3 text-xs font-semibold text-amber-700 transition-transform group-hover:translate-x-0.5">
-                Add 12 Products →
+                Add 8 Products →
               </span>
             </button>
 
             <button
               className="group flex flex-col justify-between rounded-sm border border-amber-300 bg-amber-50/50 p-3 text-left transition hover:border-amber-500 hover:bg-amber-100/50 disabled:cursor-not-allowed disabled:opacity-50"
               disabled={busy || isRunning}
-              onClick={() => void onAdd(preset24)}
+              onClick={() => void onAdd(preset16)}
               type="button"
             >
               <div>
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-sm font-semibold text-stone-900">24 Products</span>
+                  <span className="text-sm font-semibold text-stone-900">16 Products</span>
                   <span className="rounded-xs bg-amber-200 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
                     Recommended
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-stone-500">
-                  2 items per category with balanced pricing and real images (~12 sec).
+                  2 products per gadget category with real product photos (~8 sec).
                 </p>
               </div>
               <span className="mt-3 text-xs font-semibold text-amber-800 transition-transform group-hover:translate-x-0.5">
-                Add 24 Products →
+                Add 16 Products →
               </span>
             </button>
 
@@ -956,7 +951,7 @@ function DemoProductsModal({
                   </span>
                 </div>
                 <p className="mt-1 text-xs text-stone-500">
-                  All 40 curated products across all categories with real imagery (~25 sec).
+                  All 40 curated gadget products with real imagery (~25 sec).
                 </p>
               </div>
               <span className="mt-3 text-xs font-semibold text-amber-700 transition-transform group-hover:translate-x-0.5">

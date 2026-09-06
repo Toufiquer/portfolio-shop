@@ -29,6 +29,17 @@ export const categoriesApi = apiSlice.injectEndpoints({
       query: (id) => ({ url: `categories/v1/${id}`, method: "DELETE" }),
       invalidatesTags: ["Category"],
     }),
+    bulkDeleteCategories: build.mutation<{ deletedCount: number }, string[]>({
+      query: (ids) => ({ url: "categories/v1/bulk", method: "DELETE", body: { ids } }),
+      invalidatesTags: ["Category"],
+    }),
+    bulkUpdateCategoryStatus: build.mutation<
+      { updatedCount: number },
+      { ids: string[]; status: CategoryItem["status"] }
+    >({
+      query: (body) => ({ url: "categories/v1/bulk", method: "PATCH", body }),
+      invalidatesTags: ["Category"],
+    }),
   }),
 });
 
@@ -37,5 +48,7 @@ export const {
   useCreateCategoryMutation,
   useUpdateCategoryMutation,
   useDeleteCategoryMutation,
+  useBulkDeleteCategoriesMutation,
+  useBulkUpdateCategoryStatusMutation,
 } = categoriesApi;
 export type { CategoryInput } from "@/lib/dashboard/catalog";
