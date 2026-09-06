@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   Eye,
   ImagePlus,
   Loader2,
@@ -26,6 +27,7 @@ import {
   X,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { FormEvent, useMemo, useState } from "react";
 
 import { useConfirmDelete } from "@/components/confirm-delete-provider";
@@ -33,9 +35,19 @@ import ImagePickerModal from "@/components/dashboard-ui/ImagePickerModal";
 import { RichTextEditor, RichTextPreview } from "@/components/sections/section-1/RichTextEditor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/global-toast";
-import { createProductDefaults, normalizeSlug } from "@/lib/dashboard/catalog";
-import { buildDemoProductPayload, DEMO_PRODUCTS } from "@/lib/dashboard/demoProductsData";
-import { useGetCategoriesQuery } from "@/redux/features/dashboard/categories/categoriesSlice";
+import { createProductDefaults, defaultImportCategories, normalizeSlug } from "@/lib/dashboard/catalog";
+import {
+  buildDemoProductPayload,
+  DEMO_PRODUCTS,
+  getDemo12Products,
+  getDemo24Products,
+  type RawDemoProduct,
+} from "@/lib/dashboard/demoProductsData";
+import {
+  type CategoryItem,
+  useCreateCategoryMutation,
+  useGetCategoriesQuery,
+} from "@/redux/features/dashboard/categories/categoriesSlice";
 import { useGetMediaQuery } from "@/redux/features/dashboard/media/mediaSlice";
 import {
   type ProductInput,
@@ -65,6 +77,8 @@ export type DemoProgress = {
   percentage: number;
   currentName: string;
   currentPrice: number;
+  currentImage?: string;
+  currentCategory?: string;
   statusMessage: string;
   isWaitingRateLimit: boolean;
   waitCountdown: number;
@@ -73,8 +87,9 @@ export type DemoProgress = {
 export default function ProductsPage() {
   const [query, setQuery] = useState<ProductListParams>(initialQuery);
   const { data, error, isFetching, isLoading, refetch } = useGetProductsQuery(query);
-  const { data: categoriesData } = useGetCategoriesQuery();
+  const { data: categoriesData, refetch: refetchCategories } = useGetCategoriesQuery();
   const { data: mediaData } = useGetMediaQuery();
+  const [createCategory] = useCreateCategoryMutation();
   const [create, createState] = useCreateProductMutation();
   const [update, updateState] = useUpdateProductMutation();
   const [remove, removeState] = useDeleteProductMutation();
@@ -102,26 +117,50 @@ export default function ProductsPage() {
   const defaultCategoryId = (categoriesData?.items ?? []).find((item) => item.status === "active")?.id ?? "";
   const defaultImageUrl = (mediaData?.items ?? []).find((item) => item.type === "picture")?.url ?? "";
 
-  async function handleAddDemoProducts(count: 10 | 25 | 50) {
-    const activeCategories = (categoriesData?.items ?? []).filter((item) => item.status === "active");
+  async function handleAddDemoProducts(productsToAdd: RawDemoProduct[]) {
+    let activeCategories = (categoriesData?.items ?? []).filter((item) => item.status === "active");
+
+    if (!activeCategories.length) {
+      toast.info("Setting up categories from Category presets first...");
+      try {
+        for (const cat of defaultImportCategories) {
+          try {
+            await createCategory({
+              description: cat.description,
+              name: cat.name,
+              slug: cat.slug,
+              status: cat.status,
+            }).unwrap();
+          } catch {
+            // ignore duplicate
+          }
+        }
+        const updated = await refetchCategories().unwrap().catch(() => null);
+        activeCategories = (updated?.items ?? []).filter((item) => item.status === "active");
+      } catch {
+        // fallback
+      }
+    }
+
     const fallbackCategory = activeCategories[0] || (categoriesData?.items ?? [])[0];
     if (!fallbackCategory) {
-      toast.error("Please create at least one category before adding demo products.");
+      toast.error("Please create or import categories on the Categories page before adding demo products.");
       return;
     }
 
-    const mediaPictures = (mediaData?.items ?? []).filter((item) => item.type === "picture" && item.url);
-    const productsToAdd = DEMO_PRODUCTS.slice(0, count);
+    const count = productsToAdd.length;
 
     setDemoProgress({
       active: true,
       current: 0,
       total: count,
       percentage: 0,
+      currentCategory: productsToAdd[0]?.categoryName ?? "",
+      currentImage: productsToAdd[0]?.image ?? "",
       currentName: productsToAdd[0]?.name ?? "",
       currentPrice: productsToAdd[0]?.discountPrice ?? 0,
-      statusMessage: `Starting creation of ${count} demo products...`,
       isWaitingRateLimit: false,
+      statusMessage: `Starting creation of ${count} demo products with real images and categories...`,
       waitCountdown: 0,
     });
 
@@ -129,26 +168,34 @@ export default function ProductsPage() {
 
     for (let i = 0; i < count; i++) {
       const demo = productsToAdd[i];
-      const assignedCategory =
-        activeCategories.length > 0 ? activeCategories[i % activeCategories.length].id : fallbackCategory.id;
-      const assignedImage = mediaPictures.length > 0 ? mediaPictures[i % mediaPictures.length].url : demo.image;
+
+      // Direct category matching from Categories page data
+      const matchedCategory = (categoriesData?.items ?? []).find(
+        (item) =>
+          item.slug.toLowerCase() === demo.categorySlug.toLowerCase() ||
+          item.name.toLowerCase() === demo.categoryName.toLowerCase(),
+      );
+      const assignedCategory = matchedCategory ? matchedCategory.id : (activeCategories[0]?.id || fallbackCategory.id);
+      const assignedImage = demo.image;
 
       let payload = buildDemoProductPayload({
-        demo,
-        index: i,
         categoryId: assignedCategory,
+        demo,
         imageUrl: assignedImage,
+        index: i,
       });
 
       setDemoProgress({
         active: true,
         current: i,
-        total: count,
-        percentage: Math.round((i / count) * 100),
+        currentCategory: demo.categoryName,
+        currentImage: demo.image,
         currentName: demo.name,
         currentPrice: demo.discountPrice,
-        statusMessage: `Creating product ${i + 1} of ${count}: "${demo.name}"`,
         isWaitingRateLimit: false,
+        percentage: Math.round((i / count) * 100),
+        statusMessage: `Creating product ${i + 1} of ${count}: "${demo.name}"`,
+        total: count,
         waitCountdown: 0,
       });
 
@@ -161,13 +208,13 @@ export default function ProductsPage() {
           const token =
             typeof window !== "undefined" ? window.localStorage.getItem("token")?.replaceAll('"', "") : null;
           const res = await fetch("/api/dashboard/products/v1", {
-            method: "POST",
+            body: JSON.stringify(payload),
+            credentials: "include",
             headers: {
               "Content-Type": "application/json",
               ...(token ? { authorization: `Bearer ${token}` } : {}),
             },
-            credentials: "include",
-            body: JSON.stringify(payload),
+            method: "POST",
           });
 
           if (res.status === 429) {
@@ -181,8 +228,8 @@ export default function ProductsPage() {
                   ? {
                       ...prev,
                       isWaitingRateLimit: true,
-                      waitCountdown: sec,
                       statusMessage: `Rate limit reached. Waiting ${sec}s to retry product ${i + 1}...`,
+                      waitCountdown: sec,
                     }
                   : null,
               );
@@ -195,10 +242,10 @@ export default function ProductsPage() {
           if (res.status === 409) {
             // Slug or SKU conflict, generate new unique seed and retry
             payload = buildDemoProductPayload({
-              demo,
-              index: i + Math.floor(Math.random() * 10000) + 1,
               categoryId: assignedCategory,
+              demo,
               imageUrl: assignedImage,
+              index: i + Math.floor(Math.random() * 10000) + 1,
             });
             retries++;
             continue;
@@ -229,12 +276,12 @@ export default function ProductsPage() {
     setDemoProgress({
       active: false,
       current: count,
-      total: count,
-      percentage: 100,
       currentName: "",
       currentPrice: 0,
-      statusMessage: `Successfully added ${createdCount} of ${count} demo products!`,
       isWaitingRateLimit: false,
+      percentage: 100,
+      statusMessage: `Successfully added ${createdCount} of ${count} demo products!`,
+      total: count,
       waitCountdown: 0,
     });
 
@@ -247,6 +294,33 @@ export default function ProductsPage() {
       setDemoProgress(null);
       setDemoModalOpen(false);
     }, 1200);
+  }
+
+  async function handleImportCategories() {
+    try {
+      let created = 0;
+      for (const cat of defaultImportCategories) {
+        try {
+          await createCategory({
+            description: cat.description,
+            name: cat.name,
+            slug: cat.slug,
+            status: cat.status,
+          }).unwrap();
+          created++;
+        } catch {
+          // ignore duplicate
+        }
+      }
+      await refetchCategories();
+      if (created > 0) {
+        toast.success(`Imported ${created} categories from Category page presets!`);
+      } else {
+        toast.info("Categories are already up to date.");
+      }
+    } catch {
+      toast.error("Could not import categories.");
+    }
   }
 
   function openCreate() {
@@ -329,9 +403,19 @@ export default function ProductsPage() {
               Manage catalog details, inventory, categories, rich descriptions, and images.
             </p>
           </div>
-          <button className="primary-button" onClick={openCreate} type="button">
-            <Plus className="h-4 w-4" /> Add product
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="secondary-button"
+              disabled={busy}
+              onClick={() => setDemoModalOpen(true)}
+              type="button"
+            >
+              <Sparkles className="h-4 w-4 text-amber-600" /> Demo products
+            </button>
+            <button className="primary-button" onClick={openCreate} type="button">
+              <Plus className="h-4 w-4" /> Add product
+            </button>
+          </div>
         </div>
         <div className="mt-5 grid gap-3 rounded-sm bg-[#fffaf0] p-3 md:grid-cols-[minmax(0,1fr)_11rem_12rem]">
           <label className="relative">
@@ -607,10 +691,12 @@ export default function ProductsPage() {
       {demoModalOpen && (
         <DemoProductsModal
           busy={busy}
+          categories={categoriesData?.items ?? []}
           close={() => {
             if (!demoProgress?.active) setDemoModalOpen(false);
           }}
           onAdd={handleAddDemoProducts}
+          onImportCategories={handleImportCategories}
           progress={demoProgress}
         />
       )}
@@ -620,32 +706,52 @@ export default function ProductsPage() {
 
 function DemoProductsModal({
   busy,
+  categories,
   close,
   onAdd,
+  onImportCategories,
   progress,
 }: {
   busy: boolean;
+  categories: CategoryItem[];
   close: () => void;
-  onAdd: (count: 10 | 25 | 50) => Promise<void>;
+  onAdd: (products: RawDemoProduct[]) => Promise<void>;
+  onImportCategories: () => Promise<void>;
   progress: DemoProgress | null;
 }) {
   const isRunning = Boolean(progress?.active);
+  const activeCategories = categories.filter((c) => c.status === "active");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [isSettingUpCategories, setIsSettingUpCategories] = useState(false);
+
+  const preset12 = useMemo(() => getDemo12Products(), []);
+  const preset24 = useMemo(() => getDemo24Products(), []);
+  const presetAll = DEMO_PRODUCTS;
+
+  const filteredProducts = useMemo(() => {
+    if (selectedCategory === "all") return DEMO_PRODUCTS;
+    return DEMO_PRODUCTS.filter((p) => p.categorySlug === selectedCategory);
+  }, [selectedCategory]);
 
   return (
     <div className="fixed inset-0 z-[95] grid place-items-center bg-stone-950/40 p-4 backdrop-blur-xs">
       <div
         aria-modal="true"
-        className="w-full max-w-lg rounded-sm border border-[#eadfca] bg-[#fffaf0] p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
+        className="flex max-h-[92vh] w-full max-w-2xl flex-col rounded-sm border border-[#eadfca] bg-[#fffaf0] p-5 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
         role="dialog"
       >
-        <div className="flex items-start justify-between gap-4">
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4 border-b border-[#eadfca] pb-3">
           <div className="flex items-center gap-3">
             <div className="grid h-10 w-10 place-items-center rounded-sm bg-amber-100 text-amber-800">
               <Sparkles className="h-5 w-5" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-stone-900">Add Demo Products</h2>
-              <p className="text-xs text-stone-500">Choose how many sample products to create in your store.</p>
+              <p className="text-xs text-stone-600">
+                Populate your store with curated products, real high-res images, and categories from your Categories
+                page.
+              </p>
             </div>
           </div>
           <button
@@ -659,131 +765,284 @@ function DemoProductsModal({
           </button>
         </div>
 
-        {progress ? (
-          <div className="mt-5 rounded-sm border border-amber-300 bg-amber-50/90 p-4">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                {progress.isWaitingRateLimit ? (
-                  <RefreshCw className="h-4 w-4 animate-spin text-amber-700" />
-                ) : progress.percentage === 100 ? (
-                  <CheckCircle2 className="h-4 w-4 text-emerald-700" />
-                ) : (
-                  <Loader2 className="h-4 w-4 animate-spin text-amber-700" />
-                )}
-                <span className="text-xs font-semibold text-stone-900">
-                  {progress.isWaitingRateLimit
-                    ? `Rate limit reached. Retrying in ${progress.waitCountdown}s...`
-                    : progress.percentage === 100
-                      ? "Completed!"
-                      : `Creating product ${progress.current + 1} of ${progress.total}`}
+        <div className="flex-1 overflow-y-auto pr-1">
+          {/* Categories connection status banner */}
+          {activeCategories.length === 0 ? (
+            <div className="mt-3 rounded-sm border border-amber-300 bg-amber-50 p-3.5">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-800" />
+                <div className="flex-1">
+                  <p className="text-xs font-semibold text-amber-950">
+                    No active categories found on the Category page
+                  </p>
+                  <p className="mt-1 text-xs text-amber-900">
+                    Demo products are organized by categories (Software, Web Templates, Fashion, Electronics, etc.). You
+                    can auto-import the standard 12 categories now, or manage them on the Categories page.
+                  </p>
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                    <button
+                      className="rounded-sm bg-amber-800 px-2.5 py-1 text-xs font-medium text-white shadow-xs hover:bg-amber-900 disabled:opacity-50"
+                      disabled={isSettingUpCategories || isRunning}
+                      onClick={async () => {
+                        setIsSettingUpCategories(true);
+                        await onImportCategories();
+                        setIsSettingUpCategories(false);
+                      }}
+                      type="button"
+                    >
+                      {isSettingUpCategories ? "Importing categories…" : "Auto-Import 12 Categories"}
+                    </button>
+                    <Link
+                      className="inline-flex items-center gap-1 text-xs font-medium text-amber-900 underline underline-offset-2 hover:text-amber-950"
+                      href="/dashboard/category"
+                      onClick={close}
+                    >
+                      Visit Categories page <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-sm border border-emerald-200 bg-emerald-50/80 px-3 py-2 text-xs">
+              <div className="flex min-w-0 items-center gap-2">
+                <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-700" />
+                <span className="truncate font-medium text-emerald-950">
+                  Connected to {activeCategories.length} categories from Category page (
+                  {activeCategories
+                    .map((c) => c.name)
+                    .slice(0, 3)
+                    .join(", ")}
+                  {activeCategories.length > 3 ? "…" : ""})
                 </span>
               </div>
-              <span className="text-xs font-bold text-amber-900">{progress.percentage}%</span>
+              <Link
+                className="inline-flex shrink-0 items-center gap-1 font-medium text-emerald-800 underline-offset-2 hover:underline"
+                href="/dashboard/category"
+                onClick={close}
+              >
+                View categories <ExternalLink className="h-3 w-3" />
+              </Link>
             </div>
+          )}
 
-            {/* Real status bar */}
-            <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-amber-200/70">
-              <div
-                className={`h-full transition-all duration-300 ease-out ${
-                  progress.isWaitingRateLimit ? "bg-amber-500 animate-pulse" : "bg-emerald-600"
-                }`}
-                style={{ width: `${progress.percentage}%` }}
-              />
-            </div>
-
-            {progress.currentName && (
-              <p className="mt-2.5 truncate text-xs text-stone-600">
-                Current: <span className="font-medium text-stone-900">{progress.currentName}</span>
-                {progress.currentPrice > 0 && (
-                  <span className="font-medium text-emerald-700"> (৳{progress.currentPrice.toFixed(2)})</span>
-                )}
-              </p>
-            )}
-
-            {progress.isWaitingRateLimit && (
-              <div className="mt-2.5 flex items-center gap-1.5 rounded-xs bg-amber-100/90 px-2 py-1 text-[11px] text-amber-900">
-                <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-800" />
-                <span>API rate limit encountered (60 req/min). Waiting to safely resume without errors.</span>
+          {/* Real progress card when importing */}
+          {progress && (
+            <div className="mt-3 rounded-sm border border-amber-300 bg-amber-50/90 p-4">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {progress.isWaitingRateLimit ? (
+                    <RefreshCw className="h-4 w-4 animate-spin text-amber-700" />
+                  ) : progress.percentage === 100 ? (
+                    <CheckCircle2 className="h-4 w-4 text-emerald-700" />
+                  ) : (
+                    <Loader2 className="h-4 w-4 animate-spin text-amber-700" />
+                  )}
+                  <span className="text-xs font-semibold text-stone-900">
+                    {progress.isWaitingRateLimit
+                      ? `Rate limit reached. Retrying in ${progress.waitCountdown}s...`
+                      : progress.percentage === 100
+                        ? "Demo products added successfully!"
+                        : `Creating product ${progress.current + 1} of ${progress.total}`}
+                  </span>
+                </div>
+                <span className="text-xs font-bold text-amber-900">{progress.percentage}%</span>
               </div>
-            )}
+
+              {/* Real status bar */}
+              <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-amber-200/70">
+                <div
+                  className={`h-full transition-all duration-300 ease-out ${
+                    progress.isWaitingRateLimit ? "bg-amber-500 animate-pulse" : "bg-emerald-600"
+                  }`}
+                  style={{ width: `${progress.percentage}%` }}
+                />
+              </div>
+
+              {progress.currentName && (
+                <div className="mt-3 flex items-center gap-2.5 rounded-xs border border-amber-200/80 bg-white/80 p-2">
+                  {progress.currentImage && (
+                    <Image
+                      alt=""
+                      className="h-10 w-10 shrink-0 rounded-xs border object-cover"
+                      height={40}
+                      src={progress.currentImage}
+                      unoptimized
+                      width={40}
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-medium text-stone-900">{progress.currentName}</p>
+                    <div className="mt-0.5 flex items-center gap-2 text-[10px] text-stone-500">
+                      {progress.currentCategory && (
+                        <span className="rounded-xs bg-amber-100 px-1 py-0.2 font-medium text-amber-900">
+                          {progress.currentCategory}
+                        </span>
+                      )}
+                      {progress.currentPrice > 0 && (
+                        <span className="font-semibold text-emerald-700">৳{progress.currentPrice.toFixed(2)}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {progress.isWaitingRateLimit && (
+                <div className="mt-2.5 flex items-center gap-1.5 rounded-xs bg-amber-100/90 px-2 py-1 text-[11px] text-amber-900">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0 text-amber-800" />
+                  <span>API rate limit encountered (60 req/min). Waiting to safely resume without errors.</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Quick preset cards */}
+          <div className="mt-3 grid gap-2.5 sm:grid-cols-3">
+            <button
+              className="group flex flex-col justify-between rounded-sm border border-stone-200 bg-white p-3 text-left transition hover:border-amber-400 hover:bg-amber-50/40 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={busy || isRunning}
+              onClick={() => void onAdd(preset12)}
+              type="button"
+            >
+              <div>
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-sm font-semibold text-stone-900">12 Products</span>
+                  <span className="rounded-xs bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800">
+                    1 per Category
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-stone-500">
+                  1 item each across all 12 Digital & Physical categories with real photos (~6 sec).
+                </p>
+              </div>
+              <span className="mt-3 text-xs font-semibold text-amber-700 transition-transform group-hover:translate-x-0.5">
+                Add 12 Products →
+              </span>
+            </button>
+
+            <button
+              className="group flex flex-col justify-between rounded-sm border border-amber-300 bg-amber-50/50 p-3 text-left transition hover:border-amber-500 hover:bg-amber-100/50 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={busy || isRunning}
+              onClick={() => void onAdd(preset24)}
+              type="button"
+            >
+              <div>
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-sm font-semibold text-stone-900">24 Products</span>
+                  <span className="rounded-xs bg-amber-200 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                    Recommended
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-stone-500">
+                  2 items per category with balanced pricing and real images (~12 sec).
+                </p>
+              </div>
+              <span className="mt-3 text-xs font-semibold text-amber-800 transition-transform group-hover:translate-x-0.5">
+                Add 24 Products →
+              </span>
+            </button>
+
+            <button
+              className="group flex flex-col justify-between rounded-sm border border-stone-200 bg-white p-3 text-left transition hover:border-amber-400 hover:bg-amber-50/40 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={busy || isRunning}
+              onClick={() => void onAdd(presetAll)}
+              type="button"
+            >
+              <div>
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-sm font-semibold text-stone-900">All 40 Products</span>
+                  <span className="rounded-xs bg-purple-100 px-1.5 py-0.5 text-[10px] font-semibold text-purple-800">
+                    Full Catalog
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-stone-500">
+                  All 40 curated products across all categories with real imagery (~25 sec).
+                </p>
+              </div>
+              <span className="mt-3 text-xs font-semibold text-amber-700 transition-transform group-hover:translate-x-0.5">
+                Add All 40 →
+              </span>
+            </button>
           </div>
-        ) : (
-          <p className="mt-4 text-xs leading-relaxed text-stone-600">
-            Each product is generated with a unique name, unique price, custom SKU, rich description, and category.
-            Products are added one-by-one via the product API.
-          </p>
-        )}
 
-        <div className="mt-5 grid gap-3">
-          <button
-            className="group flex w-full items-center justify-between rounded-sm border border-stone-200 bg-white p-3.5 text-left transition hover:border-amber-400 hover:bg-amber-50/50 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={busy || isRunning}
-            onClick={() => void onAdd(10)}
-            type="button"
-          >
-            <div>
+          {/* Filter preview by Category & Real Image Showcase */}
+          <div className="mt-4 border-t border-[#eadfca] pt-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-stone-900">10 Demo Products</span>
-                <span className="rounded-xs bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
-                  Quick Test
-                </span>
+                <span className="text-xs font-semibold text-stone-700">Preview by Category:</span>
+                <select
+                  className="h-8 rounded-sm border border-stone-300 bg-white px-2.5 text-xs text-stone-800"
+                  disabled={isRunning}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  value={selectedCategory}
+                >
+                  <option value="all">All Categories ({DEMO_PRODUCTS.length} products)</option>
+                  {Array.from(new Set(DEMO_PRODUCTS.map((p) => p.categorySlug))).map((slug) => {
+                    const item = DEMO_PRODUCTS.find((p) => p.categorySlug === slug);
+                    const count = DEMO_PRODUCTS.filter((p) => p.categorySlug === slug).length;
+                    return (
+                      <option key={slug} value={slug}>
+                        {item?.categoryName ?? slug} ({count})
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
-              <p className="mt-0.5 text-xs text-stone-500">10 unique products with varied prices (~5-10 sec)</p>
+              {selectedCategory !== "all" && (
+                <button
+                  className="secondary-button h-8 text-xs font-semibold"
+                  disabled={busy || isRunning}
+                  onClick={() => void onAdd(filteredProducts)}
+                  type="button"
+                >
+                  Add these {filteredProducts.length} products
+                </button>
+              )}
             </div>
-            <span className="text-xs font-semibold text-amber-700 transition-transform group-hover:translate-x-0.5">
-              Add 10 →
-            </span>
-          </button>
 
-          <button
-            className="group flex w-full items-center justify-between rounded-sm border border-amber-300 bg-amber-50/40 p-3.5 text-left transition hover:border-amber-500 hover:bg-amber-100/50 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={busy || isRunning}
-            onClick={() => void onAdd(25)}
-            type="button"
-          >
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-stone-900">25 Demo Products</span>
-                <span className="rounded-xs bg-amber-200 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
-                  Recommended
-                </span>
-              </div>
-              <p className="mt-0.5 text-xs text-stone-500">25 unique items across categories (~15-25 sec)</p>
+            {/* Real product cards preview list */}
+            <div className="mt-2.5 max-h-52 space-y-1.5 overflow-y-auto pr-1">
+              {filteredProducts.map((p, idx) => (
+                <div
+                  className="flex items-center justify-between gap-3 rounded-sm border border-stone-200 bg-white p-2 text-xs"
+                  key={idx}
+                >
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <Image
+                      alt={p.name}
+                      className="h-10 w-10 shrink-0 rounded-xs border object-cover"
+                      height={40}
+                      src={p.image}
+                      unoptimized
+                      width={40}
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium text-stone-900">{p.name}</p>
+                      <div className="mt-0.5 flex items-center gap-1.5">
+                        <span className="rounded-xs bg-amber-100 px-1 py-0.2 text-[10px] font-medium text-amber-900">
+                          {p.categoryName}
+                        </span>
+                        <span className="text-[10px] text-stone-400">/{p.categorySlug}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <span className="font-semibold text-emerald-800">৳{p.discountPrice.toFixed(0)}</span>
+                    <span className="ml-1 text-[10px] text-stone-400 line-through">৳{p.realPrice.toFixed(0)}</span>
+                  </div>
+                </div>
+              ))}
             </div>
-            <span className="text-xs font-semibold text-amber-800 transition-transform group-hover:translate-x-0.5">
-              Add 25 →
-            </span>
-          </button>
-
-          <button
-            className="group flex w-full items-center justify-between rounded-sm border border-stone-200 bg-white p-3.5 text-left transition hover:border-amber-400 hover:bg-amber-50/50 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={busy || isRunning}
-            onClick={() => void onAdd(50)}
-            type="button"
-          >
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-stone-900">50 Demo Products</span>
-                <span className="rounded-xs bg-purple-100 px-1.5 py-0.5 text-[10px] font-semibold text-purple-800">
-                  Full Catalog
-                </span>
-              </div>
-              <p className="mt-0.5 text-xs text-stone-500">50 complete items with unique prices & specs (~35-50 sec)</p>
-            </div>
-            <span className="text-xs font-semibold text-amber-700 transition-transform group-hover:translate-x-0.5">
-              Add 50 →
-            </span>
-          </button>
+          </div>
         </div>
 
-        <div className="mt-6 flex justify-end">
-          <button
-            className="secondary-button"
-            disabled={isRunning}
-            onClick={close}
-            type="button"
-          >
-            {isRunning ? "Creating…" : "Cancel"}
+        {/* Footer */}
+        <div className="mt-4 flex items-center justify-between border-t border-[#eadfca] pt-3">
+          <p className="text-xs text-stone-500">
+            {isRunning ? "Creating products in your catalog…" : "Products are assigned to matching categories."}
+          </p>
+          <button className="secondary-button" disabled={isRunning} onClick={close} type="button">
+            {isRunning ? "Running in background…" : "Cancel"}
           </button>
         </div>
       </div>

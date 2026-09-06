@@ -49,3 +49,16 @@ export function saveOrderToHistory(order: LocalOrderHistoryItem) {
   window.localStorage.setItem(ORDER_HISTORY_STORAGE_KEY, JSON.stringify(history));
   window.dispatchEvent(new Event(ORDER_HISTORY_UPDATED_EVENT));
 }
+
+export function removeOrderFromHistory(orderId: string) {
+  if (typeof window === "undefined") return;
+  const history = readOrderHistory().filter((item) => item.id !== orderId);
+  window.localStorage.setItem(ORDER_HISTORY_STORAGE_KEY, JSON.stringify(history));
+  window.dispatchEvent(new Event(ORDER_HISTORY_UPDATED_EVENT));
+}
+
+export function clearOrderHistory() {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(ORDER_HISTORY_STORAGE_KEY);
+  window.dispatchEvent(new Event(ORDER_HISTORY_UPDATED_EVENT));
+}

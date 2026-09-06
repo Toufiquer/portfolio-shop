@@ -16,6 +16,7 @@ function AlertDialog({
   busy,
   confirmLabel = "Delete",
   busyLabel = "Deleting…",
+  className,
   onCancel,
   onConfirm,
 }: {
@@ -25,6 +26,7 @@ function AlertDialog({
   busy?: boolean;
   confirmLabel?: string;
   busyLabel?: string;
+  className?: string;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -32,7 +34,12 @@ function AlertDialog({
   return (
     <div
       aria-modal="true"
-      className="fixed inset-0 z-[80] grid place-items-center bg-stone-950/35 p-4"
+      className={`fixed inset-0 z-[110] grid place-items-center bg-stone-950/35 p-4 backdrop-blur-xs ${className ?? ""}`}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !busy) {
+          onCancel();
+        }
+      }}
       role="alertdialog"
     >
       <section className="w-full max-w-sm rounded-sm border border-[#eadfca] bg-white p-5 shadow-xl transition duration-700">

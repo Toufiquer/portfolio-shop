@@ -14,6 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Icon } from "@/components/all-icons/all-icons";
+import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -32,7 +33,9 @@ import { validatePhoneNumber } from "@/lib/dashboard/orders";
 import {
   ORDER_HISTORY_STORAGE_KEY,
   ORDER_HISTORY_UPDATED_EVENT,
+  clearOrderHistory,
   readOrderHistory,
+  removeOrderFromHistory,
   saveOrderToHistory,
   type LocalOrderHistoryItem,
 } from "@/lib/order-history";
@@ -53,6 +56,7 @@ export function CartDrawer() {
   const [message, setMessage] = useState("");
   const [cooldownExpiresAt, setCooldownExpiresAt] = useState<string | null>(null);
   const [countdownSeconds, setCountdownSeconds] = useState(0);
+  const [orderToDelete, setOrderToDelete] = useState<LocalOrderHistoryItem | "all" | null>(null);
 
   const openCart = () => {
     if (closeTimer.current) window.clearTimeout(closeTimer.current);
@@ -73,6 +77,7 @@ export function CartDrawer() {
     setCheckoutStatus("idle");
     setMessage("");
     setConfirmedOrderId(null);
+    setOrderToDelete(null);
     setOpen(false);
     if (closeTimer.current) window.clearTimeout(closeTimer.current);
     closeTimer.current = window.setTimeout(() => setVisible(false), 300);
@@ -273,29 +278,62 @@ export function CartDrawer() {
           {activeTab === "history" ? (
             history.length ? (
               <div className="space-y-3">
+                <div className="flex items-center justify-between text-xs text-stone-500">
+                  <span>Saved locally in browser</span>
+                  {history.length > 1 ? (
+                    <button
+                      className="cursor-pointer font-semibold text-stone-500 transition-colors hover:text-rose-700"
+                      onClick={() => setOrderToDelete("all")}
+                      type="button"
+                    >
+                      Clear all
+                    </button>
+                  ) : null}
+                </div>
                 {history.map((order) => (
-                  <Link
-                    className="block rounded-sm border border-[#eadfca] bg-white p-3 hover:bg-[#fffaf0]"
-                    href={`/order-tracking?id=${encodeURIComponent(order.id)}`}
+                  <article
+                    className="rounded-sm border border-[#eadfca] bg-white p-3 transition hover:border-amber-300 hover:bg-[#fffaf0]"
                     key={order.id}
-                    onClick={closeCart}
                   >
                     <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-bold text-stone-900">Order {order.id}</p>
+                      <Link
+                        className="group min-w-0 flex-1"
+                        href={`/order-tracking?id=${encodeURIComponent(order.id)}`}
+                        onClick={closeCart}
+                      >
+                        <p className="font-bold text-stone-900 transition-colors group-hover:text-amber-800">
+                          Order {order.id}
+                        </p>
                         <p className="mt-1 text-sm text-stone-500">
                           {order.itemCount} item{order.itemCount === 1 ? "" : "s"}
                         </p>
+                      </Link>
+                      <div className="flex shrink-0 items-center gap-1.5">
+                        <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-900 capitalize">
+                          {order.status}
+                        </span>
+                        <Button
+                          aria-label={`Delete order ${order.id} from local history`}
+                          className="text-stone-400 hover:bg-rose-50 hover:text-rose-700"
+                          onClick={() => setOrderToDelete(order)}
+                          size="icon-xs"
+                          title="Delete from local storage"
+                          type="button"
+                          variant="ghost"
+                        >
+                          <Icon name="Trash2" />
+                        </Button>
                       </div>
-                      <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-900 capitalize">
-                        {order.status}
-                      </span>
                     </div>
-                    <div className="mt-3 flex items-center justify-between text-sm">
+                    <Link
+                      className="mt-3 flex items-center justify-between text-sm"
+                      href={`/order-tracking?id=${encodeURIComponent(order.id)}`}
+                      onClick={closeCart}
+                    >
                       <time className="text-stone-500">{new Date(order.createdAt).toLocaleDateString()}</time>
                       <span className="font-bold text-stone-900">{formatBDT(order.total)}</span>
-                    </div>
-                  </Link>
+                    </Link>
+                  </article>
                 ))}
               </div>
             ) : (
@@ -383,9 +421,7 @@ export function CartDrawer() {
                     aria-invalid={phoneTouched && !phoneValidation.isValid}
                     aria-label="Phone number"
                     className={
-                      phoneTouched && !phoneValidation.isValid
-                        ? "border-red-400 focus-visible:ring-red-300"
-                        : ""
+                      phoneTouched && !phoneValidation.isValid ? "border-red-400 focus-visible:ring-red-300" : ""
                     }
                     onBlur={() => setPhoneTouched(true)}
                     onChange={(event) => {
@@ -435,6 +471,25 @@ export function CartDrawer() {
           </div>
         ) : null}
       </aside>
+      <AlertDialog
+        confirmLabel={orderToDelete === "all" ? "Clear all" : "Delete"}
+        description={
+          orderToDelete === "all"
+            ? "This will delete all saved order records from your browser's local storage. This will not cancel any placed orders."
+            : `Are you sure you want to delete order ${orderToDelete?.id} from your history? This will only delete it from your local storage and will not cancel the order.`
+        }
+        onCancel={() => setOrderToDelete(null)}
+        onConfirm={() => {
+          if (orderToDelete === "all") {
+            clearOrderHistory();
+          } else if (orderToDelete) {
+            removeOrderFromHistory(orderToDelete.id);
+          }
+          setOrderToDelete(null);
+        }}
+        open={orderToDelete !== null}
+        title={orderToDelete === "all" ? "Clear all order history?" : `Delete order ${orderToDelete?.id}?`}
+      />
     </div>,
     document.body,
   );

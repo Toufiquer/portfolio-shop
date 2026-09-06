@@ -56,8 +56,8 @@
 }
 
 .custom-parent-border {
-  border-block: 1px solid #eadfca;
-  border-inline: 1px solid #eadfca;
+  /* border-block: 1px solid #eadfca; */
+  /* border-inline: 1px solid #eadfca; */
 }
 
 @media (min-width: 768px) {

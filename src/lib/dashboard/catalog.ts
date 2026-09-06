@@ -51,6 +51,97 @@ export type CategoryInput = Pick<Category, "name" | "slug" | "description" | "st
 export type ProductInput = Omit<Product, "id" | "createdAt" | "updatedAt">;
 
 export const categoryDefaults: CategoryInput = { description: "", name: "", slug: "", status: "active" };
+
+export type PresetCategory = CategoryInput & {
+  type: "Digital" | "E-commerce";
+};
+
+export const defaultImportCategories: PresetCategory[] = [
+  {
+    name: "Software & Apps",
+    slug: "software-apps",
+    description: "Desktop utilities, SaaS tools, web applications, and developer software licenses.",
+    status: "active",
+    type: "Digital",
+  },
+  {
+    name: "Web Templates & Themes",
+    slug: "web-templates-themes",
+    description: "Website templates, landing pages, responsive HTML/CSS designs, and CMS themes.",
+    status: "active",
+    type: "Digital",
+  },
+  {
+    name: "Graphics & UI Kits",
+    slug: "graphics-ui-kits",
+    description: "UI design kits, vector icon sets, illustrations, and design systems.",
+    status: "active",
+    type: "Digital",
+  },
+  {
+    name: "E-books & Guides",
+    slug: "ebooks-guides",
+    description: "Comprehensive digital books, step-by-step guides, tutorials, and cheat sheets.",
+    status: "active",
+    type: "Digital",
+  },
+  {
+    name: "Online Courses & Tutorials",
+    slug: "online-courses-tutorials",
+    description: "Video masterclasses, guided programming bootcamps, and educational courses.",
+    status: "active",
+    type: "Digital",
+  },
+  {
+    name: "Audio & Music Tracks",
+    slug: "audio-music-tracks",
+    description: "Royalty-free music tracks, cinematic audio effects, podcast intros, and beat packs.",
+    status: "active",
+    type: "Digital",
+  },
+  {
+    name: "3D Models & CGI Assets",
+    slug: "3d-models-cgi-assets",
+    description: "3D printable files, game-ready rendering models, architectural assets, and textures.",
+    status: "active",
+    type: "Digital",
+  },
+  {
+    name: "Consumer Electronics",
+    slug: "consumer-electronics",
+    description: "Smart wearables, headphones, wireless chargers, portable audio, and tech gadgets.",
+    status: "active",
+    type: "E-commerce",
+  },
+  {
+    name: "Computers & Accessories",
+    slug: "computers-accessories",
+    description: "Laptops, high-res monitors, mechanical keyboards, ergonomic mice, and peripherals.",
+    status: "active",
+    type: "E-commerce",
+  },
+  {
+    name: "Fashion & Apparel",
+    slug: "fashion-apparel",
+    description: "Modern streetwear, comfortable casuals, performance athletic wear, and clothing.",
+    status: "active",
+    type: "E-commerce",
+  },
+  {
+    name: "Home & Living",
+    slug: "home-living",
+    description: "Contemporary home decor, ambient lighting, ergonomic furniture, and lifestyle items.",
+    status: "active",
+    type: "E-commerce",
+  },
+  {
+    name: "Health & Wellness",
+    slug: "health-wellness",
+    description: "Fitness monitors, massage guns, yoga gear, and personal wellness accessories.",
+    status: "active",
+    type: "E-commerce",
+  },
+];
 export const emptyRichText = JSON.stringify({
   root: {
     children: [{ children: [], direction: null, format: "", indent: 0, type: "paragraph", version: 1 }],
