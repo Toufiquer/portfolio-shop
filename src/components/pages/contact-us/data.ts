@@ -12,9 +12,9 @@ export const defaultData = {
   intro:
     "Share your question, project idea, or support request and our team will get back to you with a practical next step.",
   emailLabel: "Email",
-  email: "hello@example.com",
+  email: "example@gmail.com",
   addressLabel: "Address",
-  address: "House 12, Road 7, Dhaka 1212",
+  address: "21/B Bijoyshoroni, Tecgaon, Dhaka-1200.",
   locationLabel: "Location",
   location: "Dhaka, Bangladesh",
   mapUrl: "https://www.google.com/maps?q=Dhaka,Bangladesh&output=embed",

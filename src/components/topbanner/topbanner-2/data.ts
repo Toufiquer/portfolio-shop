@@ -26,7 +26,7 @@ export type TopBannerTwoData = {
 export const defaultData: TopBannerTwoData = {
   variant: "topbanner-2",
   isVisible: true,
-  text: "Welcome to Speed Box — fast tools for your daily work",
+  text: "Welcome to NexaMart — সহজ ও নিরাপদ অনলাইন শপিং",
   direction: "left",
   speed: 18,
   background: "#78350f",
@@ -35,9 +35,9 @@ export const defaultData: TopBannerTwoData = {
   icons: [
     { id: "facebook", title: "Facebook", icon: "CiFacebook", url: "https://facebook.com", visible: true },
     { id: "youtube", title: "YouTube", icon: "AiOutlineYoutube", url: "https://youtube.com", visible: true },
-    { id: "whatsapp", title: "WhatsApp", icon: "FaWhatsapp", url: "https://wa.me/8801700000000", visible: true },
+    { id: "whatsapp", title: "WhatsApp", icon: "FaWhatsapp", url: "https://wa.me/8801711221122", visible: true },
     { id: "messenger", title: "Messenger", icon: "FaFacebookMessenger", url: "https://m.me", visible: true },
-    { id: "call", title: "Call", icon: "Phone", url: "tel:+8801700000000", visible: true },
+    { id: "call", title: "Call", icon: "Phone", url: "tel:+8801711221122", visible: true },
   ],
   authLabel: "Login / Dashboard",
   buttonVisible: true,

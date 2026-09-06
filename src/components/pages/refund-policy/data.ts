@@ -45,7 +45,7 @@ export const defaultRefundPolicySection: RefundPolicySection = {
 
 export const defaultDataPage7: IPage7Data = {
   pageUid: "page-uid-refund-policy",
-  pageName: "Site Refund Policy",
+  pageName: "NexaMart Refund Policy",
   title: "Refund Policy",
   eyebrow: "Refund and cancellation guidance",
   showEyebrow: true,
@@ -62,7 +62,7 @@ export const defaultDataPage7: IPage7Data = {
       showEyebrow: true,
       title: "Refund policy overview",
       description:
-        "Site provides services and digital deliverables. Refund eligibility depends on the service, work completed, and the applicable proposal, invoice, or service agreement.",
+        "NexaMart provides products and related services. Refund eligibility depends on the order, item condition, and the applicable invoice or policy.",
     },
     {
       eyebrow: "Eligibility",
@@ -103,6 +103,6 @@ export const defaultDataPage7: IPage7Data = {
   ],
   contactTitle: "Need help with a refund request?",
   contactDescription:
-    "Please contact Site through the official support channel and include your invoice or payment reference so we can review your request. Replace this demo contact with your own details before publishing.",
-  supportEmail: "hello@example.com",
+    "Please contact NexaMart through the official support channel and include your invoice or payment reference so we can review your request.",
+  supportEmail: "example@gmail.com",
 };

@@ -8,12 +8,11 @@
 
 export const defaultData = {
   title: "Let’s talk",
-  intro:
-    "Share your question, project idea, or support request and our team will get back to you with a practical next step.",
+  intro: "NexaMart সম্পর্কে আপনার প্রশ্ন বা সহায়তার অনুরোধ পাঠান; আমাদের টিম দ্রুত আপনার সাথে যোগাযোগ করবে।",
   emailLabel: "Email",
-  email: "hello@example.com",
+  email: "example@gmail.com",
   addressLabel: "Address",
-  address: "House 12, Road 7, Dhaka 1212",
+  address: "21/B Bijoyshoroni, Tecgaon, Dhaka-1200.",
   locationLabel: "Location",
   location: "Dhaka, Bangladesh",
   mapUrl: "https://www.google.com/maps?q=Dhaka,Bangladesh&output=embed",

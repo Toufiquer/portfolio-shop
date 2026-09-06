@@ -39,7 +39,7 @@ export const defaultDataWhatsAppFaq: IWhatsAppFaqData = {
   pageName: "WhatsApp FAQ",
   heading: "আপনার সমস্যা বলতে WhatsApp করুন",
   whatsappLabel: "WhatsApp করুন",
-  whatsappNumber: "+88017 11112222",
+  whatsappNumber: "+8801711221122",
   faqs: [
     {
       question: "ওয়েবসাইট তৈরি করতে কত সময় লাগে?",

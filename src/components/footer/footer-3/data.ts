@@ -37,11 +37,11 @@ export const defaultData: FooterThreeData = {
   foreground: "#1c1917",
   accent: "#dc2626",
   logoUrl: "/Logo.png",
-  logoAlt: "Site Name",
+  logoAlt: "NexaMart logo",
   showLogo: true,
-  brand: "Site Name",
+  brand: "NexaMart",
   description:
-    "We build secure, reliable digital products that help ambitious teams work smarter, serve customers better, and grow with confidence.",
+    "NexaMart একটি আধুনিক অনলাইন শপিং প্ল্যাটফর্ম, যেখানে সহজে পণ্য খোঁজা, অর্ডার করা ও নিরাপদে কেনাকাটার সুবিধা রয়েছে।",
   disabledPaths: ["/dashboard", "/login", "/forgot-password", "/registration"],
   destinations: [
     { id: "uk", label: "UK", url: "/destinations/uk", visible: true },
@@ -56,8 +56,8 @@ export const defaultData: FooterThreeData = {
     { id: "visa", label: "Visa guidance", url: "/visa-guidance", visible: true },
   ],
   email: "example@gmail.com",
-  phone: "01711112222",
-  copyright: `All Rights Reserved © ${new Date().getFullYear()} - Site Name `,
+  phone: "01711 221122",
+  copyright: `All Rights Reserved © ${new Date().getFullYear()} - NexaMart `,
   legalLinks: [
     { id: "privacy", label: "Privacy Policy", url: "/privacy-policy", visible: true },
     { id: "terms", label: "Terms & Conditions", url: "/terms-and-condition", visible: true },

@@ -105,9 +105,9 @@ export type MenuData = {
 export const defaultData: MenuData = {
   variant: "menu-1",
   isVisible: true,
-  brand: "Speed Box",
+  brand: "NexaMart",
   logoUrl: "/Logo.png",
-  logoAlt: "Speed Box store",
+  logoAlt: "NexaMart logo",
   showLogo: true,
   showBrand: true,
   brandColor: "#1c1917",

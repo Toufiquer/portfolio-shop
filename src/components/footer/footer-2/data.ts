@@ -36,15 +36,15 @@ export const defaultData: FooterTwoData = {
   background: "#ffffff",
   foreground: "#292524",
   accent: "#b45309",
-  brand: "Speed Box",
-  tagline: "The gadgets you want, delivered with confidence",
+  brand: "NexaMart",
+  tagline: "আধুনিক অনলাইন শপিং, সহজ ও নিরাপদ",
   description:
-    "Discover reliable tech, everyday essentials, and the latest gadgets. Shop securely, get helpful support, and track every order from checkout to delivery.",
+    "NexaMart একটি আধুনিক অনলাইন শপিং প্ল্যাটফর্ম, যেখানে সহজে পণ্য খোঁজা, অর্ডার করা ও নিরাপদে কেনাকাটার সুবিধা রয়েছে।",
   logoUrl: "/Logo.png",
-  logoAlt: "Speed Box store",
+  logoAlt: "NexaMart logo",
   showLogo: true,
-  email: "support@speedbox.bd",
-  phone: "01711112222",
+  email: "example@gmail.com",
+  phone: "01711 221122",
   disabledPaths: ["/dashboard", "/login", "/forgot-password", "/registration"],
   columns: [
     {
@@ -87,7 +87,7 @@ export const defaultData: FooterTwoData = {
     { id: "new-arrivals", label: "New arrivals", url: "/products?sort=newest", visible: true },
     { id: "deals", label: "Deals", url: "/products?collection=deals", visible: true },
   ],
-  copyright: `© ${new Date().getFullYear()} Speed Box. All rights reserved.`,
+  copyright: `© ${new Date().getFullYear()} NexaMart. All rights reserved.`,
   showLegalBar: true,
   legalBackground: "#f8fafc",
   legalLinks: [

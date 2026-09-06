@@ -58,7 +58,7 @@ export const defaultData: TopBannerOneData = {
       id: "whatsapp",
       label: "WhatsApp",
       icon: "FaWhatsapp",
-      url: "https://wa.me/8801700000000",
+      url: "https://wa.me/8801711221122",
       message: "Chat on WhatsApp",
       visible: true,
     },
@@ -70,7 +70,7 @@ export const defaultData: TopBannerOneData = {
       message: "Message us",
       visible: true,
     },
-    { id: "email", label: "Email", icon: "Mail", url: "mailto:hello@example.com", message: "Email us", visible: true },
-    { id: "call", label: "Call", icon: "Phone", url: "tel:+8801700000000", message: "Call us", visible: true },
+    { id: "email", label: "Email", icon: "Mail", url: "mailto:example@gmail.com", message: "Email us", visible: true },
+    { id: "call", label: "Call", icon: "Phone", url: "tel:+8801711221122", message: "Call us", visible: true },
   ],
 };

@@ -1120,9 +1120,9 @@ export const defaultDataVisaRequirements: IVisaRequirementsData = {
   showDownloadsEyebrow: true,
   downloadsTitle: "Practical guides for every stage",
   downloadsDescription: "Keep a clear copy of the checklists and preparation guides you need.",
-  downloadCompanyName: "Site",
-  downloadCompanyEmail: "hello@example.com",
-  downloadCompanyContact: "017 11112222",
+  downloadCompanyName: "NexaMart",
+  downloadCompanyEmail: "example@gmail.com",
+  downloadCompanyContact: "01711 221122",
   downloads: [
     {
       id: "download-profile",

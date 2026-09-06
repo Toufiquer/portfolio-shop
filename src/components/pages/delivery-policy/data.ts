@@ -46,7 +46,7 @@ export const defaultDataDeliveryPolicy: IDeliveryPolicyData = {
     {
       title: "1. Shipping Destinations",
       description:
-        "Site currently delivers within the service areas shown at checkout. Please provide a complete, accurate address to help us avoid delivery delays.",
+        "NexaMart currently delivers within the service areas shown at checkout. Please provide a complete, accurate address to help us avoid delivery delays.",
     },
     {
       title: "2. Processing & Delivery Time",
@@ -59,18 +59,18 @@ export const defaultDataDeliveryPolicy: IDeliveryPolicyData = {
     {
       title: "3. Shipping Rates",
       description:
-        "Delivery costs are calculated at checkout based on your location and order details. Site may offer free delivery when an order reaches the minimum amount shown at checkout.",
+        "Delivery costs are calculated at checkout based on your location and order details. NexaMart may offer free delivery when an order reaches the minimum amount shown at checkout.",
     },
     {
       title: "4. Order Tracking",
       description:
-        "Once an order ships, Site will send a confirmation email with available tracking details so you can monitor its delivery status.",
+        "Once an order ships, NexaMart will send a confirmation email with available tracking details so you can monitor its delivery status.",
     },
   ],
   helpTitle: "Need Help?",
   helpDescription:
-    "If you have questions about delivery or an order has not arrived within the expected timeframe, contact Site support. Replace this demo contact with your own details before publishing.",
-  supportEmail: "hello@example.com",
+    "If you have questions about delivery or an order has not arrived within the expected timeframe, contact NexaMart support.",
+  supportEmail: "example@gmail.com",
 };
 
 export const defaultDeliveryPolicySection: DeliveryPolicySection = {

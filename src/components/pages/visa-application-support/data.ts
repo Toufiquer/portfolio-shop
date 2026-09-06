@@ -131,7 +131,7 @@ export const defaultDataVisaApplicationSupport: IVisaApplicationSupportData = {
   showHeroEyebrow: true,
   heroTitle: "Visa Processing in Bangladesh.",
   heroDescription:
-    "Site helps Bangladeshi students organise admission, financial, academic, and personal evidence for a confident student visa application. Get local guidance with destination-specific preparation.",
+    "NexaMart helps customers find products, place orders, and shop securely with a simple online experience.",
   primaryButtonText: "Book a Visa Assessment",
   primaryButtonUrl: "/consultation",
   secondaryButtonText: "View Processing Steps",
@@ -333,7 +333,7 @@ export const defaultDataVisaApplicationSupport: IVisaApplicationSupportData = {
     },
   ],
   featuresTitle: "Careful guidance without unrealistic promises",
-  featuresEyebrow: "Why students choose Site",
+  featuresEyebrow: "Why customers choose NexaMart",
   showFeaturesEyebrow: true,
   featuresDescription:
     "We focus on preparation quality, applicant understanding, and honest next steps. The immigration authority always makes the final decision.",
@@ -400,9 +400,9 @@ export const defaultDataVisaApplicationSupport: IVisaApplicationSupportData = {
     },
     {
       id: "faq-guarantee",
-      question: "Does Site guarantee visa approval?",
+      question: "Does NexaMart guarantee visa approval?",
       answer:
-        "No. Only the relevant immigration authority can approve a visa. Site helps you prepare an accurate, organised, and evidence-supported application.",
+        "No. Only the relevant immigration authority can approve a visa. NexaMart helps customers find products, place orders, and shop securely.",
     },
     {
       id: "faq-refusal",
@@ -414,13 +414,12 @@ export const defaultDataVisaApplicationSupport: IVisaApplicationSupportData = {
   ctaTitle: "Start your visa preparation from Bangladesh",
   ctaEyebrow: "Ready for your next step?",
   showCtaEyebrow: true,
-  ctaDescription:
-    "Book a consultation with Site and receive a practical roadmap for your destination, intake, funding, and document profile.",
+  ctaDescription: "Contact NexaMart for help finding products, placing orders, or receiving shopping support.",
   ctaButtonText: "Talk to a Visa Advisor",
   ctaButtonUrl: "/consultation",
-  companyName: "Site",
-  companyEmail: "hello@example.com",
-  companyContact: "017 11112222",
+  companyName: "NexaMart",
+  companyEmail: "example@gmail.com",
+  companyContact: "01711 221122",
   officeAddress: "Bangladesh",
   backgroundColor: "#fffdf8",
   surfaceColor: "#f8f3ea",
