@@ -12,6 +12,7 @@ import * as React from "react";
 
 import SettingsFields, { type BannerPosition } from "@/app/dashboard/admin/topbanner/assets/SettingsFields";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 import type { TopBannerThreeData } from "./data";
 
@@ -93,6 +94,16 @@ export default function Mutation({
               />
             </label>
           </div>
+          <label className="flex items-center justify-between gap-3 rounded-sm border border-stone-200 bg-[#fffaf0] p-3 text-sm">
+            <span>
+              <span className="block font-medium">Visible in top banner</span>
+              <span className="block text-xs text-stone-500">Show the offer button.</span>
+            </span>
+            <Switch
+              checked={data.buttonVisible !== false}
+              onCheckedChange={(buttonVisible) => setData({ ...data, buttonVisible })}
+            />
+          </label>
           <div className="grid min-w-0 gap-3 sm:grid-cols-2">
             <label className="grid min-w-0 gap-1 text-sm">
               Banner background

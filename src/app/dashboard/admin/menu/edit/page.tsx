@@ -26,7 +26,15 @@ import {
 import NextImage from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, type CSSProperties, type Dispatch, type PointerEvent as ReactPointerEvent, type SetStateAction } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type Dispatch,
+  type PointerEvent as ReactPointerEvent,
+  type SetStateAction,
+} from "react";
 import { genUploader } from "uploadthing/client";
 
 import { authClient } from "@/app/api/lib/auth-client";
@@ -274,7 +282,11 @@ export default function MenuEditPage() {
     localStorage.setItem("webapps-menu-updated", String(Date.now()));
     new BroadcastChannel("webapps-menu").postMessage("updated");
   };
-  const createCroppedMedia = async (data: MenuData, crop = data.logoCrop ?? emptyLogoCrop, aspect = data.logoAspect ?? "full") => {
+  const createCroppedMedia = async (
+    data: MenuData,
+    crop = data.logoCrop ?? emptyLogoCrop,
+    aspect = data.logoAspect ?? "full",
+  ) => {
     const file = await createCroppedLogoFile(data.logoUrl, crop, aspect, data.logoZoom ?? 100);
     const [uploaded] = await uploadFiles("imageUploader", { files: [file] });
     if (!uploaded?.ufsUrl || !uploaded.key) throw new Error("Could not upload the cropped logo.");
@@ -732,6 +744,16 @@ export default function MenuEditPage() {
             </>
           ) : null}
           <label className="flex items-center justify-between">
+            <span>
+              <span className="block">Visible in menu</span>
+              <span className="block text-xs text-stone-500">Show this action button in the published menu.</span>
+            </span>
+            <Switch
+              checked={menu.button.visible !== false}
+              onCheckedChange={(visible) => update({ button: { ...menu.button, visible } })}
+            />
+          </label>
+          <label className="flex items-center justify-between">
             Display icon
             <Switch
               checked={Boolean(menu.button.showIcon)}
@@ -832,7 +854,11 @@ export default function MenuEditPage() {
       <aside className="min-w-0 overflow-hidden rounded-sm border border-amber-200 bg-amber-50/50 p-3">
         <p className="mb-3 text-sm font-medium text-amber-950">Live preview</p>
         <div className="overflow-hidden rounded-sm border border-[#eadfca] bg-white">
-          <ActionButtonPreview button={menu.button} />
+          {menu.button.visible !== false ? (
+            <ActionButtonPreview button={menu.button} />
+          ) : (
+            <p className="p-4 text-sm text-stone-500">The action button is hidden in the menu.</p>
+          )}
         </div>
       </aside>
     </div>
@@ -842,7 +868,9 @@ export default function MenuEditPage() {
       <div className="flex items-center justify-between gap-4 rounded-sm border border-amber-200 bg-amber-50/60 p-4">
         <div>
           <h2 className="font-medium text-amber-950">Enable custom Mobile Menu</h2>
-          <p className="mt-1 text-sm text-stone-600">When enabled, these items render only below the mobile breakpoint.</p>
+          <p className="mt-1 text-sm text-stone-600">
+            When enabled, these items render only below the mobile breakpoint.
+          </p>
         </div>
         <Switch
           checked={menu.mobile.enabled}
@@ -910,7 +938,12 @@ export default function MenuEditPage() {
           {open ? (
             <div className="mt-5 min-w-0 border-t border-stone-100 pt-5">
               <div className="mb-4 flex items-center justify-end">
-                {open !== "main" && open !== "logo" && open !== "brand" && open !== "theme" && open !== "button" && open !== "mobile" ? (
+                {open !== "main" &&
+                open !== "logo" &&
+                open !== "brand" &&
+                open !== "theme" &&
+                open !== "button" &&
+                open !== "mobile" ? (
                   <label className="flex items-center gap-2 text-sm">
                     Visual option
                     <Switch checked={visual} onCheckedChange={setVisual} />
@@ -994,13 +1027,15 @@ export default function MenuEditPage() {
                 <p className="mt-1 text-xs text-stone-500">Drag any crop border to choose the visible logo area.</p>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  disabled={saving}
-                  onClick={() => void applyLogoCrop()}
-                  size="sm"
-                  type="button"
-                >
-                  {saving ? <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-amber-100 border-t-amber-700" /> : <Check className="size-4" />}
+                <Button disabled={saving} onClick={() => void applyLogoCrop()} size="sm" type="button">
+                  {saving ? (
+                    <span
+                      aria-hidden="true"
+                      className="size-4 animate-spin rounded-full border-2 border-amber-100 border-t-amber-700"
+                    />
+                  ) : (
+                    <Check className="size-4" />
+                  )}
                   {saving ? "Cropping…" : "Apply"}
                 </Button>
                 <Button onClick={() => setLogoEditor(false)} size="sm" type="button" variant="outline">
@@ -1039,7 +1074,8 @@ export default function MenuEditPage() {
               </div>
               {logoAspect === "custom" ? (
                 <div className="rounded-sm border border-amber-100 bg-amber-50/50 p-4 text-sm text-amber-950">
-                  Drag the left, right, top, or bottom border in the image above. Each border crops that side independently.
+                  Drag the left, right, top, or bottom border in the image above. Each border crops that side
+                  independently.
                 </div>
               ) : null}
             </div>
@@ -1130,11 +1166,27 @@ function MenuItemImagePreview({
   radius: NonNullable<MenuLink["imageRadius"]>;
   src: string;
 }) {
-  const dimensions = crop === "16:9" ? "aspect-video w-full max-w-sm" : crop === "full" ? "h-40 w-full max-w-sm" : "aspect-square h-40";
-  const radiusClass = { none: "rounded-none", xs: "rounded-xs", sm: "rounded-sm", md: "rounded-md", xl: "rounded-xl", "2xl": "rounded-2xl", full: "rounded-full" }[radius];
+  const dimensions =
+    crop === "16:9" ? "aspect-video w-full max-w-sm" : crop === "full" ? "h-40 w-full max-w-sm" : "aspect-square h-40";
+  const radiusClass = {
+    none: "rounded-none",
+    xs: "rounded-xs",
+    sm: "rounded-sm",
+    md: "rounded-md",
+    xl: "rounded-xl",
+    "2xl": "rounded-2xl",
+    full: "rounded-full",
+  }[radius];
   return (
     <div className={`${dimensions} overflow-hidden ${radiusClass}`}>
-      <NextImage alt="Menu item preview" className={`h-full w-full ${crop === "full" ? "object-contain" : "object-cover"}`} height={160} src={src} unoptimized width={320} />
+      <NextImage
+        alt="Menu item preview"
+        className={`h-full w-full ${crop === "full" ? "object-contain" : "object-cover"}`}
+        height={160}
+        src={src}
+        unoptimized
+        width={320}
+      />
     </div>
   );
 }
@@ -1185,7 +1237,8 @@ async function createMenuItemImageFile(
     blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, mimeType, 0.86));
     scale *= 0.75;
   } while (blob && blob.size > 3_500_000 && canvas.width > 1 && canvas.height > 1);
-  if (!blob || blob.size > 3_500_000) throw new Error("The edited image is too large to upload. Please use a smaller image.");
+  if (!blob || blob.size > 3_500_000)
+    throw new Error("The edited image is too large to upload. Please use a smaller image.");
   const extension = radius === "none" ? "jpg" : "png";
   return new File([blob], `menu-image-${Date.now()}.${extension}`, { type: mimeType });
 }
@@ -1195,7 +1248,14 @@ function radiusPixels(radius: NonNullable<MenuLink["imageRadius"]>, width: numbe
   return Math.min(value, Math.min(width, height) / 2);
 }
 
-function roundedCanvasPath(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
+function roundedCanvasPath(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) {
   context.beginPath();
   context.moveTo(x + radius, y);
   context.lineTo(x + width - radius, y);
@@ -1256,11 +1316,18 @@ function LogoCropCanvas({
     const bounds = stage.getBoundingClientRect();
     const updateFromPointer = (pointer: ReactPointerEvent<HTMLDivElement>) => {
       const horizontal = edge === "left" || edge === "right";
-      const position = horizontal ? ((pointer.clientX - bounds.left) / bounds.width) * 100 : ((pointer.clientY - bounds.top) / bounds.height) * 100;
+      const position = horizontal
+        ? ((pointer.clientX - bounds.left) / bounds.width) * 100
+        : ((pointer.clientY - bounds.top) / bounds.height) * 100;
       onChange(() => {
         const next = { ...visibleCrop };
         const paired = edge === "left" ? "right" : edge === "right" ? "left" : edge === "top" ? "bottom" : "top";
-        next[edge] = Math.round(Math.min(95 - visibleCrop[paired], Math.max(0, edge === "left" || edge === "top" ? position : 100 - position)));
+        next[edge] = Math.round(
+          Math.min(
+            95 - visibleCrop[paired],
+            Math.max(0, edge === "left" || edge === "top" ? position : 100 - position),
+          ),
+        );
         return next;
       });
     };
@@ -1272,14 +1339,46 @@ function LogoCropCanvas({
     };
   };
 
-  const selection = { bottom: `${visibleCrop.bottom}%`, left: `${visibleCrop.left}%`, right: `${visibleCrop.right}%`, top: `${visibleCrop.top}%` };
+  const selection = {
+    bottom: `${visibleCrop.bottom}%`,
+    left: `${visibleCrop.left}%`,
+    right: `${visibleCrop.right}%`,
+    top: `${visibleCrop.top}%`,
+  };
   return (
-    <div className="relative h-72 touch-none select-none overflow-hidden rounded-sm border border-stone-200 bg-stone-900" data-logo-crop-stage ref={stageRef}>
-      <NextImage alt="Logo crop preview" className="pointer-events-none h-full w-full object-contain" height={288} src={src} unoptimized width={512} />
-      <div aria-hidden="true" className="absolute inset-x-0 top-0 bg-stone-950/55" style={{ height: `${visibleCrop.top}%` }} />
-      <div aria-hidden="true" className="absolute inset-x-0 bottom-0 bg-stone-950/55" style={{ height: `${visibleCrop.bottom}%` }} />
-      <div aria-hidden="true" className="absolute left-0 bg-stone-950/55" style={{ bottom: `${visibleCrop.bottom}%`, top: `${visibleCrop.top}%`, width: `${visibleCrop.left}%` }} />
-      <div aria-hidden="true" className="absolute right-0 bg-stone-950/55" style={{ bottom: `${visibleCrop.bottom}%`, top: `${visibleCrop.top}%`, width: `${visibleCrop.right}%` }} />
+    <div
+      className="relative h-72 touch-none select-none overflow-hidden rounded-sm border border-stone-200 bg-stone-900"
+      data-logo-crop-stage
+      ref={stageRef}
+    >
+      <NextImage
+        alt="Logo crop preview"
+        className="pointer-events-none h-full w-full object-contain"
+        height={288}
+        src={src}
+        unoptimized
+        width={512}
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 bg-stone-950/55"
+        style={{ height: `${visibleCrop.top}%` }}
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-x-0 bottom-0 bg-stone-950/55"
+        style={{ height: `${visibleCrop.bottom}%` }}
+      />
+      <div
+        aria-hidden="true"
+        className="absolute left-0 bg-stone-950/55"
+        style={{ bottom: `${visibleCrop.bottom}%`, top: `${visibleCrop.top}%`, width: `${visibleCrop.left}%` }}
+      />
+      <div
+        aria-hidden="true"
+        className="absolute right-0 bg-stone-950/55"
+        style={{ bottom: `${visibleCrop.bottom}%`, top: `${visibleCrop.top}%`, width: `${visibleCrop.right}%` }}
+      />
       <div className="absolute border-2 border-white shadow-[0_0_0_1px_rgba(0,0,0,.5)]" style={selection}>
         <div className="absolute -left-2 inset-y-0 w-4 cursor-ew-resize" onPointerDown={beginCrop("left")} />
         <div className="absolute -right-2 inset-y-0 w-4 cursor-ew-resize" onPointerDown={beginCrop("right")} />
@@ -1288,7 +1387,10 @@ function LogoCropCanvas({
         <span aria-hidden="true" className="absolute -left-1.5 -top-1.5 size-3 border-2 border-white bg-stone-900" />
         <span aria-hidden="true" className="absolute -right-1.5 -top-1.5 size-3 border-2 border-white bg-stone-900" />
         <span aria-hidden="true" className="absolute -bottom-1.5 -left-1.5 size-3 border-2 border-white bg-stone-900" />
-        <span aria-hidden="true" className="absolute -bottom-1.5 -right-1.5 size-3 border-2 border-white bg-stone-900" />
+        <span
+          aria-hidden="true"
+          className="absolute -bottom-1.5 -right-1.5 size-3 border-2 border-white bg-stone-900"
+        />
       </div>
     </div>
   );
@@ -1421,7 +1523,14 @@ function MainMenuPanel({
                   className={`grid shrink-0 place-items-center overflow-hidden bg-amber-50 text-amber-900 ${link.showImage && link.imageUrl ? `${imageFrame} ${imageRadius}` : "size-9 rounded-sm"}`}
                 >
                   {link.showImage && link.imageUrl ? (
-                    <NextImage alt="" className={`h-full w-full ${imageCrop === "full" ? "object-contain" : "object-cover"}`} height={56} src={link.imageUrl} unoptimized width={56} />
+                    <NextImage
+                      alt=""
+                      className={`h-full w-full ${imageCrop === "full" ? "object-contain" : "object-cover"}`}
+                      height={56}
+                      src={link.imageUrl}
+                      unoptimized
+                      width={56}
+                    />
                   ) : (
                     (Icon ?? "—")
                   )}
@@ -1554,7 +1663,14 @@ function MainMenuPanel({
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-sm border border-stone-200 bg-white">
                         {editing.imageUrl ? (
-                          <NextImage alt="Selected menu item" className="h-full w-full object-cover" height={56} src={editing.imageUrl} unoptimized width={56} />
+                          <NextImage
+                            alt="Selected menu item"
+                            className="h-full w-full object-cover"
+                            height={56}
+                            src={editing.imageUrl}
+                            unoptimized
+                            width={56}
+                          />
                         ) : (
                           "No image"
                         )}
@@ -1610,9 +1726,18 @@ function MainMenuPanel({
             <header className="flex items-center justify-between border-b border-[#eadfca] p-5">
               <div>
                 <h2 className="font-semibold text-stone-900">Edit image</h2>
-                <p className="mt-1 text-xs text-stone-500">Crop and radius are baked into a new Media image when saved.</p>
+                <p className="mt-1 text-xs text-stone-500">
+                  Crop and radius are baked into a new Media image when saved.
+                </p>
               </div>
-              <Button aria-label="Close image editor" disabled={updatingImage} onClick={() => setImageEditor(false)} size="icon" type="button" variant="ghost">
+              <Button
+                aria-label="Close image editor"
+                disabled={updatingImage}
+                onClick={() => setImageEditor(false)}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
                 <X className="size-4" />
               </Button>
             </header>
@@ -1651,14 +1776,21 @@ function MainMenuPanel({
                   <MenuItemImagePreview crop={imageCrop} radius={imageRadius} src={editing.imageUrl} />
                 </div>
               </div>
-              {imageError ? <p className="sm:col-span-2 rounded-sm bg-red-100 p-3 text-sm text-red-900">{imageError}</p> : null}
+              {imageError ? (
+                <p className="sm:col-span-2 rounded-sm bg-red-100 p-3 text-sm text-red-900">{imageError}</p>
+              ) : null}
             </div>
             <footer className="flex justify-end gap-2 border-t border-[#eadfca] p-5">
               <Button disabled={updatingImage} onClick={() => setImageEditor(false)} type="button" variant="outline">
                 Cancel
               </Button>
               <Button disabled={updatingImage} onClick={() => void saveImageEdit()} type="button">
-                {updatingImage ? <span aria-hidden="true" className="size-4 animate-spin rounded-full border-2 border-amber-100 border-t-amber-700" /> : null}
+                {updatingImage ? (
+                  <span
+                    aria-hidden="true"
+                    className="size-4 animate-spin rounded-full border-2 border-amber-100 border-t-amber-700"
+                  />
+                ) : null}
                 {updatingImage ? "Updating image…" : "Update image"}
               </Button>
             </footer>
@@ -1879,11 +2011,18 @@ function MobileMenuPanel({
   const saveItem = () => {
     if (!editing) return;
     const index = mobile.links.findIndex((item) => item.id === editing.id);
-    const links = index < 0 ? [...mobile.links, { ...editing, position: mobile.links.length }] : mobile.links.map((item, itemIndex) => (itemIndex === index ? { ...editing, position: itemIndex } : item));
+    const links =
+      index < 0
+        ? [...mobile.links, { ...editing, position: mobile.links.length }]
+        : mobile.links.map((item, itemIndex) => (itemIndex === index ? { ...editing, position: itemIndex } : item));
     onChange({ ...mobile, links });
     setEditing(null);
   };
-  const removeItem = (id: string) => onChange({ ...mobile, links: mobile.links.filter((item) => item.id !== id).map((item, position) => ({ ...item, position })) });
+  const removeItem = (id: string) =>
+    onChange({
+      ...mobile,
+      links: mobile.links.filter((item) => item.id !== id).map((item, position) => ({ ...item, position })),
+    });
   const previewColumns = mobile.layout === "grid-3-2" || mobile.layout === "grid-3-3" ? "grid-cols-3" : "grid-cols-2";
 
   return (
@@ -1891,40 +2030,275 @@ function MobileMenuPanel({
       <section className="rounded-sm border border-stone-200 p-4">
         <h2 className="font-medium">View Style</h2>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          {([
-            ["grid", "Grid View"],
-            ["flex", "Flex View"],
-          ] as const).map(([view, label]) => {
+          {(
+            [
+              ["grid", "Grid View"],
+              ["flex", "Flex View"],
+            ] as const
+          ).map(([view, label]) => {
             const active = view === "flex" ? mobile.layout === "flex" : mobile.layout !== "flex";
-            return <button className={`rounded-sm border p-3 text-sm font-medium ${active ? "border-amber-500 bg-amber-50 text-amber-950" : "border-stone-200 hover:border-amber-300"}`} key={view} onClick={() => onChange({ ...mobile, layout: view === "flex" ? "flex" : "grid-2-2", links: withMobileDefaults(mobile.links, view === "flex" ? mobile.flexItems ?? 4 : 4) })} type="button">{label}</button>;
+            return (
+              <button
+                className={`rounded-sm border p-3 text-sm font-medium ${active ? "border-amber-500 bg-amber-50 text-amber-950" : "border-stone-200 hover:border-amber-300"}`}
+                key={view}
+                onClick={() =>
+                  onChange({
+                    ...mobile,
+                    layout: view === "flex" ? "flex" : "grid-2-2",
+                    links: withMobileDefaults(mobile.links, view === "flex" ? (mobile.flexItems ?? 4) : 4),
+                  })
+                }
+                type="button"
+              >
+                {label}
+              </button>
+            );
           })}
         </div>
       </section>
       {mobile.layout === "flex" ? (
         <section className="rounded-sm border border-stone-200 p-4">
           <h2 className="font-medium">Flex Items</h2>
-          <div className="mt-3 grid gap-4 sm:grid-cols-2"><label className="block text-sm">Items<Select onChange={(value) => onChange({ ...mobile, flexItems: Number(value) as 2 | 3 | 4 | 5 | 6, links: withMobileDefaults(mobile.links, Number(value)) })} options={[[2, "2 items"], [3, "3 items"], [4, "4 items"], [5, "5 items"], [6, "6 items"]]} value={mobile.flexItems ?? 4} /></label><label className="block text-sm">Text align<Select onChange={(flexTextAlign) => onChange({ ...mobile, flexTextAlign: flexTextAlign as "left" | "center" | "right" })} options={[["left", "Left"], ["center", "Center"], ["right", "Right"]]} value={mobile.flexTextAlign ?? "center"} /></label></div>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <label className="block text-sm">
+              Items
+              <Select
+                onChange={(value) =>
+                  onChange({
+                    ...mobile,
+                    flexItems: Number(value) as 2 | 3 | 4 | 5 | 6,
+                    links: withMobileDefaults(mobile.links, Number(value)),
+                  })
+                }
+                options={[
+                  [2, "2 items"],
+                  [3, "3 items"],
+                  [4, "4 items"],
+                  [5, "5 items"],
+                  [6, "6 items"],
+                ]}
+                value={mobile.flexItems ?? 4}
+              />
+            </label>
+            <label className="block text-sm">
+              Text align
+              <Select
+                onChange={(flexTextAlign) =>
+                  onChange({ ...mobile, flexTextAlign: flexTextAlign as "left" | "center" | "right" })
+                }
+                options={[
+                  ["left", "Left"],
+                  ["center", "Center"],
+                  ["right", "Right"],
+                ]}
+                value={mobile.flexTextAlign ?? "center"}
+              />
+            </label>
+          </div>
         </section>
       ) : (
         <section className="rounded-sm border border-stone-200 p-4">
           <h2 className="font-medium">Grid Layout</h2>
           <div className="mt-3 grid grid-cols-2 gap-2">
-            {gridLayouts.map(([layout, label]) => <button className={`rounded-sm border p-3 text-sm font-medium ${mobile.layout === layout ? "border-amber-500 bg-amber-50 text-amber-950" : "border-stone-200 hover:border-amber-300"}`} key={layout} onClick={() => changeLayout(layout)} type="button">{label}</button>)}
+            {gridLayouts.map(([layout, label]) => (
+              <button
+                className={`rounded-sm border p-3 text-sm font-medium ${mobile.layout === layout ? "border-amber-500 bg-amber-50 text-amber-950" : "border-stone-200 hover:border-amber-300"}`}
+                key={layout}
+                onClick={() => changeLayout(layout)}
+                type="button"
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </section>
       )}
       <section className="rounded-sm border border-stone-200 p-4 lg:col-span-2">
-        <div className="flex items-center justify-between gap-3"><div><h2 className="font-medium">Mobile Menu</h2><p className="mt-1 text-xs text-stone-500">Manage the items shown in the selected mobile layout.</p></div><Button onClick={() => setEditing({ id: crypto.randomUUID(), label: "", url: "/", icon: "House", showIcon: true, visible: true })} size="sm" type="button"><Plus className="size-4" />Add</Button></div>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-medium">Mobile Menu</h2>
+            <p className="mt-1 text-xs text-stone-500">Manage the items shown in the selected mobile layout.</p>
+          </div>
+          <Button
+            onClick={() =>
+              setEditing({ id: crypto.randomUUID(), label: "", url: "/", icon: "House", showIcon: true, visible: true })
+            }
+            size="sm"
+            type="button"
+          >
+            <Plus className="size-4" />
+            Add
+          </Button>
+        </div>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {mobile.links.map((item) => { const Icon = item.showIcon && item.icon ? iconMap[item.icon] : null; return <div className="flex items-center justify-between gap-2 rounded-sm border border-stone-200 p-3" key={item.id}><div className="flex min-w-0 items-center gap-2">{Icon ? <span>{Icon}</span> : null}<div className="min-w-0"><p className="truncate text-sm font-medium">{item.label || "Untitled item"}</p><p className="truncate text-xs text-stone-500">{item.url}</p></div></div><div className="flex"><Button aria-label="Edit mobile item" onClick={() => setEditing(structuredClone(item))} size="icon" type="button" variant="ghost"><Pencil className="size-4" /></Button><Button aria-label="Delete mobile item" onClick={() => removeItem(item.id)} size="icon" type="button" variant="ghost"><Trash2 className="size-4 text-red-600" /></Button></div></div>; })}
+          {mobile.links.map((item) => {
+            const Icon = item.showIcon && item.icon ? iconMap[item.icon] : null;
+            return (
+              <div
+                className="flex items-center justify-between gap-2 rounded-sm border border-stone-200 p-3"
+                key={item.id}
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  {Icon ? <span>{Icon}</span> : null}
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{item.label || "Untitled item"}</p>
+                    <p className="truncate text-xs text-stone-500">{item.url}</p>
+                  </div>
+                </div>
+                <div className="flex">
+                  <Button
+                    aria-label="Edit mobile item"
+                    onClick={() => setEditing(structuredClone(item))}
+                    size="icon"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Pencil className="size-4" />
+                  </Button>
+                  <Button
+                    aria-label="Delete mobile item"
+                    onClick={() => removeItem(item.id)}
+                    size="icon"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Trash2 className="size-4 text-red-600" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
       <section className="rounded-sm border border-amber-200 bg-amber-50/40 p-4 lg:col-span-2">
         <h2 className="font-medium text-amber-950">Preview</h2>
-        <div className="mx-auto mt-4 max-w-sm overflow-hidden rounded-[2rem] border-8 border-stone-800 bg-white p-3 shadow-lg"><p className="mb-3 text-center text-xs font-medium text-stone-500">Mobile layout preview</p><div className={`gap-2 ${mobile.layout === "flex" ? "flex flex-col" : `grid ${previewColumns}`}`}>{mobile.links.filter((item) => item.visible).slice(0, mobile.layout === "flex" ? mobile.flexItems ?? 4 : undefined).map((item) => { const Icon = item.showIcon && item.icon ? iconMap[item.icon] : null; const flexAlign = { left: "justify-start text-left", center: "justify-center text-center", right: "justify-end text-right" }[mobile.flexTextAlign ?? "center"]; return <div className={`flex min-h-16 rounded-sm bg-amber-50 px-3 text-xs text-amber-950 ${mobile.layout === "flex" ? `flex-row items-center gap-2 ${flexAlign}` : "flex-col items-center justify-center gap-1 text-center"}`} key={item.id}>{Icon ? <span className="shrink-0 text-base">{Icon}</span> : null}<span className="min-w-0 truncate">{item.label || "Item"}</span></div>; })}</div></div>
+        <div className="mx-auto mt-4 max-w-sm overflow-hidden rounded-[2rem] border-8 border-stone-800 bg-white p-3 shadow-lg">
+          <p className="mb-3 text-center text-xs font-medium text-stone-500">Mobile layout preview</p>
+          <div className={`gap-2 ${mobile.layout === "flex" ? "flex flex-col" : `grid ${previewColumns}`}`}>
+            {mobile.links
+              .filter((item) => item.visible)
+              .slice(0, mobile.layout === "flex" ? (mobile.flexItems ?? 4) : undefined)
+              .map((item) => {
+                const Icon = item.showIcon && item.icon ? iconMap[item.icon] : null;
+                const flexAlign = {
+                  left: "justify-start text-left",
+                  center: "justify-center text-center",
+                  right: "justify-end text-right",
+                }[mobile.flexTextAlign ?? "center"];
+                return (
+                  <div
+                    className={`flex min-h-16 rounded-sm bg-amber-50 px-3 text-xs text-amber-950 ${mobile.layout === "flex" ? `flex-row items-center gap-2 ${flexAlign}` : "flex-col items-center justify-center gap-1 text-center"}`}
+                    key={item.id}
+                  >
+                    {Icon ? <span className="shrink-0 text-base">{Icon}</span> : null}
+                    <span className="min-w-0 truncate">{item.label || "Item"}</span>
+                  </div>
+                );
+              })}
+          </div>
+        </div>
       </section>
-      {editing ? <div className="fixed inset-0 z-[130] grid place-items-center bg-stone-950/35 p-4 backdrop-blur-sm"><section aria-modal="true" className="w-full max-w-lg overflow-hidden rounded-sm border border-[#eadfca] bg-[#fffaf0] shadow-2xl" role="dialog"><header className="flex items-center justify-between border-b border-[#eadfca] p-5"><h2 className="font-semibold text-stone-900">{mobile.links.some((item) => item.id === editing.id) ? "Edit" : "Add"} Mobile Item</h2><Button aria-label="Close" onClick={() => setEditing(null)} size="icon" type="button" variant="ghost"><X className="size-4" /></Button></header><div className="grid gap-4 p-5 sm:grid-cols-2"><label>Name<input className={field} onChange={(event) => setEditing({ ...editing, label: event.target.value })} value={editing.label} /></label><label>Path<input className={field} onChange={(event) => setEditing({ ...editing, url: event.target.value })} value={editing.url} /></label><div className="sm:col-span-2"><span className="text-sm">Icon</span><div className="mt-1 flex items-center gap-3"><span className="grid size-10 place-items-center rounded-sm border border-stone-200 bg-white">{editing.icon ? iconMap[editing.icon] : "—"}</span><Button onClick={() => setIconPicker(true)} size="sm" type="button" variant="outline">Choose Icon</Button></div></div><label className="flex items-center justify-between sm:col-span-2"><span>Hide Icon</span><Switch checked={!editing.showIcon} onCheckedChange={(hideIcon) => setEditing({ ...editing, showIcon: !hideIcon })} /></label></div><footer className="flex justify-end gap-2 border-t border-[#eadfca] p-5"><Button onClick={() => setEditing(null)} type="button" variant="outline">Cancel</Button><Button disabled={!editing.label.trim()} onClick={saveItem} type="button">Save Item</Button></footer></section></div> : null}
-      {iconPicker && editing ? <div className="fixed inset-0 z-[140] grid place-items-center bg-stone-950/35 p-4 backdrop-blur-sm"><section aria-modal="true" className="w-full max-w-3xl overflow-hidden rounded-sm border border-[#eadfca] bg-[#fffaf0] shadow-2xl" role="dialog"><header className="flex items-center justify-between border-b border-[#eadfca] p-5"><h2 className="font-semibold">Choose Icon</h2><Button aria-label="Close icon picker" onClick={() => setIconPicker(false)} size="icon" type="button" variant="ghost"><X className="size-4" /></Button></header><div className="grid max-h-[65vh] grid-cols-3 gap-2 overflow-y-auto p-5 sm:grid-cols-5 md:grid-cols-7">{iconOptions.map((icon) => <button aria-label={icon} className={`grid min-h-20 place-items-center gap-2 rounded-sm border p-2 text-xs ${editing.icon === icon ? "border-amber-500 bg-amber-50" : "border-stone-200 bg-white hover:border-amber-300"}`} key={icon} onClick={() => { setEditing({ ...editing, icon, showIcon: true }); setIconPicker(false); }} type="button"><span>{iconMap[icon]}</span><span className="w-full truncate">{icon}</span></button>)}</div></section></div> : null}
+      {editing ? (
+        <div className="fixed inset-0 z-[130] grid place-items-center bg-stone-950/35 p-4 backdrop-blur-sm">
+          <section
+            aria-modal="true"
+            className="w-full max-w-lg overflow-hidden rounded-sm border border-[#eadfca] bg-[#fffaf0] shadow-2xl"
+            role="dialog"
+          >
+            <header className="flex items-center justify-between border-b border-[#eadfca] p-5">
+              <h2 className="font-semibold text-stone-900">
+                {mobile.links.some((item) => item.id === editing.id) ? "Edit" : "Add"} Mobile Item
+              </h2>
+              <Button aria-label="Close" onClick={() => setEditing(null)} size="icon" type="button" variant="ghost">
+                <X className="size-4" />
+              </Button>
+            </header>
+            <div className="grid gap-4 p-5 sm:grid-cols-2">
+              <label>
+                Name
+                <input
+                  className={field}
+                  onChange={(event) => setEditing({ ...editing, label: event.target.value })}
+                  value={editing.label}
+                />
+              </label>
+              <label>
+                Path
+                <input
+                  className={field}
+                  onChange={(event) => setEditing({ ...editing, url: event.target.value })}
+                  value={editing.url}
+                />
+              </label>
+              <div className="sm:col-span-2">
+                <span className="text-sm">Icon</span>
+                <div className="mt-1 flex items-center gap-3">
+                  <span className="grid size-10 place-items-center rounded-sm border border-stone-200 bg-white">
+                    {editing.icon ? iconMap[editing.icon] : "—"}
+                  </span>
+                  <Button onClick={() => setIconPicker(true)} size="sm" type="button" variant="outline">
+                    Choose Icon
+                  </Button>
+                </div>
+              </div>
+              <label className="flex items-center justify-between sm:col-span-2">
+                <span>Hide Icon</span>
+                <Switch
+                  checked={!editing.showIcon}
+                  onCheckedChange={(hideIcon) => setEditing({ ...editing, showIcon: !hideIcon })}
+                />
+              </label>
+            </div>
+            <footer className="flex justify-end gap-2 border-t border-[#eadfca] p-5">
+              <Button onClick={() => setEditing(null)} type="button" variant="outline">
+                Cancel
+              </Button>
+              <Button disabled={!editing.label.trim()} onClick={saveItem} type="button">
+                Save Item
+              </Button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+      {iconPicker && editing ? (
+        <div className="fixed inset-0 z-[140] grid place-items-center bg-stone-950/35 p-4 backdrop-blur-sm">
+          <section
+            aria-modal="true"
+            className="w-full max-w-3xl overflow-hidden rounded-sm border border-[#eadfca] bg-[#fffaf0] shadow-2xl"
+            role="dialog"
+          >
+            <header className="flex items-center justify-between border-b border-[#eadfca] p-5">
+              <h2 className="font-semibold">Choose Icon</h2>
+              <Button
+                aria-label="Close icon picker"
+                onClick={() => setIconPicker(false)}
+                size="icon"
+                type="button"
+                variant="ghost"
+              >
+                <X className="size-4" />
+              </Button>
+            </header>
+            <div className="grid max-h-[65vh] grid-cols-3 gap-2 overflow-y-auto p-5 sm:grid-cols-5 md:grid-cols-7">
+              {iconOptions.map((icon) => (
+                <button
+                  aria-label={icon}
+                  className={`grid min-h-20 place-items-center gap-2 rounded-sm border p-2 text-xs ${editing.icon === icon ? "border-amber-500 bg-amber-50" : "border-stone-200 bg-white hover:border-amber-300"}`}
+                  key={icon}
+                  onClick={() => {
+                    setEditing({ ...editing, icon, showIcon: true });
+                    setIconPicker(false);
+                  }}
+                  type="button"
+                >
+                  <span>{iconMap[icon]}</span>
+                  <span className="w-full truncate">{icon}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }

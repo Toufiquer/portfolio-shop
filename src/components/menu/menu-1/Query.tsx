@@ -84,7 +84,7 @@ function NavLink({
   return (
     <div className={`relative ${mobileFlexAlign ? "w-full" : ""}`}>
       <Link
-        className={`peer flex items-center gap-1 rounded-sm px-3 py-2 text-[length:var(--menu-font-size)] transition duration-700 hover:bg-amber-100 ${depth > 0 ? "w-full justify-between gap-4" : ""} ${mobileFlexAlign ? `w-full ${mobileFlexAlignment[mobileFlexAlign]}` : ""}`}
+        className={`peer flex items-center gap-1 rounded-sm px-3 py-2 font-medium text-[length:var(--menu-font-size)] transition-colors duration-200 hover:bg-orange-50 hover:text-orange-900 ${depth > 0 ? "w-full justify-between gap-4" : ""} ${mobileFlexAlign ? `w-full ${mobileFlexAlignment[mobileFlexAlign]}` : ""}`}
         href={item.url}
         title={item.label}
       >
@@ -109,7 +109,7 @@ function NavLink({
       </Link>
       {hasChildren ? (
         <div
-          className={`invisible absolute z-[60] w-max max-w-[calc(100vw-2rem)] whitespace-nowrap border border-[#eadfca] bg-white p-1 opacity-0 shadow-lg transition duration-700 peer-hover:visible peer-hover:opacity-100 hover:visible hover:opacity-100 ${depth === 0 ? "left-0 top-full" : "left-full top-0"}`}
+          className={`invisible absolute z-[60] w-max max-w-[calc(100vw-2rem)] whitespace-nowrap rounded-sm border border-stone-200 bg-white p-1.5 opacity-0 shadow-xl transition duration-200 peer-hover:visible peer-hover:opacity-100 hover:visible hover:opacity-100 ${depth === 0 ? "left-0 top-full" : "left-full top-0"}`}
         >
           {children.map((child) => (
             <NavLink depth={depth + 1} item={child} key={child.id} />
@@ -148,9 +148,9 @@ function MobileNavLink({
 
   return (
     <div className="w-full">
-      <div className="flex w-full items-center rounded-sm border-b border-[#eadfca]/70">
+      <div className="flex w-full items-center rounded-sm border-b border-stone-100">
         <Link
-          className={`flex min-w-0 flex-1 items-center gap-2 rounded-sm px-3 py-3 text-[length:var(--menu-font-size)] transition hover:bg-amber-100 ${mobileFlexAlign ? mobileFlexAlignment[mobileFlexAlign] : ""}`}
+          className={`flex min-w-0 flex-1 items-center gap-2 rounded-sm px-3 py-3 font-medium text-[length:var(--menu-font-size)] transition-colors hover:bg-orange-50 hover:text-orange-900 ${mobileFlexAlign ? mobileFlexAlignment[mobileFlexAlign] : ""}`}
           href={item.url}
           onClick={onNavigate}
           title={item.label}
@@ -173,7 +173,7 @@ function MobileNavLink({
           <button
             aria-expanded={open}
             aria-label={`${open ? "Collapse" : "Expand"} ${item.label}`}
-            className="grid size-10 shrink-0 place-items-center rounded-sm text-stone-500 transition hover:bg-amber-100"
+            className="grid size-10 shrink-0 place-items-center rounded-sm text-stone-500 transition-colors hover:bg-orange-50 hover:text-orange-900"
             onClick={() => setOpen((value) => !value)}
             type="button"
           >
@@ -186,7 +186,7 @@ function MobileNavLink({
           className={`grid transition-[grid-template-rows,opacity,margin] duration-300 ease-out ${open ? "mt-1 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
         >
           <div className="min-h-0 overflow-hidden">
-            <div className="ml-3 border-l border-[#eadfca] pl-2">
+            <div className="ml-3 border-l border-stone-200 pl-2">
               {children.map((child) => (
                 <MobileNavLink item={child} key={child.id} onNavigate={onNavigate} />
               ))}
@@ -214,7 +214,7 @@ export default function MenuOneQuery({ data, pending }: { data: MenuData; pendin
   const buttonSpacing = buttonSpacingStyle(data.button);
   return (
     <header
-      className="z-50 border-b border-[#eadfca] py-3 backdrop-blur"
+      className="z-50 border-b border-stone-200 py-3 shadow-sm backdrop-blur"
       style={
         {
           ...logoSpacing,
@@ -226,7 +226,7 @@ export default function MenuOneQuery({ data, pending }: { data: MenuData; pendin
         } as CSSProperties
       }
     >
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4  px-4 md:px-6 ">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 md:px-6">
         <Link
           className="flex min-w-0 items-center gap-2 px-[var(--logo-padding-x-mobile)] py-[var(--logo-padding-y-mobile)] mx-[var(--logo-margin-x-mobile)] my-[var(--logo-margin-y-mobile)] md:px-[var(--logo-padding-x-desktop)] md:py-[var(--logo-padding-y-desktop)] md:mx-[var(--logo-margin-x-desktop)] md:my-[var(--logo-margin-y-desktop)] font-bold"
           href="/"
@@ -250,39 +250,41 @@ export default function MenuOneQuery({ data, pending }: { data: MenuData; pendin
             ))}
         </nav>
         {pending ? (
-          <span className="h-8 w-16 animate-pulse bg-amber-100" />
+          <span className="h-8 w-16 animate-pulse rounded-sm bg-stone-100" />
         ) : (
           <div className="flex items-center gap-2">
             <button
               aria-controls="menu-one-search"
               aria-expanded={searchOpen}
               aria-label="Open search"
-              className="grid size-8 place-items-center rounded-sm border border-[#eadfca] p-0 transition hover:bg-amber-100"
+              className="grid size-9 place-items-center rounded-sm border border-stone-200 p-0 transition-colors hover:border-orange-200 hover:bg-orange-50 hover:text-orange-900"
               onClick={() => setSearchOpen(true)}
               type="button"
             >
               <Icon name="Search" />
             </button>
-            <CartButton className="border-[#eadfca] hover:bg-amber-100" />
-            <Link
-              className={`menu-action-button inline-flex items-center gap-1 px-[var(--button-padding-x-mobile)] py-[var(--button-padding-y-mobile)] mx-[var(--button-margin-x-mobile)] my-[var(--button-margin-y-mobile)] md:px-[var(--button-padding-x-desktop)] md:py-[var(--button-padding-y-desktop)] md:mx-[var(--button-margin-x-desktop)] md:my-[var(--button-margin-y-desktop)] ${borderClass[data.button.border ?? "none"]} ${radiusClass[data.button.radius]}`}
-              href={button.url}
-              style={{
-                ...buttonSpacing,
-                background: data.button.transparentBackground
-                  ? background(data.button.background, data.button.transparency)
-                  : data.button.background,
-                borderColor: data.button.foreground,
-                color: data.button.foreground,
-              }}
-            >
-              {data.button.showIcon && data.button.icon ? <Icon name={data.button.icon} /> : null}
-              {button.label}
-            </Link>
+            <CartButton className="size-9 border-stone-200 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-900" />
+            {data.button.visible !== false ? (
+              <Link
+                className={`menu-action-button inline-flex items-center gap-1 px-[var(--button-padding-x-mobile)] py-[var(--button-padding-y-mobile)] mx-[var(--button-margin-x-mobile)] my-[var(--button-margin-y-mobile)] md:px-[var(--button-padding-x-desktop)] md:py-[var(--button-padding-y-desktop)] md:mx-[var(--button-margin-x-desktop)] md:my-[var(--button-margin-y-desktop)] ${borderClass[data.button.border ?? "none"]} ${radiusClass[data.button.radius]}`}
+                href={button.url}
+                style={{
+                  ...buttonSpacing,
+                  background: data.button.transparentBackground
+                    ? background(data.button.background, data.button.transparency)
+                    : data.button.background,
+                  borderColor: data.button.foreground,
+                  color: data.button.foreground,
+                }}
+              >
+                {data.button.showIcon && data.button.icon ? <Icon name={data.button.icon} /> : null}
+                {button.label}
+              </Link>
+            ) : null}
             <button
               aria-expanded={mobileOpen}
               aria-label={mobileOpen ? "Close mobile menu" : "Open mobile menu"}
-              className="grid size-8 place-items-center rounded-sm border border-[#eadfca] p-0 md:hidden"
+              className="grid size-9 place-items-center rounded-sm border border-stone-200 p-0 transition-colors hover:bg-orange-50 md:hidden"
               onClick={() => setMobileOpen((open) => !open)}
               type="button"
             >
@@ -303,7 +305,7 @@ export default function MenuOneQuery({ data, pending }: { data: MenuData; pendin
         />
       ) : null}
       <div
-        className={`absolute inset-x-0 top-full grid overflow-hidden border-b border-[#eadfca] bg-[inherit] px-4 transition-[grid-template-rows,opacity,margin] duration-300 ease-out md:hidden ${mobileOpen ? "mt-0 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0"}`}
+        className={`absolute inset-x-0 top-full grid overflow-hidden border-b border-stone-200 bg-[inherit] px-4 shadow-lg transition-[grid-template-rows,opacity,margin] duration-300 ease-out md:hidden ${mobileOpen ? "mt-0 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0"}`}
       >
         <nav
           className="mx-auto flex min-h-0 w-full max-w-6xl flex-col gap-1 py-3"
@@ -346,13 +348,13 @@ function MenuSearchPanel({
   return (
     <section
       aria-label="Site search"
-      className="absolute inset-x-0 top-full z-[70] border-b border-[#eadfca] bg-[#fffaf0] px-4 py-3 shadow-lg"
+      className="absolute inset-x-0 top-full z-[70] border-b border-stone-200 bg-white px-4 py-3 shadow-xl"
       id={id}
       ref={panelRef}
       role="search"
     >
       <div className="mx-auto w-full max-w-2xl">
-        <div className="flex items-center gap-2 rounded-sm border border-[#eadfca] bg-white p-1.5 shadow-sm">
+        <div className="flex items-center gap-2 rounded-sm border border-stone-200 bg-white p-1.5 shadow-sm focus-within:border-orange-400 focus-within:ring-2 focus-within:ring-orange-100">
           <span className="pl-2">
             <Icon name="Search" />
           </span>
@@ -371,7 +373,7 @@ function MenuSearchPanel({
           {query ? (
             <button
               aria-label="Clear search text"
-              className="grid size-8 shrink-0 place-items-center rounded-sm transition hover:bg-amber-100"
+              className="grid size-8 shrink-0 place-items-center rounded-sm transition-colors hover:bg-orange-50"
               onClick={onClear}
               style={{ color: accent }}
               type="button"
@@ -390,7 +392,7 @@ function MenuSearchResults({ query, search }: { query: string; search: ReturnTyp
   const normalizedQuery = normalizeSearchQuery(query);
   const destination = `/search?q=${encodeURIComponent(normalizedQuery)}`;
   return (
-    <div className="mt-2 rounded-sm border border-[#eadfca] bg-white p-2 text-sm text-stone-700 shadow-sm">
+    <div className="mt-2 rounded-sm border border-stone-200 bg-white p-2 text-sm text-stone-700 shadow-lg">
       {search.isLoading ? <p className="px-2 py-1.5">Searching…</p> : null}
       {!search.isLoading && search.error ? <p className="px-2 py-1.5 text-red-700">{search.error}</p> : null}
       {!search.isLoading && !search.error && !search.items.length ? (
@@ -399,7 +401,7 @@ function MenuSearchResults({ query, search }: { query: string; search: ReturnTyp
       {!search.isLoading && !search.error
         ? search.items.slice(0, 6).map((item) => (
             <Link
-              className="block rounded-sm px-2 py-2 transition hover:bg-amber-100"
+              className="block rounded-sm px-2 py-2 transition-colors hover:bg-orange-50"
               href={
                 item.scope === "page"
                   ? `/search/result?page=${encodeURIComponent(item.pageId)}&scope=page&q=${encodeURIComponent(normalizedQuery)}`
@@ -414,7 +416,7 @@ function MenuSearchResults({ query, search }: { query: string; search: ReturnTyp
         : null}
       {!search.isLoading && !search.error && search.total > 6 ? (
         <Link
-          className="mt-1 block rounded-sm bg-amber-100 px-3 py-2 text-center font-medium hover:bg-amber-200"
+          className="mt-1 block rounded-sm bg-orange-100 px-3 py-2 text-center font-medium text-orange-950 transition-colors hover:bg-orange-200"
           href={destination}
         >
           Search Page

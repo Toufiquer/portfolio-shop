@@ -14,7 +14,7 @@ import SettingsFields, { type BannerPosition } from "@/app/dashboard/admin/topba
 import { iconMap } from "@/components/all-icons/all-icons";
 import { Button } from "@/components/ui/button";
 import { IconPicker } from "@/components/ui/icon-picker";
-
+import { Switch } from "@/components/ui/switch";
 
 import type { TopBannerOneData } from "./data";
 
@@ -101,6 +101,16 @@ export default function Mutation({
               className="h-9 w-full min-w-0 rounded-sm border border-stone-200 px-3"
               onChange={(event) => setData({ ...data, authLabel: event.target.value })}
               value={data.authLabel}
+            />
+          </label>
+          <label className="flex items-center justify-between gap-3 rounded-sm border border-stone-200 bg-[#fffaf0] p-3 text-sm">
+            <span>
+              <span className="block font-medium">Visible in top banner</span>
+              <span className="block text-xs text-stone-500">Show the login or dashboard button.</span>
+            </span>
+            <Switch
+              checked={data.buttonVisible !== false}
+              onCheckedChange={(buttonVisible) => setData({ ...data, buttonVisible })}
             />
           </label>
           <div className="grid min-w-0 gap-3">

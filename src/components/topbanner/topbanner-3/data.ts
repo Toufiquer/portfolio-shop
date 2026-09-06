@@ -12,6 +12,8 @@ export type TopBannerThreeData = {
   text: string;
   ctaLabel: string;
   ctaUrl: string;
+  /** Omitted legacy values remain visible. */
+  buttonVisible?: boolean;
   background: string;
   foreground: string;
   position: "fixed" | "sticky" | "hide";
@@ -24,6 +26,7 @@ export const defaultData: TopBannerThreeData = {
   text: "Buy All - Lifetime Access - ৳9950 Only",
   ctaLabel: "Get Offer",
   ctaUrl: "/pricing",
+  buttonVisible: true,
   background: "#2563eb",
   foreground: "#fde047",
   position: "sticky",

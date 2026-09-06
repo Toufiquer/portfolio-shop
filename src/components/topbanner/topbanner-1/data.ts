@@ -22,6 +22,8 @@ export type TopBannerOneData = {
   foreground: string;
   icons: TopBannerIcon[];
   authLabel: string;
+  /** Omitted legacy values remain visible. */
+  buttonVisible?: boolean;
   position: "fixed" | "sticky" | "hide";
   excludedPaths: string[];
 };
@@ -32,6 +34,7 @@ export const defaultData: TopBannerOneData = {
   background: "#fff7e6",
   foreground: "#713f12",
   authLabel: "Login / Dashboard",
+  buttonVisible: true,
   position: "sticky",
   excludedPaths: ["/dashboard", "/login", "/forgot-password", "/registration"],
   icons: [

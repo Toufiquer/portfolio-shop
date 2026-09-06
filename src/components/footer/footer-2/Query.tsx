@@ -45,7 +45,7 @@ function InstallButton() {
 
   return (
     <Button
-      className="mt-4 cursor-pointer rounded-sm bg-amber-100 text-amber-950 transition duration-700 hover:-translate-y-0.5 hover:bg-amber-200"
+      className="mt-4 cursor-pointer rounded-sm bg-orange-100 text-orange-950 transition duration-200 hover:-translate-y-0.5 hover:bg-orange-200"
       onClick={() => void install()}
       size="sm"
       type="button"
@@ -73,13 +73,16 @@ function FooterLink({ href, children, className }: { href: string; children: Rea
 export default function Query({ data }: { data: FooterTwoData }) {
   if (!data.isVisible) return null;
   return (
-    <footer className="custom-parent-border bg-[#fffaf0] text-stone-700">
+    <footer
+      className="custom-parent-border border-t border-stone-200 bg-white text-stone-700"
+      style={{ background: data.background, color: data.foreground }}
+    >
       <div className="mx-auto max-w-7xl px-4 py-10 md:px-6 lg:py-12">
         <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-start lg:gap-12">
           <div className="max-w-2xl">
             <div className="flex min-w-0 items-center gap-3">
               {data.showLogo && data.logoUrl && (
-                <div className="relative size-12 shrink-0 overflow-hidden rounded-sm border border-[#eadfca] bg-white">
+                <div className="relative size-12 shrink-0 overflow-hidden rounded-sm border border-stone-200 bg-white shadow-sm">
                   <Image
                     alt={data.logoAlt || `${data.brand} logo`}
                     className="object-contain p-1"
@@ -94,39 +97,39 @@ export default function Query({ data }: { data: FooterTwoData }) {
                 {data.brand}
               </p>
             </div>
-            <h2 className="mt-4 text-xl font-bold text-stone-950 sm:text-2xl">{data.tagline}</h2>
+            <h2 className="mt-4 text-xl font-bold tracking-tight text-stone-950 sm:text-2xl">{data.tagline}</h2>
             <p className="mt-2 text-base leading-7 text-stone-600">{data.description}</p>
             <div className="mt-5 flex flex-wrap gap-x-7 gap-y-3 text-sm font-medium">
               <a
-                className="inline-flex items-center gap-2 transition duration-700 hover:text-amber-800"
+                className="inline-flex items-center gap-2 transition-colors duration-200 hover:text-orange-800"
                 href={`tel:${data.phone.replace(/[^+\d]/g, "")}`}
               >
-                <span className="text-amber-700">
+                <span className="text-orange-700">
                   <Icon name="Phone" />
                 </span>
                 {data.phone}
               </a>
             </div>
           </div>
-          <aside className="w-full max-w-sm rounded-sm border border-amber-200 bg-amber-50/70 p-5 shadow-[0_20px_60px_-35px_rgba(120,53,15,.32)]">
-            <h2 className="text-xl font-bold text-stone-950">Take Speed Box with you</h2>
+          <aside className="w-full max-w-sm rounded-sm border border-orange-200 bg-orange-50/70 p-5 shadow-[0_20px_60px_-35px_rgba(154,52,18,.32)]">
+            <h2 className="text-xl font-bold text-stone-950">Shop Speed Box anywhere</h2>
             <p className="mt-2 text-sm leading-6 text-stone-600">
-              Install the app for quick, app-like access whenever you need it.
+              Install the app for faster browsing, simple reorders, and quick access to your cart.
             </p>
             <InstallButton />
           </aside>
         </div>
 
-        <div className="mt-10 grid gap-8 border-t border-[#eadfca] pt-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-10 grid gap-8 border-t border-stone-200 pt-8 sm:grid-cols-2 lg:grid-cols-4">
           {data.columns.map((column) => (
             <div key={column.title}>
-              <h2 className="text-sm font-bold text-amber-700">{column.title}</h2>
+              <h2 className="text-sm font-bold text-orange-800">{column.title}</h2>
               <div className="mt-4 grid gap-3 text-sm">
                 {column.links
                   .filter((link) => link.visible)
                   .map((link) => (
                     <FooterLink
-                      className="w-fit truncate text-stone-600 transition duration-700 hover:translate-x-1 hover:text-amber-800"
+                      className="w-fit truncate text-stone-600 transition duration-200 hover:translate-x-1 hover:text-orange-800"
                       href={link.url}
                       key={link.id}
                     >
@@ -137,13 +140,13 @@ export default function Query({ data }: { data: FooterTwoData }) {
             </div>
           ))}
           <div>
-            <h2 className="text-sm font-bold text-amber-700">Legal</h2>
+            <h2 className="text-sm font-bold text-orange-800">Legal</h2>
             <div className="mt-4 grid gap-3 text-sm">
               {data.legalLinks
                 .filter((link) => link.visible)
                 .map((link) => (
                   <FooterLink
-                    className="w-fit truncate text-stone-600 transition duration-700 hover:translate-x-1 hover:text-amber-800"
+                    className="w-fit truncate text-stone-600 transition duration-200 hover:translate-x-1 hover:text-orange-800"
                     href={link.url}
                     key={link.id}
                   >
@@ -153,17 +156,17 @@ export default function Query({ data }: { data: FooterTwoData }) {
             </div>
           </div>
           <div>
-            <h2 className="text-sm font-bold text-amber-700">Contact</h2>
+            <h2 className="text-sm font-bold text-orange-800">Need help?</h2>
             <div className="mt-4 grid gap-3 text-sm">
               <a
-                className="w-fit truncate text-stone-600 transition duration-700 hover:text-amber-800"
+                className="w-fit truncate text-stone-600 transition duration-200 hover:text-orange-800"
                 href={`mailto:${data.email}`}
                 title={data.email}
               >
                 {data.email}
               </a>
               <a
-                className="w-fit text-stone-600 transition duration-700 hover:text-amber-800"
+                className="w-fit text-stone-600 transition duration-200 hover:text-orange-800"
                 href={`tel:${data.phone.replace(/[^+\d]/g, "")}`}
               >
                 {data.phone}
@@ -181,7 +184,7 @@ export default function Query({ data }: { data: FooterTwoData }) {
                 .filter((link) => link.visible)
                 .map((link) => (
                   <FooterLink
-                    className="truncate transition duration-700 hover:text-amber-800"
+                    className="truncate transition duration-200 hover:text-orange-800"
                     href={link.url}
                     key={link.id}
                   >

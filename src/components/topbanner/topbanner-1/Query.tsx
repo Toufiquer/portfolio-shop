@@ -35,13 +35,15 @@ export default function Query({ data }: { data: TopBannerOneData }) {
               </a>
             ))}
         </div>
-        <a
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-sm border border-current/20 px-2.5 py-1 font-semibold transition duration-700 hover:bg-white/50"
-          href={session ? "/dashboard" : "/login"}
-        >
-          <Icon name="LogIn" />
-          {session ? "Dashboard" : "Login"}
-        </a>
+        {data.buttonVisible !== false ? (
+          <a
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-sm border border-current/20 px-2.5 py-1 font-semibold transition duration-700 hover:bg-white/50"
+            href={session ? "/dashboard" : "/login"}
+          >
+            <Icon name="LogIn" />
+            {session ? "Dashboard" : "Login"}
+          </a>
+        ) : null}
       </div>
     </div>
   );

@@ -172,15 +172,21 @@ const QuerySection18 = ({ data }: Section18Props) => {
 
                 {(slide.title || slide.description) && (
                   <div
-                    className="absolute inset-0 flex flex-col justify-end p-8"
+                    className="absolute inset-0 flex flex-col justify-end bg-gradient-to-t from-black/80 via-black/35 to-transparent px-4 py-5 sm:px-6 sm:py-7 lg:px-10 lg:py-12"
                     style={{
-                      background: `linear-gradient(to top, rgba(255,255,255,${overlayOpacity / 100}) 0%, transparent 100%)`,
+                      backgroundImage: `linear-gradient(to top, rgba(0,0,0,${Math.max(0.55, overlayOpacity / 100)}) 0%, rgba(0,0,0,0.22) 55%, transparent 100%)`,
                     }}
                   >
-                    <div className="space-y-3 max-w-xl animate-in slide-in-from-bottom-4 fade-in duration-700">
-                      {slide.title && <h3 className="text-2xl font-bold text-stone-900 md:text-4xl">{slide.title}</h3>}
+                    <div className="max-w-xl space-y-2.5 animate-in slide-in-from-bottom-4 fade-in duration-700 sm:space-y-3">
+                      {slide.title && (
+                        <h3 className="text-xl font-bold leading-tight text-white drop-shadow-[0_2px_5px_rgba(0,0,0,0.9)] sm:text-3xl md:text-4xl lg:text-5xl">
+                          {slide.title}
+                        </h3>
+                      )}
                       {slide.description && (
-                        <p className="line-clamp-3 text-sm text-stone-700 md:text-base">{slide.description}</p>
+                        <p className="line-clamp-3 text-sm leading-relaxed text-white/95 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)] sm:text-base md:text-lg">
+                          {slide.description}
+                        </p>
                       )}
 
                       {slide.buttonText && (

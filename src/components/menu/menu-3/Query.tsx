@@ -149,7 +149,7 @@ export default function MenuThreeQuery({ data, pending }: { data: MenuData; pend
           <CartButton className="border-slate-200 hover:bg-slate-100" />
           {pending ? (
             <span className="h-8 w-16 animate-pulse rounded-full bg-slate-100" />
-          ) : (
+          ) : data.button.visible !== false ? (
             <Link
               className={`menu-action-button inline-flex shrink-0 items-center gap-1.5 px-[var(--button-padding-x-mobile)] py-[var(--button-padding-y-mobile)] mx-[var(--button-margin-x-mobile)] my-[var(--button-margin-y-mobile)] text-sm font-semibold transition-colors md:px-[var(--button-padding-x-desktop)] md:py-[var(--button-padding-y-desktop)] md:mx-[var(--button-margin-x-desktop)] md:my-[var(--button-margin-y-desktop)] ${borderClass[data.button.border ?? "none"]} ${radiusClass[data.button.radius]}`}
               href={data.button.url}
@@ -165,7 +165,7 @@ export default function MenuThreeQuery({ data, pending }: { data: MenuData; pend
               {data.button.showIcon && data.button.icon ? <Icon name={data.button.icon} /> : null}
               {data.button.label}
             </Link>
-          )}
+          ) : null}
           <button
             aria-expanded={mobileOpen}
             aria-label={mobileOpen ? "Close mobile menu" : "Open mobile menu"}

@@ -18,6 +18,8 @@ export type TopBannerTwoData = {
   fontSize: "sm" | "base" | "lg";
   icons: TopBannerTwoIcon[];
   authLabel: string;
+  /** Omitted legacy values remain visible. */
+  buttonVisible?: boolean;
   position: "fixed" | "sticky" | "hide";
   excludedPaths: string[];
 };
@@ -38,6 +40,7 @@ export const defaultData: TopBannerTwoData = {
     { id: "call", title: "Call", icon: "Phone", url: "tel:+8801700000000", visible: true },
   ],
   authLabel: "Login / Dashboard",
+  buttonVisible: true,
   position: "sticky",
   excludedPaths: ["/dashboard", "/login", "/forgot-password", "/registration"],
 };

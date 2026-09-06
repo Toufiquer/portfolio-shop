@@ -98,6 +98,7 @@ export type PageBlock = {
     | "all-team-member"
     | "all-terms"
     | "rich-text";
+  title?: string;
   data: Record<string, unknown>;
 };
 export type SitePage = {
@@ -177,6 +178,7 @@ function areValidPageBlocks(value: unknown): value is PageBlock[] {
         typeof entry.id === "string" &&
         pageBlockTypes.has(entry.type as PageBlock["type"]) &&
         pageBlockVariants.has(entry.variant as PageBlock["variant"]) &&
+        (entry.title === undefined || typeof entry.title === "string") &&
         Boolean(entry.data) &&
         typeof entry.data === "object" &&
         !Array.isArray(entry.data)

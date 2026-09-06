@@ -18,12 +18,14 @@ export default function Query({ data }: { data: TopBannerThreeData }) {
         <span className="text-xs font-bold sm:text-sm" style={{ color: data.foreground }}>
           {data.text}
         </span>
-        <a
-          className="rounded-md bg-yellow-400 px-4 py-1.5 text-xs font-semibold text-blue-950 transition duration-700 hover:bg-yellow-300"
-          href={data.ctaUrl}
-        >
-          {data.ctaLabel}
-        </a>
+        {data.buttonVisible !== false ? (
+          <a
+            className="rounded-md bg-yellow-400 px-4 py-1.5 text-xs font-semibold text-blue-950 transition duration-700 hover:bg-yellow-300"
+            href={data.ctaUrl}
+          >
+            {data.ctaLabel}
+          </a>
+        ) : null}
       </div>
     </div>
   );

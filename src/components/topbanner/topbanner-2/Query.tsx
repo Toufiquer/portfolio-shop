@@ -54,13 +54,15 @@ export default function Query({ data }: { data: TopBannerTwoData }) {
                 <Icon name={item.icon ?? "Link"} />
               </a>
             ))}
-          <a
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-sm border border-current/25 px-2.5 py-1 text-xs font-semibold transition duration-700 hover:bg-white/15"
-            href={session ? "/dashboard" : "/login"}
-          >
-            <Icon name="LogIn" />
-            {session ? "Dashboard" : "Login"}
-          </a>
+          {data.buttonVisible !== false ? (
+            <a
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-sm border border-current/25 px-2.5 py-1 text-xs font-semibold transition duration-700 hover:bg-white/15"
+              href={session ? "/dashboard" : "/login"}
+            >
+              <Icon name="LogIn" />
+              {session ? "Dashboard" : "Login"}
+            </a>
+          ) : null}
         </div>
       </div>
     </div>

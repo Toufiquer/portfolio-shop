@@ -7,7 +7,20 @@
 */
 
 "use client";
-import { ArrowLeft, ChevronLeft, ChevronRight, Columns2, Columns3, Edit3, Eye, Square, Trash2, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowUp,
+  ChevronLeft,
+  ChevronRight,
+  Columns2,
+  Columns3,
+  Edit3,
+  Eye,
+  Square,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -322,6 +335,8 @@ function PageEditor({ page }: { page: SitePage }) {
   const [choice, setChoice] = useState<"form" | "section" | "all-page" | "container" | null>(null);
   const [editing, setEditing] = useState<PageBlock | null>(null);
   const [deleting, setDeleting] = useState<PageBlock | null>(null);
+  const [titleEditor, setTitleEditor] = useState<PageBlock | null>(null);
+  const [titleDraft, setTitleDraft] = useState("");
   const [blockViewMode, setBlockViewMode] = useState<BlockViewMode>("hidden");
   const [showPageInfo, setShowPageInfo] = useState(false);
   const [message, setMessage] = useState("");
@@ -354,6 +369,35 @@ function PageEditor({ page }: { page: SitePage }) {
       setMessage("Could not save page.");
     }
   };
+  const moveBlock = async (blockId: string, direction: "up" | "down") => {
+    const currentIndex = blocks.findIndex((block) => block.id === blockId);
+    const targetIndex = currentIndex + (direction === "up" ? -1 : 1);
+    if (currentIndex < 0 || targetIndex < 0 || targetIndex >= blocks.length) return;
+
+    const nextBlocks = [...blocks];
+    [nextBlocks[currentIndex], nextBlocks[targetIndex]] = [nextBlocks[targetIndex], nextBlocks[currentIndex]];
+    try {
+      const { item } = await update({ id: page.id, blocks: nextBlocks }).unwrap();
+      setBlocks(item.blocks);
+      setMessage("Block order saved and client view refreshed.");
+    } catch {
+      setMessage("Could not move block. Its previous order was kept.");
+    }
+  };
+  const saveBlockTitle = async () => {
+    if (!titleEditor) return;
+    const nextBlocks = blocks.map((block) =>
+      block.id === titleEditor.id ? { ...block, title: titleDraft.trim() } : block,
+    );
+    try {
+      const { item } = await update({ id: page.id, blocks: nextBlocks }).unwrap();
+      setBlocks(item.blocks);
+      setTitleEditor(null);
+      setMessage("Block title saved and client view refreshed.");
+    } catch {
+      setMessage("Could not save block title.");
+    }
+  };
   const updatePublication = async (published: boolean) => {
     try {
       await update({ id: page.id, published }).unwrap();
@@ -362,8 +406,10 @@ function PageEditor({ page }: { page: SitePage }) {
       setMessage("Could not update publication status.");
     }
   };
-  const blockTitle = (block: PageBlock) =>
-    `${block.type === "all-page" ? "Page" : block.type === "form" ? "Form" : block.type === "container" ? "Container" : "Section"} · ${block.variant.replace(/-/g, " ")}`;
+  const blockTitle = (block: PageBlock) => {
+    const fallback = `${block.type === "all-page" ? "Page" : block.type === "form" ? "Form" : block.type === "container" ? "Container" : "Section"} · ${block.variant.replace(/-/g, " ")}`;
+    return block.title?.trim() || fallback;
+  };
   return (
     <main className="flex-1 bg-[#fffaf0] p-5 sm:p-8">
       <Toast message={message} />
@@ -452,19 +498,57 @@ function PageEditor({ page }: { page: SitePage }) {
           </section>
         )}
         <div className="mt-5 grid gap-4">
-          {blocks.map((block) => (
+          {blocks.map((block, index) => (
             <article
               key={block.id}
               className="mx-auto w-full max-w-7xl overflow-hidden rounded-sm border border-[#eadfca] bg-white"
             >
-              <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-[#eadfca] bg-white/95 px-4 py-3 backdrop-blur-sm">
-                <h2 className="min-w-0 truncate text-sm font-semibold text-stone-900" title={blockTitle(block)}>
-                  {blockTitle(block)}
-                </h2>
-                <div className="flex shrink-0 gap-2">
+              <header className="sticky top-0 z-20 flex flex-col items-stretch gap-2 border-b border-[#eadfca] bg-white/95 px-4 py-3 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <h2 className="min-w-0 truncate text-sm font-semibold text-stone-900" title={blockTitle(block)}>
+                    {blockTitle(block)}
+                  </h2>
+                  <button
+                    aria-label="Edit block title"
+                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-sm text-stone-500 hover:bg-stone-100 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={isUpdating}
+                    title="Edit title"
+                    type="button"
+                    onClick={() => {
+                      setTitleDraft(block.title ?? "");
+                      setTitleEditor(block);
+                    }}
+                  >
+                    <Edit3 className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="flex shrink-0 justify-end gap-2">
+                  <button
+                    aria-label="Move block up"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-stone-200 bg-white px-2 text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={isUpdating || index === 0}
+                    title="Move up"
+                    type="button"
+                    onClick={() => void moveBlock(block.id, "up")}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                    <span className="sr-only sm:not-sr-only">Up</span>
+                  </button>
+                  <button
+                    aria-label="Move block down"
+                    className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-stone-200 bg-white px-2 text-xs font-medium text-stone-700 hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={isUpdating || index === blocks.length - 1}
+                    title="Move down"
+                    type="button"
+                    onClick={() => void moveBlock(block.id, "down")}
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                    <span className="sr-only sm:not-sr-only">Down</span>
+                  </button>
                   <button
                     aria-label="Edit block"
                     title="Edit"
+                    type="button"
                     onClick={() => setEditing(block)}
                     className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-amber-200 bg-amber-50 px-3 text-xs font-medium text-amber-800 hover:bg-amber-100"
                   >
@@ -474,6 +558,7 @@ function PageEditor({ page }: { page: SitePage }) {
                   <button
                     aria-label="Delete block"
                     title="Delete"
+                    type="button"
                     onClick={() => setDeleting(block)}
                     className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-red-200 bg-red-50 px-3 text-xs font-medium text-red-700 hover:bg-red-100"
                   >
@@ -519,7 +604,7 @@ function PageEditor({ page }: { page: SitePage }) {
               Container
             </Button>
           </div>
-          <div className="flex gap-2">
+          <div className="flex basis-full justify-end gap-2 sm:basis-auto">
             <Button
               size="sm"
               variant="outline"
@@ -618,6 +703,31 @@ function PageEditor({ page }: { page: SitePage }) {
             />
           )}
         </FullScreenEditModal>
+      )}
+      {titleEditor && (
+        <Modal title="Edit block title" close={() => setTitleEditor(null)}>
+          <label className="grid gap-1 text-sm font-medium text-stone-700">
+            Title
+            <input
+              autoFocus
+              className="rounded-sm border border-[#eadfca] p-2 text-sm font-normal"
+              placeholder={blockTitle(titleEditor)}
+              value={titleDraft}
+              onChange={(event) => setTitleDraft(event.target.value)}
+            />
+            <span className="text-xs font-normal text-stone-500">
+              Leave empty to use the default {blockTitle({ ...titleEditor, title: "" })} name.
+            </span>
+          </label>
+          <div className="mt-4 flex justify-end gap-2">
+            <Button size="sm" variant="outline" onClick={() => setTitleEditor(null)}>
+              Cancel
+            </Button>
+            <Button size="sm" disabled={isUpdating} onClick={() => void saveBlockTitle()}>
+              Save title
+            </Button>
+          </div>
+        </Modal>
       )}
       {deleting && (
         <Modal title="Delete item" close={() => setDeleting(null)}>

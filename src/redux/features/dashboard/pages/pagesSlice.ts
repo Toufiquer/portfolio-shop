@@ -93,6 +93,7 @@ export type PageBlock = {
   id: string;
   type: PageBlockType;
   variant: PageBlockVariant;
+  title?: string;
   data: Record<string, unknown>;
 };
 export type SitePage = {
