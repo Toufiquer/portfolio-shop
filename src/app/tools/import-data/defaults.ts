@@ -55,6 +55,7 @@ export const sidebarDefaults: ImportSidebarDefault[] = [
   { name: "Products", url: "/dashboard/products", icon: "Package" },
   { name: "Category", url: "/dashboard/category", icon: "ShoppingCart" },
   { name: "Orders", url: "/dashboard/orders", icon: "DollarSign" },
+  { name: "Customers", url: "/dashboard/admin/customer", icon: "Users" },
   { name: "Install", url: "/dashboard/install", icon: "Download" },
 ];
 export const pageDefaults: ImportPageDefault[] = [
@@ -74,8 +75,18 @@ export const pageDefaults: ImportPageDefault[] = [
   },
   { title: "Privacy Policy", path: "/privacy-policy", description: "Our privacy policy.", variant: "all-privacy" },
   { title: "Refund Policy", path: "/refund-policy", description: "Our refund policy.", variant: "all-refund" },
-  { title: "Security", path: "/security", description: "How we protect our website and services.", variant: "security" },
-  { title: "Cookie Policy", path: "/cookie-policy", description: "How we use cookies and your choices.", variant: "cookie-policy" },
+  {
+    title: "Security",
+    path: "/security",
+    description: "How we protect our website and services.",
+    variant: "security",
+  },
+  {
+    title: "Cookie Policy",
+    path: "/cookie-policy",
+    description: "How we use cookies and your choices.",
+    variant: "cookie-policy",
+  },
   {
     title: "Team Members",
     path: "/team-member",

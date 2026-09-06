@@ -66,7 +66,7 @@ Dashboard company data → global.ts defaults → section-54 data.ts fallback
 ============================================================================================================================
 Only create the plan; do not execute any task.
 
-Review the work involving 85+ folders and prepare a short, step-by-step plan in Bangla. Ensure the plan covers checking every folder, updating files where necessary, and verifying that everything works.
+Review the work involving folders and prepare a short, step-by-step plan in Bangla. Ensure the plan covers checking every folder, updating files where necessary, and verifying that everything works.
 
 For each step, provide:
 1. The task in Bangla
@@ -84,5 +84,3 @@ Now pleas generate step by step of  prompt. and at the top please add a line 'Pl
 ============================================================================================================================
 ============================================================================================================================
 ============================================================================================================================
-
-Look at the page '/dashboard/products' and inside the page You found a button name 'Add Product' and take a look ho to add product. Now Your task is if there is No product found in the page. Then render a div at the middle  of the page with the following instructions.  at the middle there is div with a button 'Add Demo Products' it will open a Modal Inside the modal there is three button '10 Demo Products', '25 Demo Products', '50 Demo Products'.  and make  sure all button will add products one  by one  with Unique price and Name, and it will add data one by one throw add product api. and make sure you do not create a new api.  and also look at the rate limit in the api. so If it git rate limit then  wait and  also add loader to the  page when  demo data is creating with real status bar. 
