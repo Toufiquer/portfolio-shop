@@ -45,7 +45,7 @@ function InstallButton() {
 
   return (
     <Button
-      className="mt-4 cursor-pointer rounded-sm bg-orange-100 text-orange-950 transition duration-200 hover:-translate-y-0.5 hover:bg-orange-200"
+      className="mt-5 h-12 w-full cursor-pointer rounded-sm bg-orange-500 px-6 text-base font-bold text-white shadow-lg shadow-orange-950/15 transition duration-200 hover:-translate-y-0.5 hover:bg-orange-600"
       onClick={() => void install()}
       size="sm"
       type="button"
@@ -111,8 +111,13 @@ export default function Query({ data }: { data: FooterTwoData }) {
               </a>
             </div>
           </div>
-          <aside className="w-full max-w-sm rounded-sm border border-orange-200 bg-orange-50/70 p-5 shadow-[0_20px_60px_-35px_rgba(154,52,18,.32)]">
-            <h2 className="text-xl font-bold text-stone-950">Shop NexaMart anywhere</h2>
+          <aside className="w-full max-w-sm rounded-sm border border-orange-200 bg-orange-50 p-5 shadow-[0_20px_60px_-35px_rgba(154,52,18,.32)] sm:p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex size-11 items-center justify-center rounded-sm bg-orange-500 text-white shadow-md shadow-orange-950/15">
+                <Icon name="Download" />
+              </div>
+              <h2 className="text-xl font-bold text-stone-950">Shop NexaMart anywhere</h2>
+            </div>
             <p className="mt-2 text-sm leading-6 text-stone-600">
               Install the app for faster browsing, simple reorders, and quick access to your cart.
             </p>

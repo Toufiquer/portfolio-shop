@@ -42,7 +42,7 @@ function InstallButton() {
 
   return (
     <Button
-      className="mt-2 w-fit cursor-pointer rounded-sm bg-orange-100 text-orange-950 transition duration-200 hover:-translate-y-0.5 hover:bg-orange-200"
+      className="mt-4 h-12 w-full cursor-pointer rounded-sm bg-orange-500 px-6 text-base font-bold text-white shadow-lg shadow-orange-950/15 transition duration-200 hover:-translate-y-0.5 hover:bg-orange-600"
       onClick={() => void install()}
       size="sm"
       type="button"
@@ -111,9 +111,28 @@ export default function Query({ data }: { data: FooterOneData }) {
             >
               {data.phone}
             </a>
-            <InstallButton />
           </div>
         )}
+      </div>
+      <div className="mx-auto max-w-7xl px-4 pb-10 md:px-6 lg:pb-12">
+        <div className="flex flex-col items-start justify-between gap-5 rounded-sm border border-orange-200 bg-orange-50 p-5 shadow-[0_18px_50px_-30px_rgba(154,52,18,.35)] sm:flex-row sm:items-center sm:p-6">
+          <div className="flex items-start gap-4">
+            <div className="flex size-12 shrink-0 items-center justify-center rounded-sm bg-orange-500 text-white shadow-md shadow-orange-950/15">
+              <Icon name="Download" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold" style={{ color: data.accent }}>
+                Take us with you
+              </h2>
+              <p className="mt-1 max-w-xl text-sm leading-6 opacity-75">
+                Install our app for faster browsing, easy reorders, and quick access wherever you shop.
+              </p>
+            </div>
+          </div>
+          <div className="w-full shrink-0 sm:w-48">
+            <InstallButton />
+          </div>
+        </div>
       </div>
       {data.showLegalBar && (
         <div
