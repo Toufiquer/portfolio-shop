@@ -3,4 +3,4 @@ Look at the section-18 in
 'src/components/all-section/section-18/Mutation.ts'
 'src/components/all-section/section-18/Query.ts'
 
-Now Update the text when it render with the Image inside Query.tsx I can not see the Text please add a shadow and Update Text color So It can be visible with all color of backgrounds. and please Update text size with responsive with Mobile, Tablet, and Desktop. 
+It is a slider with Images, Now your task is Edit the text and update the Image like e-commerze. For my application. and make it eye-catching view, and stunning animation also please generate Image with Good Looking color-combination with white and creame color. 

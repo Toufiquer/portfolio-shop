@@ -148,7 +148,7 @@ const QuerySection18 = ({ data }: Section18Props) => {
     >
       <div className={cn("max-h-[200px] w-full overflow-hidden bg-stone-50 md:max-h-none", heightClass)}>
         <div
-          className="flex h-full transition-transform duration-500 ease-out"
+          className="flex h-full transition-transform duration-700 ease-[cubic-bezier(0.22,1,0.36,1)]"
           style={{ transform: `translateX(-${currentIndex * itemWidthPercent}%)` }}
         >
           {slides.map((slide, slideIndex) => (
@@ -162,7 +162,10 @@ const QuerySection18 = ({ data }: Section18Props) => {
                     alt={slide.title}
                     loading={slideIndex === 0 ? "eager" : "lazy"}
                     unoptimized
-                    className="w-full h-full object-cover transition-transform duration-700 md:group-hover:scale-105"
+                    className={cn(
+                      "h-full w-full object-cover transition-transform duration-[1800ms] ease-out md:group-hover:scale-105",
+                      slideIndex === currentIndex ? "scale-105" : "scale-100",
+                    )}
                   />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-stone-100 text-stone-500">
@@ -177,7 +180,10 @@ const QuerySection18 = ({ data }: Section18Props) => {
                       backgroundImage: `linear-gradient(to top, rgba(0,0,0,${Math.max(0.55, overlayOpacity / 100)}) 0%, rgba(0,0,0,0.22) 55%, transparent 100%)`,
                     }}
                   >
-                    <div className="max-w-xl space-y-2.5 animate-in slide-in-from-bottom-4 fade-in duration-700 sm:space-y-3">
+                    <div
+                      key={`${slide.id}-${currentIndex}`}
+                      className="max-w-xl space-y-2.5 animate-[section18-copy-in_700ms_cubic-bezier(0.22,1,0.36,1)_both] sm:space-y-3"
+                    >
                       {slide.title && (
                         <h3 className="text-xl font-bold leading-tight text-white drop-shadow-[0_2px_5px_rgba(0,0,0,0.9)] sm:text-3xl md:text-4xl lg:text-5xl">
                           {slide.title}
@@ -193,7 +199,7 @@ const QuerySection18 = ({ data }: Section18Props) => {
                         <Button
                           nativeButton={false}
                           size="sm"
-                          className="mt-4 border border-stone-200 bg-white/90 text-stone-800 backdrop-blur-sm hover:bg-white"
+                          className="mt-4 rounded-sm border border-amber-100 bg-[#fffaf0]/95 text-stone-800 shadow-lg shadow-black/10 backdrop-blur-sm transition-all duration-500 hover:-translate-y-0.5 hover:bg-white hover:shadow-xl"
                           render={<Link href={slide.buttonLink || "#"}>{slide.buttonText}</Link>}
                         />
                       )}
@@ -254,12 +260,18 @@ const QuerySection18 = ({ data }: Section18Props) => {
             key={idx}
             onClick={() => setCurrentIndex(idx)}
             className={cn(
-              "h-1.5 rounded-full transition-all duration-300 shadow-sm",
-              idx === currentIndex ? "w-6 bg-indigo-600" : "w-1.5 bg-white/80 hover:bg-indigo-200",
+              "h-1.5 rounded-full transition-all duration-500 shadow-sm",
+              idx === currentIndex ? "w-8 bg-[#f6c866]" : "w-1.5 bg-white/80 hover:bg-[#fff4d6]",
             )}
           />
         ))}
       </div>
+      <style>{`
+        @keyframes section18-copy-in {
+          from { opacity: 0; transform: translateY(28px); filter: blur(5px); }
+          to { opacity: 1; transform: translateY(0); filter: blur(0); }
+        }
+      `}</style>
     </div>
   );
 };

@@ -115,8 +115,8 @@ const MutationSection18 = ({ data, onChange }: Section18FormProps) => {
     const newSlide: ISlideItem = {
       id: Math.random().toString(36).substr(2, 9),
       image: "",
-      title: `Slide ${formData.slides.length + 1}`,
-      description: "Add a catchy description...",
+      title: `New collection ${formData.slides.length + 1}`,
+      description: "Write a clear, customer-focused reason to explore this collection.",
     };
     setFormData((prev) => ({ ...prev, slides: [...prev.slides, newSlide] }));
     setActiveSlideIndex(formData.slides.length);
@@ -358,7 +358,7 @@ const MutationSection18 = ({ data, onChange }: Section18FormProps) => {
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
                           updateSlide(activeSlideIndex, "buttonText", e.target.value)
                         }
-                        placeholder="e.g. Learn More"
+                        placeholder="e.g. Shop the collection"
                       />
                       <ModernInput
                         label="Button Link"
