@@ -74,44 +74,7 @@ export const defaultDataContainer1: IContainerData = {
   titleFontSize: "24",
   titleFontColor: "#2563eb",
   titleFontWeight: "700",
-  templates: [
-    {
-      id: 1,
-      title: "ShopMart - Premium Daraz Website Template",
-      productUID: "THEME-001",
-      price: "1,750৳",
-      views: "0.2k",
-      rating: 5,
-      image: templateImagePlaceholder,
-    },
-    {
-      id: 2,
-      title: "News Paper WordPress Template",
-      productUID: "THEME-002",
-      price: "1,750৳",
-      views: "60",
-      rating: 5,
-      image: templateImagePlaceholder,
-    },
-    {
-      id: 3,
-      title: "Ads-Report WordPress Website Template",
-      productUID: "THEME-003",
-      price: "0৳",
-      views: "1.1k",
-      rating: 5,
-      image: templateImagePlaceholder,
-    },
-    {
-      id: 4,
-      title: "EcoMart - Premium Ecommerce Template",
-      productUID: "THEME-004",
-      price: "1,750৳",
-      views: "1k",
-      rating: 5,
-      image: templateImagePlaceholder,
-    },
-  ],
+  templates: [],
 };
 
 export default defaultDataContainer1;

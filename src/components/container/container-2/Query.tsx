@@ -21,6 +21,7 @@ import {
   defaultDataContainer2,
   IContainerData,
   TemplateItem,
+  templateImagePlaceholder,
 } from "./data";
 import RenderItem from "./RenderItem";
 
@@ -45,6 +46,8 @@ const sortTemplates = (templates: TemplateItem[], sortMode: IContainerData["sort
   });
 };
 
+const legacyDemoProductUids = new Set(["THEME-001", "THEME-002", "THEME-003", "THEME-004"]);
+
 const normalizeTemplate = (template: Partial<TemplateItem>, index: number): TemplateItem => ({
   id: Number.isFinite(Number(template.id)) ? Number(template.id) : index + 1,
   sourceProductId: typeof template.sourceProductId === "string" ? template.sourceProductId : undefined,
@@ -53,8 +56,7 @@ const normalizeTemplate = (template: Partial<TemplateItem>, index: number): Temp
   price: typeof template.price === "string" ? template.price : "0৳",
   views: typeof template.views === "string" ? template.views : "0",
   rating: Math.min(5, Math.max(0, Number(template.rating) || 0)),
-  image:
-    typeof template.image === "string" && template.image ? template.image : defaultDataContainer2.templates[0].image,
+  image: typeof template.image === "string" && template.image ? template.image : templateImagePlaceholder,
   url: typeof template.url === "string" ? template.url : "",
   visible: template.visible ?? true,
 });
@@ -73,8 +75,12 @@ const resolveData = (data?: IContainerData | string): IContainerData => {
       mobileGridLayout: parsedData.mobileGridLayout || defaultDataContainer2.mobileGridLayout,
       showSeeMore: parsedData.showSeeMore ?? defaultDataContainer2.showSeeMore,
       showBottomNavigation: parsedData.showBottomNavigation ?? defaultDataContainer2.showBottomNavigation,
-      paddingX: String(Math.max(-300, Math.min(300, Number(parsedData.paddingX ?? defaultDataContainer2.paddingX) || 0))),
-      paddingY: String(Math.max(-300, Math.min(300, Number(parsedData.paddingY ?? defaultDataContainer2.paddingY) || 0))),
+      paddingX: String(
+        Math.max(-300, Math.min(300, Number(parsedData.paddingX ?? defaultDataContainer2.paddingX) || 0)),
+      ),
+      paddingY: String(
+        Math.max(-300, Math.min(300, Number(parsedData.paddingY ?? defaultDataContainer2.paddingY) || 0)),
+      ),
       titleFontFamily: parsedData.titleFontFamily || defaultDataContainer2.titleFontFamily,
       titleFontSize: parsedData.titleFontSize || defaultDataContainer2.titleFontSize,
       titleFontColor: parsedData.titleFontColor || defaultDataContainer2.titleFontColor,
@@ -84,9 +90,9 @@ const resolveData = (data?: IContainerData | string): IContainerData => {
         ...(parsedData.seeMore || {}),
         name: parsedData.seeMore?.name || parsedData.viewMoreText || defaultDataContainer2.seeMore.name,
       },
-      templates: (parsedData.templates?.length ? parsedData.templates : defaultDataContainer2.templates).map(
-        normalizeTemplate,
-      ),
+      templates: (parsedData.templates?.length ? parsedData.templates : defaultDataContainer2.templates)
+        .filter((template) => !legacyDemoProductUids.has(template.productUID || ""))
+        .map(normalizeTemplate),
     };
 
     return {
@@ -124,7 +130,8 @@ const QueryContainer2 = ({ data }: ContainerProps) => {
   const paddingY = Math.max(0, Number(settings.paddingY) || 0);
 
   const titleStyle: React.CSSProperties = {
-    fontFamily: settings.titleFontFamily && settings.titleFontFamily !== "inherit" ? settings.titleFontFamily : undefined,
+    fontFamily:
+      settings.titleFontFamily && settings.titleFontFamily !== "inherit" ? settings.titleFontFamily : undefined,
     fontSize: settings.titleFontSize ? `${settings.titleFontSize}px` : undefined,
     color: settings.titleFontColor || undefined,
     fontWeight: settings.titleFontWeight || undefined,

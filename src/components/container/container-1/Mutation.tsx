@@ -63,10 +63,21 @@ interface ProductItem {
   discountPrice: number;
   primaryImage: string;
   star?: number;
+  categories?: string[];
 }
 
 interface ProductsResponse {
   items?: ProductItem[];
+  total?: number;
+}
+
+interface CategoryItem {
+  id: string;
+  name: string;
+}
+
+interface CategoriesResponse {
+  items?: CategoryItem[];
 }
 
 const inputClass =
@@ -79,8 +90,7 @@ const amberButtonClass =
 const destructiveButtonClass =
   "inline-flex h-9 cursor-pointer items-center gap-2 rounded-sm border border-red-200 bg-red-50 px-3 text-sm font-semibold text-red-700 transition duration-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50";
 
-const clampSpacing = (value: number | string | undefined) =>
-  Math.max(-300, Math.min(300, Number(value) || 0));
+const clampSpacing = (value: number | string | undefined) => Math.max(-300, Math.min(300, Number(value) || 0));
 
 const fontFamilies = [
   { label: "Default (Inherit)", value: "inherit" },
@@ -104,6 +114,8 @@ const fontWeights = [
   { label: "900 - Black", value: "900" },
 ];
 
+const legacyDemoProductUids = new Set(["THEME-001", "THEME-002", "THEME-003", "THEME-004"]);
+
 const normalizeSettings = (data?: IContainerData): IContainerData => ({
   ...defaultDataContainer1,
   ...data,
@@ -123,10 +135,12 @@ const normalizeSettings = (data?: IContainerData): IContainerData => ({
     ...(data?.seeMore || {}),
     name: data?.seeMore?.name || data?.viewMoreText || defaultDataContainer1.seeMore.name,
   },
-  templates: (data?.templates?.length ? data.templates : defaultDataContainer1.templates).map((template) => ({
-    ...template,
-    visible: template.visible ?? true,
-  })),
+  templates: (data?.templates?.length ? data.templates : defaultDataContainer1.templates)
+    .filter((template) => !legacyDemoProductUids.has(template.productUID || ""))
+    .map((template) => ({
+      ...template,
+      visible: template.visible ?? true,
+    })),
 });
 
 const nextId = (items: TemplateItem[]) => Math.max(0, ...items.map((item) => Number(item.id) || 0)) + 1;
@@ -188,6 +202,8 @@ const MutationContainer1 = ({ data, onChange }: ContainerFormProps) => {
   const [settings, setSettings] = useState<IContainerData>(() => normalizeSettings(data));
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [products, setProducts] = useState<ProductItem[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState("all");
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [productsError, setProductsError] = useState("");
@@ -231,8 +247,20 @@ const MutationContainer1 = ({ data, onChange }: ContainerFormProps) => {
     [importedProductKeys],
   );
 
-  const productKeys = useMemo(() => products.map(getProductKey).filter(Boolean), [products]);
-  const allProductsChecked = productKeys.length > 0 && productKeys.every((key) => selectedProductIds.includes(key));
+  const categoryOptions = useMemo(
+    () => categories.filter((category) => products.some((product) => product.categories?.includes(category.id))),
+    [categories, products],
+  );
+  const visibleProducts = useMemo(
+    () =>
+      selectedCategoryId === "all"
+        ? products
+        : products.filter((product) => product.categories?.includes(selectedCategoryId)),
+    [products, selectedCategoryId],
+  );
+  const visibleProductKeys = useMemo(() => visibleProducts.map(getProductKey).filter(Boolean), [visibleProducts]);
+  const allProductsChecked =
+    visibleProductKeys.length > 0 && visibleProductKeys.every((key) => selectedProductIds.includes(key));
   const newSelectedProductCount = products.filter((product) => {
     const key = getProductKey(product);
     return key && selectedProductIds.includes(key) && !isProductAlreadyAdded(product);
@@ -245,12 +273,28 @@ const MutationContainer1 = ({ data, onChange }: ContainerFormProps) => {
       setIsLoadingProducts(true);
       setProductsError("");
       try {
-        const response = await fetch("/api/dashboard/products/v1?page=1&limit=100", { credentials: "same-origin" });
-        const result = (await response.json()) as ProductsResponse;
-        if (!response.ok) throw new Error("Could not load dashboard products.");
-        setProducts(result.items || []);
+        const [productResponse, categoryResponse] = await Promise.all([
+          fetch("/api/dashboard/products/v1?page=1&limit=100", { credentials: "same-origin" }),
+          fetch("/api/dashboard/categories/v1", { credentials: "same-origin" }),
+        ]);
+        const result = (await productResponse.json()) as ProductsResponse;
+        const categoryResult = (await categoryResponse.json()) as CategoriesResponse;
+        if (!productResponse.ok || !categoryResponse.ok) throw new Error("Could not load dashboard products.");
+        const remainingProducts = await Promise.all(
+          Array.from({ length: Math.max(0, Math.ceil((result.total || 0) / 100) - 1) }, (_, index) =>
+            fetch(`/api/dashboard/products/v1?page=${index + 2}&limit=100`, { credentials: "same-origin" }).then(
+              async (pageResponse) => {
+                if (!pageResponse.ok) throw new Error("Could not load dashboard products.");
+                return (await pageResponse.json()) as ProductsResponse;
+              },
+            ),
+          ),
+        );
+        setProducts([...(result.items || []), ...remainingProducts.flatMap((page) => page.items || [])]);
+        setCategories(categoryResult.items || []);
       } catch {
         setProducts([]);
+        setCategories([]);
         setProductsError("Could not load dashboard products. Please try again.");
       } finally {
         setIsLoadingProducts(false);
@@ -326,7 +370,7 @@ const MutationContainer1 = ({ data, onChange }: ContainerFormProps) => {
   };
 
   const checkAllProducts = () => {
-    setSelectedProductIds(productKeys);
+    setSelectedProductIds((previous) => [...new Set([...previous, ...visibleProductKeys])]);
   };
 
   const uncheckAllProducts = () => {
@@ -397,7 +441,9 @@ const MutationContainer1 = ({ data, onChange }: ContainerFormProps) => {
               </span>
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700">Title Design & Typography</h4>
-                <p className="text-[11px] font-medium text-stone-500">Customize font family, size, color, and weight for the container title</p>
+                <p className="text-[11px] font-medium text-stone-500">
+                  Customize font family, size, color, and weight for the container title
+                </p>
               </div>
             </div>
             <button
@@ -505,7 +551,10 @@ const MutationContainer1 = ({ data, onChange }: ContainerFormProps) => {
             <div className="mt-1 overflow-x-auto py-1">
               <span
                 style={{
-                  fontFamily: settings.titleFontFamily && settings.titleFontFamily !== "inherit" ? settings.titleFontFamily : undefined,
+                  fontFamily:
+                    settings.titleFontFamily && settings.titleFontFamily !== "inherit"
+                      ? settings.titleFontFamily
+                      : undefined,
                   fontSize: `${settings.titleFontSize || 24}px`,
                   color: settings.titleFontColor || "#2563eb",
                   fontWeight: settings.titleFontWeight || "700",
@@ -526,7 +575,9 @@ const MutationContainer1 = ({ data, onChange }: ContainerFormProps) => {
               </span>
               <div>
                 <h4 className="text-xs font-bold uppercase tracking-wider text-stone-700">Section Spacing (Padding)</h4>
-                <p className="text-[11px] font-medium text-stone-500">Tune the container horizontal and vertical breathing room</p>
+                <p className="text-[11px] font-medium text-stone-500">
+                  Tune the container horizontal and vertical breathing room
+                </p>
               </div>
             </div>
             <button
@@ -574,8 +625,8 @@ const MutationContainer1 = ({ data, onChange }: ContainerFormProps) => {
             })}
           </div>
           <p className="mt-3 border-l-2 border-amber-300 pl-3 text-[11px] leading-4 text-stone-500">
-            Negative padding values are accepted for editing, but the live preview clamps them to 0px because CSS padding
-            cannot be negative.
+            Negative padding values are accepted for editing, but the live preview clamps them to 0px because CSS
+            padding cannot be negative.
           </p>
         </div>
 
@@ -917,9 +968,7 @@ const MutationContainer1 = ({ data, onChange }: ContainerFormProps) => {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-stone-800">Import Products</h3>
-                  <p className="text-xs text-stone-500">
-                    Select products from your catalogue to include in this container.
-                  </p>
+                  <p className="text-xs text-stone-500">Import every product at once or select a category first.</p>
                 </div>
               </div>
               <button
@@ -960,14 +1009,27 @@ const MutationContainer1 = ({ data, onChange }: ContainerFormProps) => {
                         {newSelectedProductCount} new product{newSelectedProductCount === 1 ? "" : "s"} ready to add
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      <select
+                        aria-label="Import products by category"
+                        className="rounded-sm border border-[#eadfca] bg-white px-2.5 py-1.5 text-xs font-semibold text-stone-700 outline-none focus:border-amber-400"
+                        onChange={(event) => setSelectedCategoryId(event.target.value)}
+                        value={selectedCategoryId}
+                      >
+                        <option value="all">All categories</option>
+                        {categoryOptions.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </select>
                       <button
                         type="button"
                         onClick={checkAllProducts}
                         disabled={allProductsChecked}
                         className="inline-flex items-center gap-1.5 rounded-sm border border-[#eadfca] bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 transition duration-700 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        <CheckCheck size={14} /> Check All
+                        <CheckCheck size={14} /> Import All{selectedCategoryId === "all" ? " Products" : " in Category"}
                       </button>
                       <button
                         type="button"
@@ -982,7 +1044,7 @@ const MutationContainer1 = ({ data, onChange }: ContainerFormProps) => {
 
                   {/* Product Checkboxes Grid */}
                   <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                    {products.map((product, index) => {
+                    {visibleProducts.map((product, index) => {
                       const productId = getProductKey(product);
                       const isSelected = selectedProductIds.includes(productId);
                       const isAlreadyAdded = isProductAlreadyAdded(product);
@@ -1010,9 +1072,7 @@ const MutationContainer1 = ({ data, onChange }: ContainerFormProps) => {
                               {product.name || "Untitled Product"}
                             </span>
                             <div className="mt-0.5 flex items-center gap-2">
-                              <span className="text-[11px] font-mono text-stone-500">
-                                {product.sku || "No SKU"}
-                              </span>
+                              <span className="text-[11px] font-mono text-stone-500">{product.sku || "No SKU"}</span>
                               <span className="rounded-sm border border-[#eadfca] bg-amber-100 px-1.5 py-0.2 text-[10px] font-bold text-amber-950">
                                 {getProductPrice(product)}
                               </span>
