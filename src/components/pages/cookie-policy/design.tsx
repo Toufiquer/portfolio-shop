@@ -8,12 +8,12 @@
 
 import React from "react";
 
-const RefundPolicy = () => {
+const CookiePolicy = () => {
   return (
     <div className="max-w-4xl mx-auto px-6 py-12 text-gray-800">
       {/* Header */}
       <header className="mb-10 border-b pb-6">
-        <h1 className="text-4xl font-extrabold mb-4">Refund Policy</h1>
+        <h1 className="text-4xl font-extrabold mb-4">Cookie Policy</h1>
         <p className="text-gray-600">Last updated: {new Date().toLocaleDateString()}</p>
       </header>
 
@@ -69,4 +69,4 @@ const RefundPolicy = () => {
   );
 };
 
-export default RefundPolicy;
+export default CookiePolicy;

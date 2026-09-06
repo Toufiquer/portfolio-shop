@@ -76,10 +76,10 @@ export type PageBlock = {
     | "all-home"
     | "company-story"
     | "whatsapp-faq"
-    | "site-privacy-policy"
+    | "security"
     | "site-terms-and-conditions"
     | "delivery-policy"
-    | "site-refund-policy"
+    | "cookie-policy"
     | "leadership-team"
     | "country-directory"
     | "about-the-country"
@@ -145,10 +145,10 @@ const pageBlockVariants = new Set<PageBlock["variant"]>([
   "all-home",
   "company-story",
   "whatsapp-faq",
-  "site-privacy-policy",
+  "security",
   "site-terms-and-conditions",
   "delivery-policy",
-  "site-refund-policy",
+  "cookie-policy",
   "leadership-team",
   "country-directory",
   "about-the-country",

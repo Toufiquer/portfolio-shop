@@ -13,7 +13,9 @@ export type ImportPageVariant =
   | "all-privacy"
   | "all-refund"
   | "all-team-member"
-  | "all-terms";
+  | "all-terms"
+  | "security"
+  | "cookie-policy";
 export type ImportSidebarDefault = { name: string; url: string; icon: string; children?: ImportSidebarDefault[] };
 export type ImportPageDefault = { title: string; path: string; description: string; variant: ImportPageVariant };
 
@@ -72,6 +74,8 @@ export const pageDefaults: ImportPageDefault[] = [
   },
   { title: "Privacy Policy", path: "/privacy-policy", description: "Our privacy policy.", variant: "all-privacy" },
   { title: "Refund Policy", path: "/refund-policy", description: "Our refund policy.", variant: "all-refund" },
+  { title: "Security", path: "/security", description: "How we protect our website and services.", variant: "security" },
+  { title: "Cookie Policy", path: "/cookie-policy", description: "How we use cookies and your choices.", variant: "cookie-policy" },
   {
     title: "Team Members",
     path: "/team-member",

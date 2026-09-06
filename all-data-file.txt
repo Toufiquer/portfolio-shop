@@ -1,11 +1,4 @@
-# Component data.ts inventory
-
-Generated from src/components on 2026-09-02.
-
-## Container (2)
-
-src/components/container/container-1/data.ts
-src/components/container/container-2/data.ts
+# Files that contain NexaMart brand, logo, bio, or contact defaults
 
 ## Footer (3)
 
@@ -13,10 +6,8 @@ src/components/footer/footer-1/data.ts
 src/components/footer/footer-2/data.ts
 src/components/footer/footer-3/data.ts
 
-## Form (3)
+## Form (1)
 
-src/components/form/form-1/data.ts
-src/components/form/form-2/data.ts
 src/components/form/form-3/data.ts
 
 ## Menu (3)
@@ -25,88 +16,26 @@ src/components/menu/menu-1/data.ts
 src/components/menu/menu-2/data.ts
 src/components/menu/menu-3/data.ts
 
-## Pages (24 found)
+## Pages (10)
 
-src/components/pages/about-the-country/data.ts
-src/components/pages/about-us/data.ts
-src/components/pages/company-story/data.ts
 src/components/pages/contact-us/data.ts
-src/components/pages/country-directory/data.ts
+src/components/pages/cookie-policy/data.ts
 src/components/pages/delivery-policy/data.ts
-src/components/pages/details-page/data.ts
-src/components/pages/frequently-ask-questions/data.ts
-src/components/pages/home/data.ts
-src/components/pages/leadership-team/data.ts
-src/components/pages/privacy-policy/data.ts
 src/components/pages/refund-policy/data.ts
-src/components/pages/site-privacy-policy/data.ts
-src/components/pages/site-refund-policy/data.ts
+src/components/pages/security/data.ts
 src/components/pages/site-terms-and-conditions/data.ts
-src/components/pages/team-member/data.ts
-src/components/pages/terms-and-condition/data.ts
 src/components/pages/visa-application-support/data.ts
-src/components/pages/visa-consultancy/data.ts
-src/components/pages/visa-insights/data.ts
 src/components/pages/visa-requirements/data.ts
-src/components/pages/visa-service-catalogue/data.ts
 src/components/pages/visa-services/data.ts
 src/components/pages/whatsapp-faq/data.ts
 
-## Sections (48)
+## Sections (1)
 
-src/components/sections/section-1/data.ts
-src/components/sections/section-2/data.ts
-src/components/sections/section-3/data.ts
-src/components/sections/section-4/data.ts
-src/components/sections/section-5/data.ts
-src/components/sections/section-6/data.ts
-src/components/sections/section-7/data.ts
-src/components/sections/section-8/data.ts
-src/components/sections/section-9/data.ts
-src/components/sections/section-10/data.ts
-src/components/sections/section-11/data.ts
-src/components/sections/section-12/data.ts
-src/components/sections/section-13/data.ts
-src/components/sections/section-14/data.ts
 src/components/sections/section-15/data.ts
-src/components/sections/section-16/data.ts
-src/components/sections/section-17/data.ts
-src/components/sections/section-18/data.ts
-src/components/sections/section-19/data.ts
-src/components/sections/section-20/data.ts
-src/components/sections/section-21/data.ts
-src/components/sections/section-22/data.ts
-src/components/sections/section-23/data.ts
-src/components/sections/section-24/data.ts
-src/components/sections/section-25/data.ts
-src/components/sections/section-26/data.ts
-src/components/sections/section-27/data.ts
-src/components/sections/section-28/data.ts
-src/components/sections/section-29/data.ts
-src/components/sections/section-30/data.ts
-src/components/sections/section-31/data.ts
-src/components/sections/section-32/data.ts
-src/components/sections/section-33/data.ts
-src/components/sections/section-34/data.ts
-src/components/sections/section-35/data.ts
-src/components/sections/section-36/data.ts
-src/components/sections/section-37/data.ts
-src/components/sections/section-38/data.ts
-src/components/sections/section-39/data.ts
-src/components/sections/section-40/data.ts
-src/components/sections/section-41/data.ts
-src/components/sections/section-42/data.ts
-src/components/sections/section-43/data.ts
-src/components/sections/section-44/data.ts
-src/components/sections/section-45/data.ts
-src/components/sections/section-46/data.ts
-src/components/sections/section-47/data.ts
-src/components/sections/section-48/data.ts
 
-## TopBanner (3)
+## TopBanner (2)
 
 src/components/topbanner/topbanner-1/data.ts
 src/components/topbanner/topbanner-2/data.ts
-src/components/topbanner/topbanner-3/data.ts
 
-Total: 86 data.ts files found.
+Total: 20 data.ts files found.

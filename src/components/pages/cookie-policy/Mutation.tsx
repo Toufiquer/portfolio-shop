@@ -21,30 +21,30 @@ import { Textarea } from "@/components/ui/textarea";
 import { Toast } from "@/components/ui/toast";
 
 import {
-  defaultDataSiteRefundPolicy,
+  defaultDataCookiePolicy,
   defaultLayout,
-  defaultSiteRefundPolicySection,
-  type ISiteRefundPolicyData,
-  type SiteRefundPolicyPayload,
-  type RefundPolicySection,
+  defaultCookiePolicySection,
+  type ICookiePolicyData,
+  type CookiePolicyPayload,
+  type CookiePolicySection,
 } from "./data";
-export interface SiteRefundPolicyFormProps {
-  data?: ISiteRefundPolicyData | SiteRefundPolicyPayload;
-  onChange?: (values: SiteRefundPolicyPayload) => void;
+export interface CookiePolicyFormProps {
+  data?: ICookiePolicyData | CookiePolicyPayload;
+  onChange?: (values: CookiePolicyPayload) => void;
 }
-const normalizeData = (data?: ISiteRefundPolicyData | SiteRefundPolicyPayload): SiteRefundPolicyPayload => ({
-  ...defaultDataSiteRefundPolicy,
+const normalizeData = (data?: ICookiePolicyData | CookiePolicyPayload): CookiePolicyPayload => ({
+  ...defaultDataCookiePolicy,
   ...defaultLayout,
   ...data,
-  pageUid: "site-refund-policy-uid",
-  pageName: "Site Refund Policy",
-  sections: Array.isArray(data?.sections) ? data.sections : defaultDataSiteRefundPolicy.sections,
+  pageUid: "cookie-policy-uid",
+  pageName: "Cookie Policy",
+  sections: Array.isArray(data?.sections) ? data.sections : defaultDataCookiePolicy.sections,
 });
-const emptySection = (): RefundPolicySection => ({ ...defaultSiteRefundPolicySection, items: [] });
-const MutationSiteRefundPolicy = ({ data, onChange }: SiteRefundPolicyFormProps) => {
+const emptySection = (): CookiePolicySection => ({ ...defaultCookiePolicySection, items: [] });
+const CookiePolicyMutation = ({ data, onChange }: CookiePolicyFormProps) => {
   const onChangeRef = useRef(onChange);
   const initialPayload = normalizeData(data);
-  const [formData, setFormData] = useState<ISiteRefundPolicyData>(initialPayload);
+  const [formData, setFormData] = useState<ICookiePolicyData>(initialPayload);
   const [paddingX, setPaddingX] = useState(initialPayload.paddingX);
   const [paddingY, setPaddingY] = useState(initialPayload.paddingY);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
@@ -67,8 +67,8 @@ const MutationSiteRefundPolicy = ({ data, onChange }: SiteRefundPolicyFormProps)
       ...formData,
       paddingX,
       paddingY,
-      pageUid: "site-refund-policy-uid",
-      pageName: "Site Refund Policy",
+      pageUid: "cookie-policy-uid",
+      pageName: "Cookie Policy",
     });
   }, [formData, paddingX, paddingY]);
   const updateSpacing = (field: "paddingX" | "paddingY", value: number) => {
@@ -76,7 +76,7 @@ const MutationSiteRefundPolicy = ({ data, onChange }: SiteRefundPolicyFormProps)
     if (field === "paddingX") setPaddingX(nextValue);
     else setPaddingY(nextValue);
   };
-  const updateSection = (index: number, field: keyof RefundPolicySection, value: string | string[]) =>
+  const updateSection = (index: number, field: keyof CookiePolicySection, value: string | string[]) =>
     setFormData((current) => ({
       ...current,
       sections: current.sections.map((section, sectionIndex) =>
@@ -87,7 +87,7 @@ const MutationSiteRefundPolicy = ({ data, onChange }: SiteRefundPolicyFormProps)
     if (deleteIndex === null) return;
     setFormData((current) => ({ ...current, sections: current.sections.filter((_, index) => index !== deleteIndex) }));
     setDeleteIndex(null);
-    setToast("Refund section removed.");
+    setToast("Cookie policy section removed.");
   };
   return (
     <div className="custom-parent-border bg-white text-slate-800">
@@ -95,33 +95,33 @@ const MutationSiteRefundPolicy = ({ data, onChange }: SiteRefundPolicyFormProps)
       <div className="mx-auto max-w-7xl border-x border-[#eadfca]">
         <header className="flex flex-col gap-3 border-b border-[#eadfca] p-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-stone-900">Edit Refund Policy</h2>
-            <p className="text-sm text-stone-600">site-refund-policy-uid · Refund details and customer support</p>
+            <h2 className="text-lg font-semibold text-stone-900">Edit Cookie Policy</h2>
+            <p className="text-sm text-stone-600">cookie-policy-uid · Cookie details and visitor choices</p>
           </div>
         </header>
         <ScrollArea className="max-h-[calc(100vh-12rem)] p-4">
           <div className="grid gap-4 pb-4 lg:grid-cols-2">
             <section className="grid gap-3 rounded-sm border border-slate-200 bg-slate-50 p-4">
               <div className="grid gap-1.5">
-                <Label htmlFor="site-refund-policy-name">Page name</Label>
+                <Label htmlFor="cookie-policy-name">Page name</Label>
                 <Input
-                  id="site-refund-policy-name"
+                  id="cookie-policy-name"
                   value={formData.pageName}
                   onChange={(event) => setFormData((current) => ({ ...current, pageName: event.target.value }))}
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="site-refund-policy-title">Title</Label>
+                <Label htmlFor="cookie-policy-title">Title</Label>
                 <Input
-                  id="site-refund-policy-title"
+                  id="cookie-policy-title"
                   value={formData.title}
                   onChange={(event) => setFormData((current) => ({ ...current, title: event.target.value }))}
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="site-refund-policy-updated">Last updated label</Label>
+                <Label htmlFor="cookie-policy-updated">Last updated label</Label>
                 <Input
-                  id="site-refund-policy-updated"
+                  id="cookie-policy-updated"
                   value={formData.lastUpdatedLabel}
                   onChange={(event) => setFormData((current) => ({ ...current, lastUpdatedLabel: event.target.value }))}
                 />
@@ -129,18 +129,18 @@ const MutationSiteRefundPolicy = ({ data, onChange }: SiteRefundPolicyFormProps)
             </section>
             <section className="grid gap-3 rounded-sm border border-slate-200 bg-slate-50 p-4">
               <div className="grid gap-1.5">
-                <Label htmlFor="site-refund-policy-contact">Contact title</Label>
+                <Label htmlFor="cookie-policy-contact">Contact title</Label>
                 <Input
-                  id="site-refund-policy-contact"
+                  id="cookie-policy-contact"
                   value={formData.contactTitle}
                   onChange={(event) => setFormData((current) => ({ ...current, contactTitle: event.target.value }))}
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="site-refund-policy-description">Contact description</Label>
+                <Label htmlFor="cookie-policy-description">Contact description</Label>
                 <Textarea
                   className="min-h-36"
-                  id="site-refund-policy-description"
+                  id="cookie-policy-description"
                   value={formData.contactDescription}
                   onChange={(event) =>
                     setFormData((current) => ({ ...current, contactDescription: event.target.value }))
@@ -148,9 +148,9 @@ const MutationSiteRefundPolicy = ({ data, onChange }: SiteRefundPolicyFormProps)
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="site-refund-policy-email">Support email</Label>
+                <Label htmlFor="cookie-policy-email">Support email</Label>
                 <Input
-                  id="site-refund-policy-email"
+                  id="cookie-policy-email"
                   value={formData.supportEmail}
                   onChange={(event) => setFormData((current) => ({ ...current, supportEmail: event.target.value }))}
                 />
@@ -196,7 +196,7 @@ const MutationSiteRefundPolicy = ({ data, onChange }: SiteRefundPolicyFormProps)
                   className="cursor-pointer bg-amber-100 text-amber-950 transition duration-700 hover:bg-amber-200"
                   onClick={() => {
                     setFormData((current) => ({ ...current, sections: [...current.sections, emptySection()] }));
-                    setToast("New refund section added.");
+                    setToast("New cookie policy section added.");
                   }}
                   size="sm"
                   type="button"
@@ -223,27 +223,27 @@ const MutationSiteRefundPolicy = ({ data, onChange }: SiteRefundPolicyFormProps)
                     </Button>
                   </div>
                   <div className="grid gap-1.5">
-                    <Label htmlFor={`site-refund-policy-section-title-${index}`}>Title</Label>
+                    <Label htmlFor={`cookie-policy-section-title-${index}`}>Title</Label>
                     <Input
-                      id={`site-refund-policy-section-title-${index}`}
+                      id={`cookie-policy-section-title-${index}`}
                       value={section.title}
                       onChange={(event) => updateSection(index, "title", event.target.value)}
                     />
                   </div>
                   <div className="grid gap-1.5">
-                    <Label htmlFor={`site-refund-policy-section-description-${index}`}>Description</Label>
+                    <Label htmlFor={`cookie-policy-section-description-${index}`}>Description</Label>
                     <Textarea
                       className="min-h-36"
-                      id={`site-refund-policy-section-description-${index}`}
+                      id={`cookie-policy-section-description-${index}`}
                       value={section.description ?? ""}
                       onChange={(event) => updateSection(index, "description", event.target.value)}
                     />
                   </div>
                   <div className="grid gap-1.5 lg:col-span-2">
-                    <Label htmlFor={`site-refund-policy-section-items-${index}`}>Points (one per line)</Label>
+                    <Label htmlFor={`cookie-policy-section-items-${index}`}>Points (one per line)</Label>
                     <Textarea
                       className="min-h-36"
-                      id={`site-refund-policy-section-items-${index}`}
+                      id={`cookie-policy-section-items-${index}`}
                       value={(section.items ?? []).join("\n")}
                       onChange={(event) =>
                         updateSection(
@@ -269,9 +269,9 @@ const MutationSiteRefundPolicy = ({ data, onChange }: SiteRefundPolicyFormProps)
         onCancel={() => setDeleteIndex(null)}
         onConfirm={remove}
         open={deleteIndex !== null}
-        title="Delete this refund section?"
+        title="Delete this cookie policy section?"
       />
     </div>
   );
 };
-export default MutationSiteRefundPolicy;
+export default CookiePolicyMutation;

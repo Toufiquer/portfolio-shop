@@ -44,12 +44,12 @@ import PrivacyQuery from "./privacy-policy/Query";
 import { defaultDataPage7 as refund } from "./refund-policy/data";
 import RefundMutation from "./refund-policy/Mutation";
 import RefundQuery from "./refund-policy/Query";
-import { defaultDataSitePrivacyPolicy as sitePrivacyPolicy } from "./site-privacy-policy/data";
-import SitePrivacyPolicyMutation from "./site-privacy-policy/Mutation";
-import SitePrivacyPolicyQuery from "./site-privacy-policy/Query";
-import { defaultDataSiteRefundPolicy as siteRefundPolicy } from "./site-refund-policy/data";
-import SiteRefundPolicyMutation from "./site-refund-policy/Mutation";
-import SiteRefundPolicyQuery from "./site-refund-policy/Query";
+import { defaultDataSecurity as security } from "./security/data";
+import SecurityMutation from "./security/Mutation";
+import SecurityQuery from "./security/Query";
+import { defaultDataCookiePolicy as cookiePolicy } from "./cookie-policy/data";
+import CookiePolicyMutation from "./cookie-policy/Mutation";
+import CookiePolicyQuery from "./cookie-policy/Query";
 import { defaultDataSiteTermsAndConditions as siteTermsAndConditions } from "./site-terms-and-conditions/data";
 import SiteTermsAndConditionsMutation from "./site-terms-and-conditions/Mutation";
 import SiteTermsAndConditionsQuery from "./site-terms-and-conditions/Query";
@@ -85,10 +85,10 @@ export type AllPageKind =
   | "all-home"
   | "company-story"
   | "whatsapp-faq"
-  | "site-privacy-policy"
+  | "security"
   | "site-terms-and-conditions"
   | "delivery-policy"
-  | "site-refund-policy"
+  | "cookie-policy"
   | "leadership-team"
   | "country-directory"
   | "about-the-country"
@@ -152,17 +152,17 @@ export const pageIndex: Record<AllPageKind, Definition> = {
     ),
     Query: ({ data }) => <WhatsAppFaqQuery data={data as unknown as typeof whatsAppFaq} />,
   },
-  "site-privacy-policy": {
-    defaultData: sitePrivacyPolicy as unknown as AllPageData,
-    title: "Site Privacy Policy",
-    description: "A detailed privacy-policy page layout",
+  security: {
+    defaultData: security as unknown as AllPageData,
+    title: "Security",
+    description: "A detailed website security page layout",
     Mutation: ({ data, onChange }) => (
-      <SitePrivacyPolicyMutation
-        data={data as unknown as typeof sitePrivacyPolicy}
-        onChange={onChange as unknown as (data: typeof sitePrivacyPolicy) => void}
+      <SecurityMutation
+        data={data as unknown as typeof security}
+        onChange={onChange as unknown as (data: typeof security) => void}
       />
     ),
-    Query: ({ data }) => <SitePrivacyPolicyQuery data={data as unknown as typeof sitePrivacyPolicy} />,
+    Query: ({ data }) => <SecurityQuery data={data as unknown as typeof security} />,
   },
   "site-terms-and-conditions": {
     defaultData: siteTermsAndConditions as unknown as AllPageData,
@@ -188,17 +188,17 @@ export const pageIndex: Record<AllPageKind, Definition> = {
     ),
     Query: ({ data }) => <DeliveryPolicyQuery data={data as unknown as typeof deliveryPolicy} />,
   },
-  "site-refund-policy": {
-    defaultData: siteRefundPolicy as unknown as AllPageData,
-    title: "Site Refund Policy",
-    description: "A refund-policy page with return and support details",
+  "cookie-policy": {
+    defaultData: cookiePolicy as unknown as AllPageData,
+    title: "Cookie Policy",
+    description: "A cookie-policy page with visitor choices and support details",
     Mutation: ({ data, onChange }) => (
-      <SiteRefundPolicyMutation
-        data={data as unknown as typeof siteRefundPolicy}
-        onChange={onChange as unknown as (data: typeof siteRefundPolicy) => void}
+      <CookiePolicyMutation
+        data={data as unknown as typeof cookiePolicy}
+        onChange={onChange as unknown as (data: typeof cookiePolicy) => void}
       />
     ),
-    Query: ({ data }) => <SiteRefundPolicyQuery data={data as unknown as typeof siteRefundPolicy} />,
+    Query: ({ data }) => <CookiePolicyQuery data={data as unknown as typeof cookiePolicy} />,
   },
   "leadership-team": {
     defaultData: leadershipTeam as unknown as AllPageData,

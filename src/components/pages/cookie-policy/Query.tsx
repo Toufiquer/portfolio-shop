@@ -10,29 +10,29 @@ import { iconMap } from "@/components/all-icons/all-icons";
 import { Button } from "@/components/ui/button";
 
 import {
-  defaultDataSiteRefundPolicy,
+  defaultDataCookiePolicy,
   defaultLayout,
-  type ISiteRefundPolicyData,
-  type SiteRefundPolicyPayload,
-  type SiteRefundPolicyProps,
+  type ICookiePolicyData,
+  type CookiePolicyPayload,
+  type CookiePolicyProps,
 } from "./data";
 
-const parseData = (data?: ISiteRefundPolicyData | SiteRefundPolicyPayload | string): SiteRefundPolicyPayload => {
+const parseData = (data?: ICookiePolicyData | CookiePolicyPayload | string): CookiePolicyPayload => {
   try {
-    const incoming = typeof data === "string" ? (JSON.parse(data) as Partial<SiteRefundPolicyPayload>) : data;
+    const incoming = typeof data === "string" ? (JSON.parse(data) as Partial<CookiePolicyPayload>) : data;
     return {
-      ...defaultDataSiteRefundPolicy,
+      ...defaultDataCookiePolicy,
       ...defaultLayout,
       ...incoming,
-      pageUid: "site-refund-policy-uid",
-      pageName: "Site Refund Policy",
-      sections: Array.isArray(incoming?.sections) ? incoming.sections : defaultDataSiteRefundPolicy.sections,
+      pageUid: "cookie-policy-uid",
+      pageName: "Cookie Policy",
+      sections: Array.isArray(incoming?.sections) ? incoming.sections : defaultDataCookiePolicy.sections,
     };
   } catch {
-    return { ...defaultDataSiteRefundPolicy, ...defaultLayout };
+    return { ...defaultDataCookiePolicy, ...defaultLayout };
   }
 };
-const QuerySiteRefundPolicy = ({ data }: SiteRefundPolicyProps) => {
+const CookiePolicyQuery = ({ data }: CookiePolicyProps) => {
   const pageData = parseData(data);
   return (
     <main
@@ -53,7 +53,7 @@ const QuerySiteRefundPolicy = ({ data }: SiteRefundPolicyProps) => {
                 className="inline-flex items-center gap-1 rounded-sm bg-lime-200 px-2.5 py-1.5 text-[0.8rem] font-medium text-lime-950 transition duration-700 hover:bg-lime-300"
                 href={`mailto:${pageData.supportEmail}`}
               >
-                {iconMap.Mail} Contact support
+                {iconMap.Mail} Contact us
               </a>
               <Button
                 className="cursor-pointer bg-amber-100 text-amber-950 transition duration-700 hover:bg-amber-200"
@@ -61,14 +61,14 @@ const QuerySiteRefundPolicy = ({ data }: SiteRefundPolicyProps) => {
                 type="button"
                 variant="outline"
               >
-                {iconMap.FileText} Return checklist
+                {iconMap.FileText} Cookie choices
               </Button>
             </div>
           </div>
           <aside className="grid content-start gap-3 rounded-sm border border-[#eadfca] bg-amber-50/50 p-4">
             <span className="text-amber-700">{iconMap.ShieldCheck}</span>
             <p className="text-xl font-semibold text-stone-900">
-              Clear expectations from return request to final decision.
+              Clear information about cookies and the choices available to visitors.
             </p>
             <p className="text-sm leading-6 text-stone-600">{pageData.sections[0]?.description}</p>
           </aside>
@@ -111,7 +111,7 @@ const QuerySiteRefundPolicy = ({ data }: SiteRefundPolicyProps) => {
       </section>
       <section className="border-x border-[#eadfca] border-t">
         <div className="mx-auto max-w-7xl p-4">
-          <p className="text-xs font-semibold tracking-[0.14em] text-amber-800 uppercase">Refund support</p>
+          <p className="text-xs font-semibold tracking-[0.14em] text-amber-800 uppercase">Cookie support</p>
           <h2 className="mt-1 text-xl font-semibold text-stone-900">{pageData.contactTitle}</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-600">{pageData.contactDescription}</p>
           <a
@@ -125,4 +125,4 @@ const QuerySiteRefundPolicy = ({ data }: SiteRefundPolicyProps) => {
     </main>
   );
 };
-export default QuerySiteRefundPolicy;
+export default CookiePolicyQuery;

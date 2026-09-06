@@ -15,29 +15,29 @@ import { iconMap } from "@/components/all-icons/all-icons";
 import { Button } from "@/components/ui/button";
 
 import {
-  defaultDataSitePrivacyPolicy,
+  defaultDataSecurity,
   defaultLayout,
-  type ISitePrivacyPolicyData,
-  type SitePrivacyPolicyPayload,
-  type SitePrivacyPolicyProps,
+  type ISecurityData,
+  type SecurityPayload,
+  type SecurityProps,
 } from "./data";
 
-const parseData = (data?: ISitePrivacyPolicyData | SitePrivacyPolicyPayload | string): SitePrivacyPolicyPayload => {
+const parseData = (data?: ISecurityData | SecurityPayload | string): SecurityPayload => {
   try {
-    const incoming = typeof data === "string" ? (JSON.parse(data) as Partial<SitePrivacyPolicyPayload>) : data;
+    const incoming = typeof data === "string" ? (JSON.parse(data) as Partial<SecurityPayload>) : data;
     return {
-      ...defaultDataSitePrivacyPolicy,
+      ...defaultDataSecurity,
       ...defaultLayout,
       ...incoming,
-      pageUid: "site-privacy-policy-uid",
-      pageName: "Site Privacy Policy",
-      sections: Array.isArray(incoming?.sections) ? incoming.sections : defaultDataSitePrivacyPolicy.sections,
+      pageUid: "security-uid",
+      pageName: "Security",
+      sections: Array.isArray(incoming?.sections) ? incoming.sections : defaultDataSecurity.sections,
     };
   } catch {
-    return { ...defaultDataSitePrivacyPolicy, ...defaultLayout };
+    return { ...defaultDataSecurity, ...defaultLayout };
   }
 };
-const QuerySitePrivacyPolicy = ({ data }: SitePrivacyPolicyProps) => {
+const SecurityQuery = ({ data }: SecurityProps) => {
   const pageData = parseData(data);
   const [openSection, setOpenSection] = useState<string | null>(null);
   return (
@@ -88,11 +88,11 @@ const QuerySitePrivacyPolicy = ({ data }: SitePrivacyPolicyProps) => {
           {pageData.sections.map((section, index) => (
             <article className="min-w-0 overflow-hidden bg-white p-4 sm:p-5" key={`${section.title}-${index}`}>
               <button
-                aria-controls={`privacy-section-${index}`}
-                aria-expanded={openSection === `privacy-${index}`}
+                aria-controls={`security-section-${index}`}
+                aria-expanded={openSection === `security-${index}`}
                 className="flex w-full min-w-0 cursor-pointer items-start justify-between gap-3 text-left"
                 onClick={() =>
-                  setOpenSection((current) => (current === `privacy-${index}` ? null : `privacy-${index}`))
+                  setOpenSection((current) => (current === `security-${index}` ? null : `security-${index}`))
                 }
                 type="button"
               >
@@ -114,12 +114,12 @@ const QuerySitePrivacyPolicy = ({ data }: SitePrivacyPolicyProps) => {
                 </div>
                 <ChevronDown
                   aria-hidden="true"
-                  className={`mt-2 size-4 shrink-0 text-amber-700 transition-transform duration-300 motion-reduce:transition-none ${openSection === `privacy-${index}` ? "rotate-180" : "rotate-0"}`}
+                  className={`mt-2 size-4 shrink-0 text-amber-700 transition-transform duration-300 motion-reduce:transition-none ${openSection === `security-${index}` ? "rotate-180" : "rotate-0"}`}
                 />
               </button>
               <div
-                className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none ${openSection === `privacy-${index}` ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
-                id={`privacy-section-${index}`}
+                className={`grid transition-[grid-template-rows,opacity] duration-300 ease-out motion-reduce:transition-none ${openSection === `security-${index}` ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"}`}
+                id={`security-section-${index}`}
               >
                 <div className="min-h-0 overflow-hidden">
                   <p className="mt-3 text-sm leading-6 text-stone-600">{section.description}</p>
@@ -144,4 +144,4 @@ const QuerySitePrivacyPolicy = ({ data }: SitePrivacyPolicyProps) => {
     </main>
   );
 };
-export default QuerySitePrivacyPolicy;
+export default SecurityQuery;

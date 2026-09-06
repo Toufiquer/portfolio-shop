@@ -22,30 +22,30 @@ import { Textarea } from "@/components/ui/textarea";
 import { Toast } from "@/components/ui/toast";
 
 import {
-  defaultDataSitePrivacyPolicy,
+  defaultDataSecurity,
   defaultLayout,
-  defaultSitePrivacyPolicySection,
-  type ISitePrivacyPolicyData,
-  type SitePrivacyPolicyPayload,
+  defaultSecuritySection,
+  type ISecurityData,
+  type SecurityPayload,
 } from "./data";
 
-export interface SitePrivacyPolicyFormProps {
-  data?: ISitePrivacyPolicyData | SitePrivacyPolicyPayload;
-  onChange?: (values: SitePrivacyPolicyPayload) => void;
+export interface SecurityFormProps {
+  data?: ISecurityData | SecurityPayload;
+  onChange?: (values: SecurityPayload) => void;
 }
-const normalizeData = (data?: ISitePrivacyPolicyData | SitePrivacyPolicyPayload): SitePrivacyPolicyPayload => ({
-  ...defaultDataSitePrivacyPolicy,
+const normalizeData = (data?: ISecurityData | SecurityPayload): SecurityPayload => ({
+  ...defaultDataSecurity,
   ...defaultLayout,
   ...data,
-  pageUid: "site-privacy-policy-uid",
-  pageName: "Site Privacy Policy",
-  sections: Array.isArray(data?.sections) ? data.sections : defaultDataSitePrivacyPolicy.sections,
+  pageUid: "security-uid",
+  pageName: "Security",
+  sections: Array.isArray(data?.sections) ? data.sections : defaultDataSecurity.sections,
 });
-const emptySection = () => ({ ...defaultSitePrivacyPolicySection, items: [...defaultSitePrivacyPolicySection.items] });
-const MutationSitePrivacyPolicy = ({ data, onChange }: SitePrivacyPolicyFormProps) => {
+const emptySection = () => ({ ...defaultSecuritySection, items: [...defaultSecuritySection.items] });
+const SecurityMutation = ({ data, onChange }: SecurityFormProps) => {
   const onChangeRef = useRef(onChange);
   const initialPayload = normalizeData(data);
-  const [formData, setFormData] = useState<ISitePrivacyPolicyData>(initialPayload);
+  const [formData, setFormData] = useState<ISecurityData>(initialPayload);
   const [paddingX, setPaddingX] = useState(initialPayload.paddingX);
   const [paddingY, setPaddingY] = useState(initialPayload.paddingY);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
@@ -65,8 +65,8 @@ const MutationSitePrivacyPolicy = ({ data, onChange }: SitePrivacyPolicyFormProp
       ...formData,
       paddingX,
       paddingY,
-      pageUid: "site-privacy-policy-uid",
-      pageName: "Site Privacy Policy",
+      pageUid: "security-uid",
+      pageName: "Security",
     });
   }, [formData, paddingX, paddingY]);
   const updateSpacing = (field: "paddingX" | "paddingY", value: number) => {
@@ -108,8 +108,8 @@ const MutationSitePrivacyPolicy = ({ data, onChange }: SitePrivacyPolicyFormProp
       <div className="mx-auto max-w-7xl border-x border-[#eadfca]">
         <header className="flex flex-col gap-3 border-y border-[#eadfca] p-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <h2 className="truncate text-lg font-semibold text-stone-900">Edit Privacy Policy</h2>
-            <p className="truncate text-sm text-stone-600">site-privacy-policy-uid · Privacy content and rights</p>
+            <h2 className="truncate text-lg font-semibold text-stone-900">Edit Security</h2>
+            <p className="truncate text-sm text-stone-600">security-uid · Website safeguards and incident response</p>
           </div>
         </header>
         <ScrollArea className="max-h-[calc(100vh-12rem)] p-4">
@@ -117,52 +117,52 @@ const MutationSitePrivacyPolicy = ({ data, onChange }: SitePrivacyPolicyFormProp
             <section className="grid gap-3 rounded-sm border border-[#eadfca] p-4 ">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="site-privacy-policy-name">Page name</Label>
+                  <Label htmlFor="security-name">Page name</Label>
                   <Input
-                    id="site-privacy-policy-name"
+                    id="security-name"
                     value={formData.pageName}
                     onChange={(event) => setFormData((current) => ({ ...current, pageName: event.target.value }))}
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="site-privacy-policy-eyebrow">Eyebrow</Label>
+                  <Label htmlFor="security-eyebrow">Eyebrow</Label>
                   <Input
-                    id="site-privacy-policy-eyebrow"
+                    id="security-eyebrow"
                     value={formData.eyebrow}
                     onChange={(event) => setFormData((current) => ({ ...current, eyebrow: event.target.value }))}
                   />
                 </div>
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="site-privacy-policy-title">Title</Label>
+                <Label htmlFor="security-title">Title</Label>
                 <Input
-                  id="site-privacy-policy-title"
+                  id="security-title"
                   value={formData.title}
                   onChange={(event) => setFormData((current) => ({ ...current, title: event.target.value }))}
                 />
               </div>
               <div className="grid gap-1.5">
-                <Label htmlFor="site-privacy-policy-subtitle">Subtitle</Label>
+                <Label htmlFor="security-subtitle">Subtitle</Label>
                 <Textarea
                   className="min-h-36"
-                  id="site-privacy-policy-subtitle"
+                  id="security-subtitle"
                   value={formData.subtitle}
                   onChange={(event) => setFormData((current) => ({ ...current, subtitle: event.target.value }))}
                 />
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="site-privacy-policy-primary">Primary action</Label>
+                  <Label htmlFor="security-primary">Primary action</Label>
                   <Input
-                    id="site-privacy-policy-primary"
+                    id="security-primary"
                     value={formData.primaryAction}
                     onChange={(event) => setFormData((current) => ({ ...current, primaryAction: event.target.value }))}
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor="site-privacy-policy-secondary">Secondary action</Label>
+                  <Label htmlFor="security-secondary">Secondary action</Label>
                   <Input
-                    id="site-privacy-policy-secondary"
+                    id="security-secondary"
                     value={formData.secondaryAction}
                     onChange={(event) =>
                       setFormData((current) => ({ ...current, secondaryAction: event.target.value }))
@@ -232,35 +232,35 @@ const MutationSitePrivacyPolicy = ({ data, onChange }: SitePrivacyPolicyFormProp
                   </Button>
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor={`site-privacy-policy-section-eyebrow-${index}`}>Eyebrow</Label>
+                  <Label htmlFor={`security-section-eyebrow-${index}`}>Eyebrow</Label>
                   <Input
-                    id={`site-privacy-policy-section-eyebrow-${index}`}
+                    id={`security-section-eyebrow-${index}`}
                     value={section.eyebrow}
                     onChange={(event) => updateSection(index, "eyebrow", event.target.value)}
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor={`site-privacy-policy-section-title-${index}`}>Title</Label>
+                  <Label htmlFor={`security-section-title-${index}`}>Title</Label>
                   <Input
-                    id={`site-privacy-policy-section-title-${index}`}
+                    id={`security-section-title-${index}`}
                     value={section.title}
                     onChange={(event) => updateSection(index, "title", event.target.value)}
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor={`site-privacy-policy-section-description-${index}`}>Description</Label>
+                  <Label htmlFor={`security-section-description-${index}`}>Description</Label>
                   <Textarea
                     className="min-h-48"
-                    id={`site-privacy-policy-section-description-${index}`}
+                    id={`security-section-description-${index}`}
                     value={section.description}
                     onChange={(event) => updateSection(index, "description", event.target.value)}
                   />
                 </div>
                 <div className="grid gap-1.5">
-                  <Label htmlFor={`site-privacy-policy-section-items-${index}`}>Points (one per line)</Label>
+                  <Label htmlFor={`security-section-items-${index}`}>Points (one per line)</Label>
                   <Textarea
                     className="min-h-48"
-                    id={`site-privacy-policy-section-items-${index}`}
+                    id={`security-section-items-${index}`}
                     value={section.items.join("\n")}
                     onChange={(event) => updateSection(index, "items", event.target.value)}
                   />
@@ -281,4 +281,4 @@ const MutationSitePrivacyPolicy = ({ data, onChange }: SitePrivacyPolicyFormProp
     </div>
   );
 };
-export default MutationSitePrivacyPolicy;
+export default SecurityMutation;
