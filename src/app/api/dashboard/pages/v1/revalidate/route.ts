@@ -12,6 +12,14 @@ import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth, client } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { normalizePagePath, pageCacheTag } from "@/lib/pages/server";
+import { productCatalogCacheTag, productCategoryCacheTag } from "@/lib/products/server";
+
+function refreshPublicCatalog() {
+  revalidatePath("/products");
+  revalidatePath("/products/[slug]", "page");
+  revalidateTag(productCatalogCacheTag, "max");
+  revalidateTag(productCategoryCacheTag, "max");
+}
 export async function POST(request: Request) {
   const limited = await rateLimitDistributed(request, "dashboard-pages-revalidate", 10, 60_000);
   if (limited) return limited;
@@ -32,6 +40,7 @@ export async function POST(request: Request) {
     revalidatePath(path);
     revalidateTag(pageCacheTag(path), "max");
     revalidateTag("site-pages", "max");
+    refreshPublicCatalog();
     return Response.json({ count: 1, path });
   }
   const items = await client
@@ -45,5 +54,6 @@ export async function POST(request: Request) {
   });
   revalidatePath("/", "page");
   revalidateTag("site-pages", "max");
+  refreshPublicCatalog();
   return Response.json({ count: items.length });
 }
