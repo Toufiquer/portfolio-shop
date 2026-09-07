@@ -5,11 +5,13 @@
 |-----------------------------------------
 */
 
-export const customerStatuses = ["lead", "active", "inactive", "archived"] as const;
+export const customerStatuses = ["active", "inactive"] as const;
 export type CustomerStatus = (typeof customerStatuses)[number];
 export type FunnelStage = { id: string; name: string };
 export type CustomerFunnel = {
   id: string;
+  position: number;
+  color: string;
   name: string;
   description: string;
   minimumAmount: number;
@@ -24,6 +26,12 @@ export type CustomerMetrics = {
   firstOrderAt: string | null;
   lastOrderAt: string | null;
   haveWithUs: string;
+};
+export type CustomerSpend = {
+  id: string;
+  funnelId: string;
+  amount: number;
+  createdAt: string;
 };
 export type Customer = {
   id: string;

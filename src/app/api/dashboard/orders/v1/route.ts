@@ -11,6 +11,8 @@ import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization
 import { orderStatuses, serializeOrder } from "@/lib/dashboard/orders";
 import { orders } from "@/lib/orders/management";
 
+const pageSizes = [10, 25, 50, 100];
+
 async function access(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return { error: Response.json({ error: "Sign in required." }, { status: 401 }) };
@@ -27,6 +29,17 @@ export async function GET(request: Request) {
   const status = query.get("status");
   const selectedStatus = orderStatuses.find((orderStatus) => orderStatus === status);
   const filter = selectedStatus ? { status: selectedStatus } : {};
-  const items = await orders().find(filter).sort({ createdAt: -1 }).limit(250).toArray();
-  return Response.json({ items: items.map(serializeOrder) });
+  const requestedPageSize = Number(query.get("pageSize"));
+  const pageSize = pageSizes.includes(requestedPageSize) ? requestedPageSize : 10;
+  const total = await orders().countDocuments(filter);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const requestedPage = Number.parseInt(query.get("page") ?? "1", 10);
+  const page = Math.min(totalPages, Math.max(1, Number.isFinite(requestedPage) ? requestedPage : 1));
+  const items = await orders()
+    .find(filter)
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
+    .toArray();
+  return Response.json({ items: items.map(serializeOrder), total, page, pageSize });
 }

@@ -18,6 +18,7 @@ import { categoryDefaults, defaultImportCategories, normalizeSlug, type PresetCa
 import {
   type CategoryInput,
   type CategoryItem,
+  type CategoryListParams,
   useBulkDeleteCategoriesMutation,
   useBulkUpdateCategoryStatusMutation,
   useCreateCategoryMutation,
@@ -33,9 +34,11 @@ const errorMessage = (error: unknown, fallback: string) =>
   typeof (error as { data?: { error?: string } }).data?.error === "string"
     ? (error as { data: { error: string } }).data.error
     : fallback;
+const pageSizes = [10, 25, 50, 100] as const;
 
 export default function CategoryPage() {
-  const { data, error, isFetching, isLoading, refetch } = useGetCategoriesQuery();
+  const [query, setQuery] = useState<CategoryListParams>({ page: 1, pageSize: 10, search: "", status: "" });
+  const { data, error, isFetching, isLoading, refetch } = useGetCategoriesQuery(query);
   const [create, createState] = useCreateCategoryMutation();
   const [update, updateState] = useUpdateCategoryMutation();
   const [remove, removeState] = useDeleteCategoryMutation();
@@ -47,8 +50,6 @@ export default function CategoryPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [viewing, setViewing] = useState<CategoryItem | null>(null);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"" | CategoryItem["status"]>("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkStatus, setBulkStatus] = useState<CategoryItem["status"]>("active");
   const busy =
@@ -58,15 +59,12 @@ export default function CategoryPage() {
     bulkRemoveState.isLoading ||
     bulkUpdateStatusState.isLoading ||
     isImporting;
-  const items = useMemo(() => data?.items ?? [], [data]);
-  const visibleItems = useMemo(() => {
-    const needle = search.trim().toLowerCase();
-    return items.filter(
-      (item) =>
-        (!statusFilter || item.status === statusFilter) &&
-        (!needle || [item.name, item.slug, item.description].some((value) => value.toLowerCase().includes(needle))),
-    );
-  }, [items, search, statusFilter]);
+  const items = data?.items ?? [];
+  const visibleItems = items;
+  const page = data?.page ?? query.page ?? 1;
+  const pageSize = data?.pageSize ?? query.pageSize ?? 10;
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const allVisibleSelected = visibleItems.length > 0 && visibleItems.every((item) => selectedIds.includes(item.id));
 
   function openCreate() {
@@ -194,21 +192,21 @@ export default function CategoryPage() {
               aria-label="Search categories"
               className="input pl-9"
               onChange={(event) => {
-                setSearch(event.target.value);
+                setQuery({ ...query, page: 1, search: event.target.value });
                 setSelectedIds([]);
               }}
               placeholder="Search name, slug, or description"
-              value={search}
+              value={query.search ?? ""}
             />
           </label>
           <select
             aria-label="Filter categories by status"
             className="input"
             onChange={(event) => {
-              setStatusFilter(event.target.value as "" | CategoryItem["status"]);
+              setQuery({ ...query, page: 1, status: event.target.value as CategoryListParams["status"] });
               setSelectedIds([]);
             }}
-            value={statusFilter}
+            value={query.status ?? ""}
           >
             <option value="">All statuses</option>
             <option value="active">Active</option>
@@ -276,93 +274,141 @@ export default function CategoryPage() {
             </div>
           </div>
         ) : (
-          <div className="mt-5 overflow-hidden rounded-sm border border-stone-200">
-            <div className="hidden overflow-x-auto md:block">
-              <table className="w-full min-w-[680px] text-left text-sm">
-                <thead className="bg-[#f8f0df] text-xs uppercase text-stone-500">
-                  <tr>
-                    <th className="p-3">
-                      <Checkbox
-                        aria-label="Select all visible categories"
-                        checked={allVisibleSelected}
-                        onCheckedChange={(checked) =>
-                          setSelectedIds(checked ? visibleItems.map((item) => item.id) : [])
-                        }
-                      />
-                    </th>
-                    <th className="p-3">Name</th>
-                    <th className="p-3">Slug</th>
-                    <th className="p-3">Description</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {visibleItems.map((item) => (
-                    <tr className="border-t border-stone-100" key={item.id}>
-                      <td className="p-3">
+          <>
+            <div className="mt-5 overflow-hidden rounded-sm border border-stone-200">
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[680px] text-left text-sm">
+                  <thead className="bg-[#f8f0df] text-xs uppercase text-stone-500">
+                    <tr>
+                      <th className="p-3">
                         <Checkbox
-                          aria-label={`Select ${item.name}`}
-                          checked={selectedIds.includes(item.id)}
-                          onCheckedChange={(checked) => toggleItem(item.id, checked)}
+                          aria-label="Select all visible categories"
+                          checked={allVisibleSelected}
+                          onCheckedChange={(checked) =>
+                            setSelectedIds(checked ? visibleItems.map((item) => item.id) : [])
+                          }
                         />
-                      </td>
-                      <td className="p-3 font-medium text-stone-900">{item.name}</td>
-                      <td className="p-3 text-stone-600">{item.slug}</td>
-                      <td className="max-w-xs truncate p-3 text-stone-600" title={item.description}>
-                        {item.description || "—"}
-                      </td>
-                      <td className="p-3">
-                        <Status status={item.status} />
-                      </td>
-                      <td className="p-3">
-                        <Actions
-                          edit={() => {
-                            setEditing(item);
-                            setOpen(true);
-                          }}
-                          remove={() => void destroy(item)}
-                          view={() => setViewing(item)}
-                        />
-                      </td>
+                      </th>
+                      <th className="p-3">Name</th>
+                      <th className="p-3">Slug</th>
+                      <th className="p-3">Description</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="grid gap-3 p-3 md:hidden">
-              {visibleItems.map((item) => (
-                <article className="rounded-sm border border-stone-200 p-3" key={item.id}>
-                  <div className="flex items-start justify-between gap-3">
-                    <Checkbox
-                      aria-label={`Select ${item.name}`}
-                      checked={selectedIds.includes(item.id)}
-                      onCheckedChange={(checked) => toggleItem(item.id, checked)}
-                    />
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{item.name}</p>
-                      <p className="mt-1 truncate text-xs text-stone-500">{item.slug}</p>
+                  </thead>
+                  <tbody>
+                    {visibleItems.map((item) => (
+                      <tr className="border-t border-stone-100" key={item.id}>
+                        <td className="p-3">
+                          <Checkbox
+                            aria-label={`Select ${item.name}`}
+                            checked={selectedIds.includes(item.id)}
+                            onCheckedChange={(checked) => toggleItem(item.id, checked)}
+                          />
+                        </td>
+                        <td className="p-3 font-medium text-stone-900">{item.name}</td>
+                        <td className="p-3 text-stone-600">{item.slug}</td>
+                        <td className="max-w-xs truncate p-3 text-stone-600" title={item.description}>
+                          {item.description || "—"}
+                        </td>
+                        <td className="p-3">
+                          <Status status={item.status} />
+                        </td>
+                        <td className="p-3">
+                          <Actions
+                            edit={() => {
+                              setEditing(item);
+                              setOpen(true);
+                            }}
+                            remove={() => void destroy(item)}
+                            view={() => setViewing(item)}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="grid gap-3 p-3 md:hidden">
+                {visibleItems.map((item) => (
+                  <article className="rounded-sm border border-stone-200 p-3" key={item.id}>
+                    <div className="flex items-start justify-between gap-3">
+                      <Checkbox
+                        aria-label={`Select ${item.name}`}
+                        checked={selectedIds.includes(item.id)}
+                        onCheckedChange={(checked) => toggleItem(item.id, checked)}
+                      />
+                      <div className="min-w-0">
+                        <p className="truncate font-medium">{item.name}</p>
+                        <p className="mt-1 truncate text-xs text-stone-500">{item.slug}</p>
+                      </div>
+                      <Actions
+                        edit={() => {
+                          setEditing(item);
+                          setOpen(true);
+                        }}
+                        remove={() => void destroy(item)}
+                        view={() => setViewing(item)}
+                      />
                     </div>
-                    <Actions
-                      edit={() => {
-                        setEditing(item);
-                        setOpen(true);
-                      }}
-                      remove={() => void destroy(item)}
-                      view={() => setViewing(item)}
-                    />
-                  </div>
-                  <p className="mt-3 text-sm text-stone-600">{item.description || "No description."}</p>
-                  <div className="mt-3">
-                    <Status status={item.status} />
-                  </div>
-                </article>
-              ))}
-              {!visibleItems.length && (
-                <p className="p-4 text-center text-sm text-stone-500">No categories match your search or filter.</p>
-              )}
+                    <p className="mt-3 text-sm text-stone-600">{item.description || "No description."}</p>
+                    <div className="mt-3">
+                      <Status status={item.status} />
+                    </div>
+                  </article>
+                ))}
+                {!visibleItems.length && (
+                  <p className="p-4 text-center text-sm text-stone-500">No categories match your search or filter.</p>
+                )}
+              </div>
             </div>
-          </div>
+            <div className="mt-4 flex flex-col gap-3 text-sm text-stone-600 sm:flex-row sm:items-center sm:justify-between">
+              <p>
+                Showing {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total} categories
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-2">
+                  <span>Per page</span>
+                  <select
+                    aria-label="Categories per page"
+                    className="h-9 rounded-sm border border-[#eadfca] bg-white px-2"
+                    onChange={(event) => {
+                      setQuery({ ...query, page: 1, pageSize: Number(event.target.value) });
+                      setSelectedIds([]);
+                    }}
+                    value={pageSize}
+                  >
+                    {pageSizes.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  aria-label="Previous page"
+                  className="secondary-button"
+                  disabled={isFetching || page === 1}
+                  onClick={() => setQuery({ ...query, page: page - 1 })}
+                  type="button"
+                >
+                  Previous
+                </button>
+                <span className="min-w-20 text-center font-medium text-stone-800">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  aria-label="Next page"
+                  className="secondary-button"
+                  disabled={isFetching || page >= totalPages}
+                  onClick={() => setQuery({ ...query, page: page + 1 })}
+                  type="button"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
         )}
       </section>
       {open && <CategoryForm busy={busy} close={() => setOpen(false)} initial={editing} save={save} />}

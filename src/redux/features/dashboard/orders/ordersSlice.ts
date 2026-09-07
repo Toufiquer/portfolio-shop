@@ -15,10 +15,33 @@ export type OrderItem = Omit<Order, "createdAt" | "updatedAt" | "statusUpdatedAt
   statusUpdatedAt: string;
 };
 
+export type OrdersQuery = {
+  status?: OrderStatus;
+  page?: number;
+  pageSize?: number;
+};
+
+export type OrdersResponse = {
+  items: OrderItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
+type OrdersQueryArg = OrdersQuery | OrderStatus | "";
+
 export const ordersApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
-    getOrders: build.query<{ items: OrderItem[] }, OrderStatus | "">({
-      query: (status) => `orders/v1${status ? `?status=${status}` : ""}`,
+    getOrders: build.query<OrdersResponse, OrdersQueryArg | void>({
+      query: (params) => {
+        const values: OrdersQuery = typeof params === "string" ? { status: params || undefined } : (params ?? {});
+        const query = new URLSearchParams();
+        if (values?.status) query.set("status", values.status);
+        if (values?.page) query.set("page", String(values.page));
+        if (values?.pageSize) query.set("pageSize", String(values.pageSize));
+        const search = query.toString();
+        return `orders/v1${search ? `?${search}` : ""}`;
+      },
       providesTags: ["Order"],
     }),
     getOrder: build.query<{ item: OrderItem }, string>({

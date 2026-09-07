@@ -72,7 +72,6 @@ export async function GET(request: Request) {
   const access = await authorizeProductRequest(request, "GET");
   if ("error" in access) return access.error;
   const query = new URL(request.url).searchParams;
-  const page = integer(query.get("page"), 1, 1, 10_000);
   const limit = integer(query.get("limit"), 10, 1, 100);
   const status = query.get("status");
   const category = query.get("category")?.trim();
@@ -84,21 +83,47 @@ export async function GET(request: Request) {
     const expression = new RegExp(searchPattern(search), "i");
     filter.$or = [{ name: expression }, { slug: expression }, { sku: expression }];
   }
-  const [items, total] = await Promise.all([
+  const total = await products().countDocuments(filter);
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const requestedPage = integer(query.get("page"), 1, 1, 10_000);
+  const page = Math.min(requestedPage, totalPages);
+  const [items, summaryRows] = await Promise.all([
     products()
       .find(filter)
       .sort({ updatedAt: -1, name: 1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .toArray(),
-    products().countDocuments(filter),
+    products()
+      .aggregate<{ averagePrice: number; inStock: number; totalStock: number }>([
+        { $match: filter },
+        {
+          $group: {
+            _id: null,
+            averagePrice: {
+              $avg: {
+                $cond: [{ $gt: ["$discountPrice", 0] }, "$discountPrice", "$realPrice"],
+              },
+            },
+            inStock: { $sum: { $cond: [{ $gt: ["$stock", 0] }, 1, 0] } },
+            totalStock: { $sum: "$stock" },
+          },
+        },
+      ])
+      .toArray(),
   ]);
+  const summary = summaryRows[0] ?? { averagePrice: 0, inStock: 0, totalStock: 0 };
   return Response.json({
     items: items.map(serializeProduct),
     page,
     limit,
     total,
-    totalPages: Math.max(1, Math.ceil(total / limit)),
+    totalPages,
+    summary: {
+      averagePrice: Math.round(summary.averagePrice || 0),
+      inStock: summary.inStock,
+      totalStock: summary.totalStock,
+    },
   });
 }
 

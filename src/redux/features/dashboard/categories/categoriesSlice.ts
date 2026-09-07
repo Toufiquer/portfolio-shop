@@ -10,11 +10,26 @@ import { type Category, type CategoryInput } from "@/lib/dashboard/catalog";
 import { apiSlice } from "@/redux/api/apiSlice";
 
 export type CategoryItem = Omit<Category, "createdAt" | "updatedAt"> & { createdAt: string; updatedAt: string };
+export type CategoryListParams = {
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: CategoryItem["status"] | "";
+};
+export type CategoryListResponse = { items: CategoryItem[]; total: number; page: number; pageSize: number };
 
 export const categoriesApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
-    getCategories: build.query<{ items: CategoryItem[] }, void>({
-      query: () => "categories/v1",
+    getCategories: build.query<CategoryListResponse, CategoryListParams | void>({
+      query: (params) => {
+        const query = new URLSearchParams();
+        if (params?.page) query.set("page", String(params.page));
+        if (params?.pageSize) query.set("pageSize", String(params.pageSize));
+        if (params?.search) query.set("search", params.search);
+        if (params?.status) query.set("status", params.status);
+        const search = query.toString();
+        return `categories/v1${search ? `?${search}` : ""}`;
+      },
       providesTags: ["Category"],
     }),
     createCategory: build.mutation<{ item: CategoryItem }, CategoryInput>({

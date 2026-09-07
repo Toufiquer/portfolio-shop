@@ -16,6 +16,7 @@ import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization
 import { type Category, parseCategoryInput } from "@/lib/dashboard/catalog";
 
 const categories = () => client.db().collection<Category>("categories");
+const pageSizes = [10, 25, 50, 100];
 export const serializeCategory = (item: Category) => ({
   ...item,
   createdAt: item.createdAt.toISOString(),
@@ -40,8 +41,37 @@ export async function ensureCategoryIndexes() {
 export async function GET(request: Request) {
   const access = await authorizeCategoryRequest(request, "GET");
   if ("error" in access) return access.error;
-  const items = await categories().find({}).sort({ name: 1 }).toArray();
-  return Response.json({ items: items.map(serializeCategory) });
+  const query = new URL(request.url).searchParams;
+  const hasPagination = ["page", "pageSize", "search", "status"].some((key) => query.has(key));
+  if (!hasPagination) {
+    const items = await categories().find({}).sort({ name: 1 }).toArray();
+    return Response.json({ items: items.map(serializeCategory), total: items.length, page: 1, pageSize: items.length });
+  }
+  const requestedPageSize = Number(query.get("pageSize"));
+  const pageSize = pageSizes.includes(requestedPageSize) ? requestedPageSize : 10;
+  const status = query.get("status");
+  const filter: Record<string, unknown> = {};
+  if (status === "active" || status === "inactive") filter.status = status;
+  const search = query.get("search")?.trim();
+  if (search) {
+    const escaped = search.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&");
+    filter.$or = [
+      { name: { $regex: escaped, $options: "i" } },
+      { slug: { $regex: escaped, $options: "i" } },
+      { description: { $regex: escaped, $options: "i" } },
+    ];
+  }
+  const total = await categories().countDocuments(filter);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const requestedPage = Number.parseInt(query.get("page") ?? "1", 10);
+  const page = Math.min(totalPages, Math.max(1, Number.isFinite(requestedPage) ? requestedPage : 1));
+  const items = await categories()
+    .find(filter)
+    .sort({ name: 1 })
+    .skip((page - 1) * pageSize)
+    .limit(pageSize)
+    .toArray();
+  return Response.json({ items: items.map(serializeCategory), total, page, pageSize });
 }
 
 export async function POST(request: Request) {

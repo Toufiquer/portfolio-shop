@@ -84,3 +84,18 @@ Now pleas generate step by step of  prompt. and at the top please add a line 'Pl
 ============================================================================================================================
 ============================================================================================================================
 ============================================================================================================================
+Look at the page '/dashboard/admin/customer' and update it as the follwoing instructions. 
+1. I want three tabs. 
+A. Funnels.
+  - Remove add step form create funnel. also check api if need change then do it.
+  - render input field one by one flex-col-1.
+  - Update Demo import as (5 demo data)
+    * Name              |     description       |    Minumum Amount   |    Maximum amount
+    1 Follower          |     -----------       |    00               |    00
+    2 Interested        |     -----------       |    00               |    00
+    3 Paid Customer     |     -----------       |    00               |    1000
+    4 Premium Customer  |     -----------       |    1001             |    10000
+    5 VIP Customer      |     -----------       |    10001            |    ...
+
+B. Display as Table View. Add pagination so user can handle 1M users data.  also add Bulk Update Status, Bulk Delete. Also add two button one for Export user Data as xl and Import data xl. after import please check and then Import. [if found User have only Name and  number then others field is empty this data will pass and import.]
+C. A OverView Tabs. Where I want to see my all users data and it's summery. also include which funnel have how many users. 

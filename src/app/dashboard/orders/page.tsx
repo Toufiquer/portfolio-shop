@@ -28,6 +28,7 @@ import {
 } from "@/redux/features/dashboard/orders/ordersSlice";
 
 const bdt = (value: number) => `৳${value.toLocaleString("en-BD")}`;
+const pageSizes = [10, 25, 50, 100] as const;
 const displayDate = (value: string) =>
   new Intl.DateTimeFormat("en-BD", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 const errorMessage = (error: unknown) =>
@@ -40,7 +41,13 @@ const errorMessage = (error: unknown) =>
 
 export default function OrdersPage() {
   const [status, setStatus] = useState<OrderStatus | "">("");
-  const { data, error, isFetching, isLoading, refetch } = useGetOrdersQuery(status);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<(typeof pageSizes)[number]>(10);
+  const { data, error, isFetching, isLoading, refetch } = useGetOrdersQuery({
+    status: status || undefined,
+    page,
+    pageSize,
+  });
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkStatus, setBulkStatus] = useState<OrderStatus>("confirmed");
   const [editing, setEditing] = useState<OrderItem | null>(null);
@@ -55,11 +62,20 @@ export default function OrdersPage() {
   const [updateStatus, updateStatusState] = useUpdateOrderStatusMutation();
   const confirmDelete = useConfirmDelete();
   const items = data?.items ?? [];
+  const total = data?.total ?? 0;
+  const activePage = data?.page ?? page;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const allSelected = items.length > 0 && items.every((item) => selectedIds.includes(item.id));
   const busy = bulkRemoveState.isLoading || bulkUpdateStatusState.isLoading || updateStatusState.isLoading;
   const updateFilter = (value: OrderStatus | "") => {
     setSelectedIds([]);
     setStatus(value);
+    setPage(1);
+  };
+  const updatePageSize = (value: (typeof pageSizes)[number]) => {
+    setSelectedIds([]);
+    setPageSize(value);
+    setPage(1);
   };
   const toggle = (id: string, checked: boolean) =>
     setSelectedIds((current) => (checked ? [...new Set([...current, id])] : current.filter((value) => value !== id)));
@@ -194,102 +210,143 @@ export default function OrdersPage() {
           </div>
         ) : null}
         {items.length ? (
-          <div className="mt-5 overflow-x-auto rounded-sm border border-[#eadfca]">
-            <table className="min-w-[900px] w-full text-left text-sm">
-              <thead className="bg-[#fffaf0] text-stone-600">
-                <tr>
-                  <th className="w-12 p-3">
-                    <Checkbox
-                      aria-label="Select all orders"
-                      checked={allSelected}
-                      onCheckedChange={(checked) => setSelectedIds(checked ? items.map((item) => item.id) : [])}
-                    />
-                  </th>
-                  <th className="p-3">Order</th>
-                  <th className="p-3">Customer</th>
-                  <th className="p-3">Products</th>
-                  <th className="p-3">Total</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Created</th>
-                  <th className="p-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((order) => (
-                  <tr className="border-t border-stone-100 align-top" key={order.id}>
-                    <td className="p-3">
+          <>
+            <div className="mt-5 overflow-x-auto rounded-sm border border-[#eadfca]">
+              <table className="min-w-[900px] w-full text-left text-sm">
+                <thead className="bg-[#fffaf0] text-stone-600">
+                  <tr>
+                    <th className="w-12 p-3">
                       <Checkbox
-                        aria-label={`Select order ${order.id}`}
-                        checked={selectedIds.includes(order.id)}
-                        onCheckedChange={(checked) => toggle(order.id, checked)}
+                        aria-label="Select all orders"
+                        checked={allSelected}
+                        onCheckedChange={(checked) => setSelectedIds(checked ? items.map((item) => item.id) : [])}
                       />
-                    </td>
-                    <td className="p-3">
-                      <button
-                        className="cursor-pointer font-mono text-xs font-semibold text-amber-800 hover:underline text-left"
-                        onClick={() => setViewingOrder(order)}
-                        type="button"
-                      >
-                        {order.id}
-                      </button>
-                    </td>
-                    <td className="p-3">
-                      <p className="font-medium text-stone-900">{order.customer.name}</p>
-                      <p className="text-xs text-stone-500">{order.customer.email}</p>
-                    </td>
-                    <td className="p-3">
-                      <ul className="space-y-1">
-                        {order.items.map((item) => (
-                          <li key={item.productId}>
-                            {item.name} · {bdt(item.unitPrice)} × {item.quantity}
-                          </li>
-                        ))}
-                      </ul>
-                    </td>
-                    <td className="p-3 font-semibold text-stone-900">{bdt(order.total)}</td>
-                    <td className="p-3 capitalize">{order.status}</td>
-                    <td className="p-3 text-stone-600">{displayDate(order.createdAt)}</td>
-                    <td className="p-3">
-                      <div className="flex justify-end gap-1">
+                    </th>
+                    <th className="p-3">Order</th>
+                    <th className="p-3">Customer</th>
+                    <th className="p-3">Products</th>
+                    <th className="p-3">Total</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Created</th>
+                    <th className="p-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {items.map((order) => (
+                    <tr className="border-t border-stone-100 align-top" key={order.id}>
+                      <td className="p-3">
+                        <Checkbox
+                          aria-label={`Select order ${order.id}`}
+                          checked={selectedIds.includes(order.id)}
+                          onCheckedChange={(checked) => toggle(order.id, checked)}
+                        />
+                      </td>
+                      <td className="p-3">
                         <button
-                          aria-label={`View order ${order.id}`}
-                          className="grid size-8 cursor-pointer place-items-center rounded-sm text-stone-600 transition hover:bg-amber-100 hover:text-stone-900"
+                          className="cursor-pointer font-mono text-xs font-semibold text-amber-800 hover:underline text-left"
                           onClick={() => setViewingOrder(order)}
                           type="button"
                         >
-                          <Eye className="size-4" />
+                          {order.id}
                         </button>
-                        <button
-                          aria-label={`Edit status for ${order.id}`}
-                          className="grid size-8 place-items-center rounded-sm hover:bg-amber-100"
-                          onClick={() => setEditing(order)}
-                          type="button"
-                        >
-                          <Pencil className="size-4" />
-                        </button>
-                        <button
-                          aria-label={`Delete order ${order.id}`}
-                          className="grid size-8 place-items-center rounded-sm text-red-700 hover:bg-red-50"
-                          onClick={() => void deleteOrder(order)}
-                          type="button"
-                        >
-                          <Trash2 className="size-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      </td>
+                      <td className="p-3">
+                        <p className="font-medium text-stone-900">{order.customer.name}</p>
+                        <p className="text-xs text-stone-500">{order.customer.email}</p>
+                      </td>
+                      <td className="p-3">
+                        <ul className="space-y-1">
+                          {order.items.map((item) => (
+                            <li key={item.productId}>
+                              {item.name} · {bdt(item.unitPrice)} × {item.quantity}
+                            </li>
+                          ))}
+                        </ul>
+                      </td>
+                      <td className="p-3 font-semibold text-stone-900">{bdt(order.total)}</td>
+                      <td className="p-3 capitalize">{order.status}</td>
+                      <td className="p-3 text-stone-600">{displayDate(order.createdAt)}</td>
+                      <td className="p-3">
+                        <div className="flex justify-end gap-1">
+                          <button
+                            aria-label={`View order ${order.id}`}
+                            className="grid size-8 cursor-pointer place-items-center rounded-sm text-stone-600 transition hover:bg-amber-100 hover:text-stone-900"
+                            onClick={() => setViewingOrder(order)}
+                            type="button"
+                          >
+                            <Eye className="size-4" />
+                          </button>
+                          <button
+                            aria-label={`Edit status for ${order.id}`}
+                            className="grid size-8 place-items-center rounded-sm hover:bg-amber-100"
+                            onClick={() => setEditing(order)}
+                            type="button"
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                          <button
+                            aria-label={`Delete order ${order.id}`}
+                            className="grid size-8 place-items-center rounded-sm text-red-700 hover:bg-red-50"
+                            onClick={() => void deleteOrder(order)}
+                            type="button"
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="mt-4 flex flex-col gap-3 text-sm text-stone-600 sm:flex-row sm:items-center sm:justify-between">
+              <p>
+                Showing {(activePage - 1) * pageSize + 1}–{Math.min(activePage * pageSize, total)} of {total} orders
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex items-center gap-2">
+                  <span>Per page</span>
+                  <select
+                    aria-label="Orders per page"
+                    className="h-9 rounded-sm border border-[#eadfca] bg-white px-2"
+                    onChange={(event) => updatePageSize(Number(event.target.value) as (typeof pageSizes)[number])}
+                    value={pageSize}
+                  >
+                    {pageSizes.map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  aria-label="Previous page"
+                  className="secondary-button"
+                  disabled={isFetching || activePage === 1}
+                  onClick={() => setPage(activePage - 1)}
+                  type="button"
+                >
+                  Previous
+                </button>
+                <span className="min-w-20 text-center font-medium text-stone-800">
+                  Page {activePage} of {totalPages}
+                </span>
+                <button
+                  aria-label="Next page"
+                  className="secondary-button"
+                  disabled={isFetching || activePage >= totalPages}
+                  onClick={() => setPage(activePage + 1)}
+                  type="button"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
         ) : null}
       </section>
       {editing ? <OrderStatusDialog close={() => setEditing(null)} item={editing} save={updateStatus} /> : null}
-      <OrderDetailModal
-        isOpen={Boolean(viewingOrder)}
-        onClose={() => setViewingOrder(null)}
-        order={viewingOrder}
-      />
+      <OrderDetailModal isOpen={Boolean(viewingOrder)} onClose={() => setViewingOrder(null)} order={viewingOrder} />
       <OrderLimitModal isOpen={orderLimitOpen} onClose={() => setOrderLimitOpen(false)} />
     </main>
   );

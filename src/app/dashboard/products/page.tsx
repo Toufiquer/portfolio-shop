@@ -11,8 +11,6 @@
 import {
   AlertCircle,
   CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
   ExternalLink,
   Eye,
   ImagePlus,
@@ -69,6 +67,7 @@ const errorMessage = (error: unknown, fallback: string) =>
     ? (error as { data: { error: string } }).data.error
     : fallback;
 const initialQuery: ProductListParams = { limit: 10, page: 1, search: "", status: "" };
+const pageSizes = [10, 25, 50, 100] as const;
 
 export type DemoProgress = {
   active: boolean;
@@ -406,9 +405,11 @@ export default function ProductsPage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className="secondary-button" disabled={busy} onClick={() => setDemoModalOpen(true)} type="button">
-              <Sparkles className="h-4 w-4 text-amber-600" /> Demo products
-            </button>
+            {data && data.total <= 1 ? (
+              <button className="secondary-button" disabled={busy} onClick={() => setDemoModalOpen(true)} type="button">
+                <Sparkles className="h-4 w-4 text-amber-600" /> Demo products
+              </button>
+            ) : null}
             <button className="primary-button" onClick={openCreate} type="button">
               <Plus className="h-4 w-4" /> Add product
             </button>
@@ -643,29 +644,48 @@ export default function ProductsPage() {
             </div>
           </div>
         )}
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm text-stone-600">
-          <span>{data ? `${data.total} product${data.total === 1 ? "" : "s"}` : ""}</span>
-          <div className="flex items-center gap-2">
+        <div className="mt-5 flex flex-col gap-3 text-sm text-stone-600 sm:flex-row sm:items-center sm:justify-between">
+          <span>
+            {data
+              ? `Showing ${data.total ? ((data.page - 1) * data.limit + 1).toLocaleString() : 0}–${Math.min(data.page * data.limit, data.total).toLocaleString()} of ${data.total.toLocaleString()} products`
+              : ""}
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2">
+              <span>Per page</span>
+              <select
+                aria-label="Products per page"
+                className="h-9 rounded-sm border border-[#eadfca] bg-white px-2"
+                onChange={(event) => updateQuery({ ...query, limit: Number(event.target.value), page: 1 })}
+                value={query.limit ?? 10}
+              >
+                {pageSizes.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </label>
             <button
               aria-label="Previous page"
-              className="icon-button"
+              className="secondary-button"
               disabled={!data || data.page <= 1}
               onClick={() => updateQuery({ ...query, page: Math.max(1, (query.page ?? 1) - 1) })}
               type="button"
             >
-              <ChevronLeft className="h-4 w-4" />
+              Previous
             </button>
-            <span>
-              {data?.page ?? 1} / {data?.totalPages ?? 1}
+            <span className="min-w-20 text-center font-medium text-stone-800">
+              Page {data?.page ?? 1} of {data?.totalPages ?? 1}
             </span>
             <button
               aria-label="Next page"
-              className="icon-button"
+              className="secondary-button"
               disabled={!data || data.page >= data.totalPages}
               onClick={() => updateQuery({ ...query, page: (query.page ?? 1) + 1 })}
               type="button"
             >
-              <ChevronRight className="h-4 w-4" />
+              Next
             </button>
             {isFetching && <span className="text-xs text-stone-400">Updating…</span>}
           </div>

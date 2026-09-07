@@ -34,6 +34,7 @@ export async function PATCH(r: Request, { params }: { params: Promise<{ id: stri
     const description = typeof b.description === "string" ? b.description.trim() : "";
     const minimumAmount = Number(b.minimumAmount);
     const maximumAmount = b.maximumAmount == null || b.maximumAmount === "" ? null : Number(b.maximumAmount);
+    const color = typeof b.color === "string" && /^#[0-9a-f]{6}$/i.test(b.color) ? b.color : "#d97706";
     if (
       !name ||
       name.length > 120 ||
@@ -44,16 +45,28 @@ export async function PATCH(r: Request, { params }: { params: Promise<{ id: stri
     )
       return Response.json({ error: "Invalid funnel values." }, { status: 400 });
     const stages = funnelStages(b.stages);
+    const position = Number.isInteger(b.position) && b.position >= 0 ? b.position : undefined;
     const x = await funnelCollection().findOneAndUpdate(
       { id },
-      { $set: { name, description, minimumAmount, maximumAmount, stages, updatedAt: new Date() } },
+      {
+        $set: {
+          name,
+          description,
+          minimumAmount,
+          maximumAmount,
+          color,
+          stages,
+          ...(position === undefined ? {} : { position }),
+          updatedAt: new Date(),
+        },
+      },
       { returnDocument: "after" },
     );
     return x
       ? Response.json({ item: serializeFunnel(x) })
       : Response.json({ error: "Funnel not found." }, { status: 404 });
   }
-  const allowed = ["lead", "active", "inactive", "archived"];
+  const allowed = ["active", "inactive"];
   const update = { ...b, updatedAt: new Date() };
   delete update.id;
   delete update.metrics;
@@ -82,7 +95,7 @@ export async function DELETE(r: Request, { params }: { params: Promise<{ id: str
   }
   const x = await customerCollection().findOneAndUpdate(
     { id },
-    { $set: { customerStatus: "archived", updatedAt: new Date() } },
+    { $set: { customerStatus: "inactive", updatedAt: new Date() } },
     { returnDocument: "after" },
   );
   return x ? Response.json({ item: x }) : Response.json({ error: "Customer not found." }, { status: 404 });

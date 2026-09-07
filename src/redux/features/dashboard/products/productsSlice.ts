@@ -23,6 +23,7 @@ export type ProductListResponse = {
   limit: number;
   total: number;
   totalPages: number;
+  summary: { averagePrice: number; inStock: number; totalStock: number };
 };
 
 function queryString(params: ProductListParams) {

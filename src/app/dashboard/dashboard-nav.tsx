@@ -51,7 +51,7 @@ function SidebarLink({
   pathname: string;
   onNavigate: () => void;
 }) {
-  const [childrenOpen, setChildrenOpen] = useState(true);
+  const [childrenOpen, setChildrenOpen] = useState(false);
   const active = pathname === item.url || (item.url !== "/dashboard" && pathname.startsWith(`${item.url}/`));
   const hasChildren = item.children.length > 0;
   const icon = iconMap[item.icon] ?? <PanelLeft size={16} />;

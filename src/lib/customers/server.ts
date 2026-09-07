@@ -21,6 +21,8 @@ import { type Order } from "@/lib/dashboard/orders";
 export type FunnelStage = { id: string; name: string };
 export type Funnel = {
   id: string;
+  position?: number;
+  color?: string;
   name: string;
   description: string;
   minimumAmount: number;
@@ -45,6 +47,7 @@ export type CustomerRecord = {
   createdAt: Date;
   updatedAt: Date;
 };
+export type SpendRecord = { id: string; funnelId: string; amount: number; createdAt: Date };
 const db = () => client.db();
 const normalize = (v: unknown) => (typeof v === "string" ? v.trim().toLowerCase() : "");
 export const serialize = (v: Date | null) => v?.toISOString() ?? null;
@@ -77,6 +80,7 @@ export function metricsFor(c: CustomerRecord) {
 }
 export const customerCollection = () => db().collection<CustomerRecord>("customers");
 export const funnelCollection = () => db().collection<Funnel>("customer-funnels");
+export const spendCollection = () => db().collection<SpendRecord>("customer-spends");
 export const now = () => new Date();
 export const id = () => randomUUID();
 export const funnelStages = (value: unknown): FunnelStage[] =>
@@ -95,6 +99,8 @@ export const funnelStages = (value: unknown): FunnelStage[] =>
     : [];
 export const serializeFunnel = (x: Funnel) => ({
   ...x,
+  position: Number.isInteger(x.position) ? x.position : 0,
+  color: /^#[0-9a-f]{6}$/i.test(x.color ?? "") ? x.color : "#d97706",
   stages: funnelStages(x.stages),
   createdAt: x.createdAt.toISOString(),
   updatedAt: x.updatedAt.toISOString(),
