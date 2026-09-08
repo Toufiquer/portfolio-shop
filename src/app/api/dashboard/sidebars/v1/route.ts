@@ -71,7 +71,6 @@ export async function GET(request: Request) {
         .toArray()
     ).map(responseItem);
   const allowedIds = new Set(authorization.allowedSidebarIds);
-  const canManageSidebar = items.some((item) => item.url === "/dashboard/developer/sidebar" && allowedIds.has(item.id));
   const visibleIds = new Set(allowedIds);
   let changed = true;
   while (changed) {
@@ -84,7 +83,7 @@ export async function GET(request: Request) {
     }
   }
   const payload = {
-    items: items.filter((item) => authorization.bypassed || canManageSidebar || visibleIds.has(item.id)),
+    items: items.filter((item) => authorization.bypassed || visibleIds.has(item.id)),
   };
   if (!cached) await setCache(redisKeys.sidebars, { items });
   return Response.json(payload);

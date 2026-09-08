@@ -134,7 +134,7 @@ export function DashboardNav() {
   return (
     <>
       <aside
-        className={`dashboard-sidebar fixed inset-y-0 left-0 z-[60] flex w-64 border-r border-[#eadfca] bg-[#fffaf0] transition-[transform,opacity,box-shadow] duration-500 ease-[cubic-bezier(.22,1,.36,1)] motion-reduce:transition-none md:pointer-events-auto md:sticky md:top-[65px] md:h-[calc(100vh-65px)] md:translate-x-0 md:opacity-100 ${mobileOpen ? "translate-x-0 opacity-100" : "pointer-events-none -translate-x-full opacity-0"} ${expanded ? "md:w-64" : "md:w-[72px]"}`}
+        className={`dashboard-sidebar fixed inset-y-0 left-0 z-[60] flex w-64 border-r border-[#eadfca] bg-[#fffaf0] transition-[transform,opacity,box-shadow] duration-500 ease-[cubic-bezier(.22,1,.36,1)] motion-reduce:transition-none md:z-40 md:pointer-events-auto md:sticky md:top-[65px] md:h-[calc(100vh-65px)] md:translate-x-0 md:opacity-100 ${mobileOpen ? "translate-x-0 opacity-100" : "pointer-events-none -translate-x-full opacity-0"} ${expanded ? "md:w-64" : "md:w-[72px]"}`}
         onMouseEnter={() => collapsed && setHoverExpanded(true)}
         onMouseLeave={() => setHoverExpanded(false)}
       >

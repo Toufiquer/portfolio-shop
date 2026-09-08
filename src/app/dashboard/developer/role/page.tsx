@@ -647,7 +647,7 @@ function RoleModal({
         </div>
       </form>
       {iconOpen && (
-        <div className="fixed inset-0 z-[60] grid place-items-center bg-stone-950/35 p-4">
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-stone-950/35 p-4 backdrop-blur-sm">
           <section className="w-full max-w-2xl animate-[modal-enter_.7s_cubic-bezier(.22,1,.36,1)] rounded-sm border border-[#eadfca] bg-[#fffaf0] p-5 shadow-2xl">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Choose Icon</h3>
@@ -685,45 +685,107 @@ function RoleModal({
   );
 }
 function RoleView({ close, role, sidebars }: { close: () => void; role: RoleItem; sidebars: SidebarItem[] }) {
-  const access = orderedSidebars(sidebars).filter(({ sidebar }) =>
-    Object.values(role.permissions[sidebar.id] ?? emptyPermission).some(Boolean),
-  );
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/25 p-4 backdrop-blur-sm">
-      <section className="max-h-[calc(100vh-8rem)] md:max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto animate-[modal-enter_.7s_cubic-bezier(.22,1,.36,1)] rounded-sm border border-[#eadfca] bg-[#fffaf0] p-5 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-sm bg-amber-100 text-amber-900">
-              {iconMap[role.icon]}
-            </span>
-            <h2 className="text-lg font-semibold">{role.name}</h2>
-          </div>
+      <section className="flex max-h-[calc(100vh-8rem)] md:max-h-[calc(100vh-2rem)] w-full max-w-3xl animate-[modal-enter_.7s_cubic-bezier(.22,1,.36,1)] flex-col overflow-hidden rounded-sm border border-[#eadfca] bg-[#fffaf0] shadow-2xl">
+        <div className="flex items-center justify-between border-b border-[#eadfca] p-5">
+          <h2 className="text-xl font-semibold">Role</h2>
           <button className="cursor-pointer" onClick={close} type="button">
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div
-          className="mt-5 rounded-sm border border-stone-200 bg-white p-3 text-sm text-stone-700"
-          dangerouslySetInnerHTML={{ __html: role.responsible || "—" }}
-        />
-        <div className="mt-4 overflow-hidden rounded-sm border border-stone-200 bg-white">
-          {access.map(({ sidebar, depth }) => (
+        <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-7">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Role Name">
+              <input aria-readonly className="input" readOnly value={role.name} />
+            </Field>
+            <Field label="Icon">
+              <div className="flex items-center gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-sm bg-amber-100 text-amber-900">
+                  {iconMap[role.icon]}
+                </span>
+              </div>
+            </Field>
+          </div>
+          <Field label="Responsible">
             <div
-              className="relative border-t border-stone-100 px-3 py-2.5 first:border-t-0"
-              key={sidebar.id}
-              style={{ paddingLeft: 12 + depth * 28 }}
-            >
-              {depth > 0 && (
-                <span
-                  aria-hidden="true"
-                  className="absolute bottom-0 top-0 border-l-2 border-amber-200"
-                  style={{ left: 12 + (depth - 1) * 28 }}
-                />
-              )}
-              <p className="truncate text-sm font-medium text-stone-800">{sidebar.name}</p>
-              <p className="truncate text-[10px] text-stone-400">{sidebar.url}</p>
+              aria-readonly="true"
+              className="min-h-28 rounded-sm border border-stone-200 bg-white p-3 text-sm text-stone-700"
+              dangerouslySetInnerHTML={{ __html: role.responsible || "—" }}
+            />
+          </Field>
+          <div className="mt-5 overflow-hidden rounded-sm border border-stone-200">
+            <div className="flex items-center justify-between gap-3 bg-[#f8f0df] px-3 py-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-stone-500">Access</span>
+              <span className="text-xs text-stone-500">View only</span>
             </div>
-          ))}
+            <div className="grid grid-cols-[minmax(0,1fr)_repeat(5,2rem)] gap-1 border-t border-stone-200 bg-white px-3 py-2 text-[10px] font-semibold uppercase text-stone-500">
+              <span>Sidebar</span>
+              <span>All</span>
+              <span>R</span>
+              <span>C</span>
+              <span>U</span>
+              <span>D</span>
+            </div>
+            {orderedSidebars(sidebars).map(({ sidebar, depth }) => {
+              const current = role.permissions[sidebar.id] ?? emptyPermission;
+              const all = current.read && current.create && current.update && current.delete;
+              return (
+                <div
+                  className="relative grid grid-cols-[minmax(0,1fr)_repeat(5,2rem)] gap-1 border-t border-stone-100 px-3 py-2.5 text-sm"
+                  key={sidebar.id}
+                  style={{ paddingLeft: 12 + depth * 28 }}
+                >
+                  {depth > 0 && (
+                    <span
+                      aria-hidden="true"
+                      className="absolute bottom-0 left-3 top-0 border-l-2 border-amber-200"
+                      style={{ left: 12 + (depth - 1) * 28 }}
+                    />
+                  )}
+                  <span className="min-w-0">
+                    <span className="block truncate font-medium">{sidebar.name}</span>
+                    <span className="block truncate text-[10px] font-normal text-stone-400">{sidebar.url}</span>
+                  </span>
+                  <input aria-label={`${sidebar.name} all permissions`} checked={all} disabled type="checkbox" />
+                  <input
+                    aria-label={`${sidebar.name} read permission`}
+                    checked={current.read}
+                    disabled
+                    type="checkbox"
+                  />
+                  <input
+                    aria-label={`${sidebar.name} create permission`}
+                    checked={current.create}
+                    disabled
+                    type="checkbox"
+                  />
+                  <input
+                    aria-label={`${sidebar.name} update permission`}
+                    checked={current.update}
+                    disabled
+                    type="checkbox"
+                  />
+                  <input
+                    aria-label={`${sidebar.name} delete permission`}
+                    checked={current.delete}
+                    disabled
+                    type="checkbox"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="border-t border-[#eadfca] bg-white p-4 sm:px-7">
+          <button
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-sm border border-[#eadfca] bg-amber-50 px-2.5 py-1.5 text-xs font-semibold text-amber-950 shadow-sm transition duration-700 hover:-translate-y-0.5 hover:bg-amber-100 hover:shadow-lg"
+            onClick={close}
+            type="button"
+          >
+            <X className="h-4 w-4" />
+            Close
+          </button>
         </div>
       </section>
     </div>

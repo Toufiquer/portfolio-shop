@@ -24,7 +24,7 @@ import {
 } from "@/redux/features/dashboard/pages/pagesSlice";
 function Modal({ title, children, close }: { title: string; children: React.ReactNode; close: () => void }) {
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center bg-stone-950/30 p-4">
+    <div className="fixed inset-0 z-[70] grid place-items-center bg-stone-950/30 p-4 backdrop-blur-sm">
       <section className="w-full max-w-lg rounded-sm bg-white shadow-2xl">
         <header className="flex justify-between border-b p-4 font-semibold">
           {title}

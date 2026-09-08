@@ -276,7 +276,7 @@ function SidebarModal({
         </button>
       </form>
       {iconOpen && (
-        <div className="fixed inset-0 z-[60] grid place-items-center bg-stone-950/35 p-4">
+        <div className="fixed inset-0 z-[60] grid place-items-center bg-stone-950/35 p-4 backdrop-blur-sm">
           <section className="max-h-[calc(100vh-2rem)] w-full max-w-2xl overflow-y-auto rounded-sm border border-[#eadfca] bg-[#fffaf0] p-5 shadow-2xl">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Choose Icon</h3>

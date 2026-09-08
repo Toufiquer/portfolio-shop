@@ -211,7 +211,7 @@ export default function MenuPage() {
         </div>
       </section>
       {picker ? (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/30 p-4 ">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/30 p-4 backdrop-blur-sm">
           <section className="w-full max-w-[80vw] rounded-sm border border-[#eadfca] bg-[#fffaf0] p-5 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <div>

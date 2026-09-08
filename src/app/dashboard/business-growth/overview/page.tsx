@@ -7,6 +7,6 @@
 
 import { BusinessGrowthPage } from "../page";
 
-export default function BusinessGrowthSpendPage() {
-  return <BusinessGrowthPage section="spend" />;
+export default function BusinessGrowthOverviewPage() {
+  return <BusinessGrowthPage section="overview" />;
 }

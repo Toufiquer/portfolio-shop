@@ -280,7 +280,7 @@ export default function Database() {
         </div>
 
         {selected && mode && (
-          <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/30 p-4">
+          <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/30 p-4 backdrop-blur-sm">
             <section aria-modal="true" role="dialog" className="w-full max-w-lg rounded-sm bg-white p-5 shadow-2xl">
               {mode === "view" ? (
                 <>
@@ -346,7 +346,7 @@ export default function Database() {
         )}
 
         {confirmBulkDelete && (
-          <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/30 p-4">
+          <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/30 p-4 backdrop-blur-sm">
             <section aria-modal="true" role="dialog" className="w-full max-w-md rounded-sm bg-white p-5 shadow-2xl">
               <h1 className="text-lg font-semibold">Delete selected submissions</h1>
               <p className="mt-2 text-sm text-stone-600">

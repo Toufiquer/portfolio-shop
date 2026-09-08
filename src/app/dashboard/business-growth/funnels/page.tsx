@@ -5,7 +5,7 @@
 |-----------------------------------------
 */
 
-import BusinessGrowthPage from "../page";
+import { BusinessGrowthPage } from "../page";
 
 export default function BusinessGrowthFunnelsPage() {
   return <BusinessGrowthPage section="funnels" />;

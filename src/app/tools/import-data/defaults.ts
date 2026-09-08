@@ -52,10 +52,10 @@ export const sidebarDefaults: ImportSidebarDefault[] = [
   },
   {
     name: "Business Growth",
-    url: "/dashboard/business-growth/",
+    url: "/dashboard/business-growth",
     icon: "Users",
     children: [
-      { name: "Overview", url: "/dashboard/business-growth", icon: "Users" },
+      { name: "Overview", url: "/dashboard/business-growth/overview", icon: "Users" },
       { name: "Funnels", url: "/dashboard/business-growth/funnels", icon: "Workflow" },
       { name: "Customer", url: "/dashboard/business-growth/customer", icon: "Users" },
       { name: "Spend", url: "/dashboard/business-growth/spend", icon: "Wallet" },
@@ -67,7 +67,7 @@ export const sidebarDefaults: ImportSidebarDefault[] = [
   { name: "Profile", url: "/dashboard/profile", icon: "User" },
   { name: "Products", url: "/dashboard/products", icon: "Package" },
   { name: "Category", url: "/dashboard/category", icon: "ShoppingCart" },
-  { name: "Orders", url: "/dashboard/orders", icon: "DollarSign" },
+  { name: "Orders", url: "/dashboard/orders", icon: "FileText" },
   { name: "Install", url: "/dashboard/install", icon: "Download" },
 ];
 export const pageDefaults: ImportPageDefault[] = [

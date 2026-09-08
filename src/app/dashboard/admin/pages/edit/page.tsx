@@ -65,7 +65,7 @@ import {
 } from "@/redux/features/dashboard/pages/pagesSlice";
 function Modal({ title, close, children }: { title: string; close: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-center bg-stone-950/30 p-4">
+    <div className="fixed inset-0 z-[70] grid place-items-center bg-stone-950/30 p-4 backdrop-blur-sm">
       <section className="max-h-[90vh] w-full max-w-3xl overflow-auto rounded-sm bg-white shadow-2xl">
         <header className="flex justify-between border-b p-4 font-semibold">
           {title}
@@ -89,7 +89,7 @@ function FullScreenEditModal({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-[80] h-screen w-full bg-stone-950/30 p-0">
+    <div className="fixed inset-0 z-[80] h-screen w-full bg-stone-950/30 p-0 backdrop-blur-sm">
       <section aria-modal="true" role="dialog" className="flex h-screen w-full flex-col bg-[#fffaf0]">
         <header className="flex flex-none items-center justify-between gap-3 border-b border-[#eadfca] bg-white px-4 py-3 sm:px-6">
           <h2 className="font-semibold text-stone-900">{title}</h2>
@@ -152,7 +152,7 @@ function TemplatePicker<T extends string>({
 
   return (
     <>
-      <div className="fixed inset-0 z-[70] h-screen w-full bg-stone-950/30 p-0">
+      <div className="fixed inset-0 z-[70] h-screen w-full bg-stone-950/30 p-0 backdrop-blur-sm">
         <section aria-modal="true" role="dialog" className="flex h-screen w-full flex-col bg-[#fffaf0]">
           <header className="flex flex-none flex-wrap items-center justify-between gap-3 border-b border-[#eadfca] bg-white px-4 py-3 sm:px-6">
             <div>
@@ -271,7 +271,7 @@ function TemplatePicker<T extends string>({
       </div>
 
       {preview && (
-        <div className="fixed inset-0 z-[80] h-screen w-full bg-stone-950/40 p-0">
+        <div className="fixed inset-0 z-[80] h-screen w-full bg-stone-950/40 p-0 backdrop-blur-sm">
           <section aria-modal="true" role="dialog" className="flex h-screen w-full flex-col bg-[#fffaf0]">
             <header className="flex flex-none items-center justify-between gap-3 border-b border-[#eadfca] bg-white px-4 py-3 sm:px-6">
               <div>

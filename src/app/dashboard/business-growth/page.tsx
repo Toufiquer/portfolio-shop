@@ -17,13 +17,13 @@ import {
   Loader2,
   Plus,
   Search,
-  SlidersHorizontal,
   Trash2,
   Users,
 } from "lucide-react";
 import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 
+import { RoleDashboardHome } from "@/components/dashboard-ui/RoleDashboardHome";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { toast } from "@/components/ui/global-toast";
 import { LoadingState } from "@/components/ui/loading-state";
@@ -68,6 +68,14 @@ export type BusinessGrowthSection = "funnels" | "customer" | "overview" | "spend
 type Tab = "funnels" | "customers" | "overview" | "spend" | "admin" | "task";
 type AdminSubTab = "councillors" | "customers";
 type ImportRow = Partial<Customer> & { number?: string };
+const sectionHeadings: Record<BusinessGrowthSection, { title: string; description: string }> = {
+  overview: { title: "Business Growth Overview", description: "Track customer journeys, contacts, and performance." },
+  funnels: { title: "Customer Funnels", description: "Organize customer journeys with clear funnel stages." },
+  customer: { title: "Customer Management", description: "Manage customer contacts, status, and funnel progress." },
+  spend: { title: "Marketing Spend", description: "Track campaign costs and marketing performance." },
+  councillor: { title: "Councillor Management", description: "Manage councillor assignments and customer support." },
+  task: { title: "Customer Tasks", description: "Review assigned customers and record follow-up work." },
+};
 const pageSizes = [10, 25, 50, 100] as const;
 const demoFunnels = [
   ["Follower", "", 0, 0, "#0ea5e9"],
@@ -96,20 +104,23 @@ const errorMessage = (error: unknown, fallback: string) =>
   typeof (error as { data?: { error?: string } }).data?.error === "string"
     ? (error as { data: { error: string } }).data.error
     : fallback;
-export default function BusinessGrowthPage({ section = "overview" }: { section?: BusinessGrowthSection }) {
+export default function BusinessGrowthHomePage() {
+  return <RoleDashboardHome role="businessGrowth" />;
+}
+
+export function BusinessGrowthPage({ section = "overview" }: { section?: BusinessGrowthSection }) {
   const tab: Tab = section === "customer" ? "customers" : section === "councillor" ? "admin" : section;
+  const heading = sectionHeadings[section];
   const [search, setSearch] = useState(""),
     [status, setStatus] = useState<CustomerStatus>(),
     [funnelFilter, setFunnelFilter] = useState(""),
-    [filterOpen, setFilterOpen] = useState(false),
-    [draftStatus, setDraftStatus] = useState<CustomerStatus | undefined>(),
-    [draftFunnelFilter, setDraftFunnelFilter] = useState(""),
     [page, setPage] = useState(1),
     [pageSize, setPageSize] = useState<(typeof pageSizes)[number]>(10),
     [funnelPage, setFunnelPage] = useState(1),
     [funnelPageSize, setFunnelPageSize] = useState<(typeof pageSizes)[number]>(10),
     [spendPage, setSpendPage] = useState(1),
     [spendPageSize, setSpendPageSize] = useState<(typeof pageSizes)[number]>(10),
+    [spendFunnelFilter, setSpendFunnelFilter] = useState(""),
     [selected, setSelected] = useState<string[]>([]),
     [bulkStatus, setBulkStatus] = useState<CustomerStatus>("active"),
     [bulkStatusOpen, setBulkStatusOpen] = useState(false),
@@ -218,9 +229,15 @@ export default function BusinessGrowthPage({ section = "overview" }: { section?:
   const activeFunnelPage = Math.min(funnelPage, funnelTotalPages);
   const visibleFunnels = funnelItems.slice((activeFunnelPage - 1) * funnelPageSize, activeFunnelPage * funnelPageSize);
   const spendItems = spends?.items ?? [];
-  const spendTotalPages = Math.max(1, Math.ceil(spendItems.length / spendPageSize));
+  const filteredSpendItems = spendFunnelFilter
+    ? spendItems.filter((item) => item.funnelId === spendFunnelFilter)
+    : spendItems;
+  const spendTotalPages = Math.max(1, Math.ceil(filteredSpendItems.length / spendPageSize));
   const activeSpendPage = Math.min(spendPage, spendTotalPages);
-  const visibleSpends = spendItems.slice((activeSpendPage - 1) * spendPageSize, activeSpendPage * spendPageSize);
+  const visibleSpends = filteredSpendItems.slice(
+    (activeSpendPage - 1) * spendPageSize,
+    activeSpendPage * spendPageSize,
+  );
   const workspaceBusy = workspaceLoading || workspaceFetching;
   const funnelsBusy =
     funnelsLoading ||
@@ -490,8 +507,15 @@ export default function BusinessGrowthPage({ section = "overview" }: { section?:
       <section className="mx-auto max-w-7xl rounded-sm border border-[#eadfca] bg-white p-4 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-stone-900">Business growth</h1>
-            <p className="mt-1 text-sm text-stone-600">Organize customer journeys, contacts, and performance.</p>
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-semibold text-stone-900">{heading.title}</h1>
+              {tab === "customers" && (
+                <span className="rounded-sm border border-amber-200 bg-amber-50 px-2.5 py-1 text-sm font-medium text-amber-800">
+                  Total users: {overviewLoading ? "…" : (overview?.total ?? 0)}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-stone-600">{heading.description}</p>
           </div>
           {(tab === "funnels" || tab === "customers") && (
             <button
@@ -572,7 +596,7 @@ export default function BusinessGrowthPage({ section = "overview" }: { section?:
         {tab === "customers" && (
           <section className="mt-5">
             {customersBusy && <LoadingState label="Loading customers" overlay />}
-            <div className="grid gap-3 rounded-sm border border-[#eadfca] bg-[#fffdfa] p-3 sm:grid-cols-[1fr_auto_auto_auto]">
+            <div className="grid gap-3 rounded-sm border border-[#eadfca] bg-[#fffdfa] p-3 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto_auto]">
               <label className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
                 <input
@@ -585,18 +609,40 @@ export default function BusinessGrowthPage({ section = "overview" }: { section?:
                   value={search}
                 />
               </label>
-              <button
-                className="secondary-button"
-                onClick={() => {
-                  setDraftStatus(status);
-                  setDraftFunnelFilter(funnelFilter);
-                  setFilterOpen(true);
+              <select
+                aria-label="Filter customers by funnel"
+                className="input min-w-36"
+                onChange={(event) => {
+                  setFunnelFilter(event.target.value);
+                  setPage(1);
+                  setSelected([]);
                 }}
-                type="button"
+                value={funnelFilter}
               >
-                <SlidersHorizontal className="h-4 w-4" />
-                Filter
-              </button>
+                <option value="">All funnels</option>
+                {(funnels?.items ?? []).map((funnel) => (
+                  <option key={funnel.id} value={funnel.id}>
+                    {funnel.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Filter customers by status"
+                className="input min-w-32"
+                onChange={(event) => {
+                  setStatus((event.target.value || undefined) as CustomerStatus | undefined);
+                  setPage(1);
+                  setSelected([]);
+                }}
+                value={status ?? ""}
+              >
+                <option value="">All statuses</option>
+                {customerStatuses.map((item) => (
+                  <option key={item} value={item}>
+                    {item}
+                  </option>
+                ))}
+              </select>
               <button className="secondary-button" onClick={exportData} type="button">
                 <Download className="h-4 w-4" />
                 Export Excel
@@ -968,7 +1014,14 @@ export default function BusinessGrowthPage({ section = "overview" }: { section?:
             <SpendPanel
               funnels={funnels?.items ?? []}
               items={visibleSpends}
-              totalItems={spendItems}
+              totalItems={filteredSpendItems}
+              allItems={spendItems}
+              funnelFilter={spendFunnelFilter}
+              onFunnelFilterChange={(value) => {
+                setSpendFunnelFilter(value);
+                setSpendPage(1);
+                setSelectedSpends([]);
+              }}
               loading={spendsLoading}
               openForm={() => setSpendForm(null)}
               importDemo={() => void importDemoSpends()}
@@ -994,7 +1047,7 @@ export default function BusinessGrowthPage({ section = "overview" }: { section?:
                 setSpendPage(1);
               }}
               pageSize={spendPageSize}
-              total={spendItems.length}
+              total={filteredSpendItems.length}
               totalPages={spendTotalPages}
               noun="spend entries"
             />
@@ -1089,67 +1142,6 @@ export default function BusinessGrowthPage({ section = "overview" }: { section?:
               type="button"
             >
               {bulkUpdateState.isLoading && <Loader2 className="h-4 w-4 animate-spin" />}Confirm update
-            </button>
-          </div>
-        </Dialog>
-      )}
-      {filterOpen && (
-        <Dialog title="Filter customers">
-          <div className="mt-5 space-y-4">
-            <Field label="Status">
-              <select
-                className="input"
-                onChange={(event) => setDraftStatus((event.target.value || undefined) as CustomerStatus | undefined)}
-                value={draftStatus ?? ""}
-              >
-                <option value="">All statuses</option>
-                {customerStatuses.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Funnel">
-              <select
-                className="input"
-                onChange={(event) => setDraftFunnelFilter(event.target.value)}
-                value={draftFunnelFilter}
-              >
-                <option value="">All funnels</option>
-                {(funnels?.items ?? []).map((funnel) => (
-                  <option key={funnel.id} value={funnel.id}>
-                    {funnel.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-          <div className="mt-5 flex flex-wrap justify-end gap-2">
-            <button
-              className="secondary-button"
-              onClick={() => {
-                setDraftStatus(undefined);
-                setDraftFunnelFilter("");
-              }}
-              type="button"
-            >
-              Clear
-            </button>
-            <button className="secondary-button" onClick={() => setFilterOpen(false)} type="button">
-              Cancel
-            </button>
-            <button
-              className="primary-button"
-              onClick={() => {
-                setStatus(draftStatus);
-                setFunnelFilter(draftFunnelFilter);
-                setPage(1);
-                setFilterOpen(false);
-              }}
-              type="button"
-            >
-              Apply filter
             </button>
           </div>
         </Dialog>
@@ -1596,10 +1588,14 @@ function customerStatusClass(status: CustomerStatus) {
     inactive: "bg-stone-200 text-stone-700",
   }[status];
 }
+type FunnelSpendSummary = { funnel: CustomerFunnel; total: number; count: number };
 function SpendPanel({
   funnels,
   items,
   totalItems,
+  allItems,
+  funnelFilter,
+  onFunnelFilterChange,
   loading,
   openForm,
   importDemo,
@@ -1615,6 +1611,9 @@ function SpendPanel({
   funnels: CustomerFunnel[];
   items: CustomerSpend[];
   totalItems: CustomerSpend[];
+  allItems: CustomerSpend[];
+  funnelFilter: string;
+  onFunnelFilterChange: (value: string) => void;
   loading: boolean;
   openForm: () => void;
   importDemo: () => void;
@@ -1628,6 +1627,10 @@ function SpendPanel({
   deleteSelected: () => void;
 }) {
   const total = totalItems.reduce((sum, item) => sum + item.amount, 0);
+  const funnelSpend: FunnelSpendSummary[] = funnels.map((funnel) => {
+    const matchingItems = allItems.filter((item) => item.funnelId === funnel.id);
+    return { funnel, total: matchingItems.reduce((sum, item) => sum + item.amount, 0), count: matchingItems.length };
+  });
   const allSelected = items.length > 0 && items.every((item) => selected.includes(item.id));
   return (
     <section className="mt-5">
@@ -1646,10 +1649,46 @@ function SpendPanel({
           Create a funnel before recording marketing spend.
         </p>
       )}
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Summary label="Total recorded spend" value={total} prefix="৳" />
-        <Summary label="Spend entries" value={totalItems.length} />
+      {funnels.length > 0 && <FunnelSpendChart items={funnelSpend} />}
+      <div className="mt-4 grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Summary label={funnelFilter ? "Filtered funnel spend" : "Total recorded spend"} value={total} prefix="৳" />
+          <Summary label={funnelFilter ? "Filtered entries" : "Spend entries"} value={totalItems.length} />
+        </div>
+        <div className="rounded-sm border border-[#eadfca] bg-[#fffdfa] p-3">
+          <label className="block text-sm font-medium text-stone-700">
+            <span className="mb-1 block">Filter by funnel</span>
+            <select
+              className="input w-full"
+              onChange={(event) => onFunnelFilterChange(event.target.value)}
+              value={funnelFilter}
+            >
+              <option value="">All funnels</option>
+              {funnels.map((funnel) => (
+                <option key={funnel.id} value={funnel.id}>
+                  {funnel.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
+      {funnels.length > 0 && (
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {funnelSpend.map(({ funnel, total: funnelTotal, count }) => (
+            <div className="rounded-sm border border-[#eadfca] bg-white p-3" key={funnel.id}>
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: funnel.color }} />
+                <p className="font-medium text-stone-900">{funnel.name}</p>
+              </div>
+              <p className="mt-2 text-xl font-semibold text-stone-900">৳{funnelTotal.toLocaleString()}</p>
+              <p className="mt-1 text-xs text-stone-500">
+                {count} spend {count === 1 ? "entry" : "entries"}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
       {selected.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-sm border border-red-200 bg-red-50 p-3">
           <span className="text-sm font-medium text-stone-800">
@@ -1758,6 +1797,48 @@ function SpendPanel({
             )}
           </tbody>
         </table>
+      </div>
+    </section>
+  );
+}
+function FunnelSpendChart({ items }: { items: FunnelSpendSummary[] }) {
+  const total = items.reduce((sum, item) => sum + item.total, 0);
+  const chart = items.reduce(
+    (result, item) => {
+      if (!item.total || !total) return result;
+      const end = result.offset + (item.total / total) * 100;
+      result.stops.push(`${item.funnel.color} ${result.offset}% ${end}%`);
+      return { stops: result.stops, offset: end };
+    },
+    { stops: [] as string[], offset: 0 },
+  );
+  return (
+    <section className="mt-4 max-w-2xl rounded-sm border border-[#eadfca] bg-[#fffdfa] p-4">
+      <h3 className="font-semibold text-stone-900">Funnel spend split</h3>
+      <div className="mt-4 grid items-center gap-5 sm:grid-cols-[9rem_1fr]">
+        <div
+          aria-label="Funnel spend pie chart"
+          className="relative mx-auto grid h-36 w-36 place-items-center rounded-full"
+          style={{ background: chart.stops.length ? `conic-gradient(${chart.stops.join(", ")})` : "#e7e5e4" }}
+        >
+          <div className="grid h-20 w-20 place-items-center rounded-full bg-white text-center">
+            <span className="text-xs text-stone-500">Total</span>
+            <span className="text-sm font-semibold text-stone-900">৳{total.toLocaleString()}</span>
+          </div>
+        </div>
+        <div className="space-y-2">
+          {items.map(({ funnel, total: funnelTotal, count }) => (
+            <div className="flex items-center justify-between gap-3 text-sm" key={funnel.id}>
+              <span className="flex min-w-0 items-center gap-2 text-stone-700">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: funnel.color }} />
+                <span className="truncate">{funnel.name}</span>
+              </span>
+              <span className="shrink-0 text-right font-medium text-stone-900">
+                ৳{funnelTotal.toLocaleString()} <span className="font-normal text-stone-500">({count})</span>
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -2150,7 +2231,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 function Dialog({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/35 p-4">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/35 p-4 backdrop-blur-sm">
       <section className="max-h-[90vh] w-full max-w-xl overflow-auto rounded-sm bg-[#fffaf0] p-5 shadow-xl">
         <h2 className="text-lg font-semibold">{title}</h2>
         {children}

@@ -161,7 +161,12 @@ export async function getDashboardAccessState(session: SessionUser): Promise<Das
 
   const sidebars = savedSidebars;
   const role = await enforceStandardUserPermissions(savedRole, sidebars);
-  const allowed = sidebars.filter((sidebar) => role.permissions[sidebar.id]?.read).map((sidebar) => sidebar.id);
+  // A role can reach a dashboard area when it has at least one operation on
+  // that sidebar entry. The sidebar API uses these IDs to render only the
+  // role's permitted navigation tree.
+  const allowed = sidebars
+    .filter((sidebar) => Object.values(role.permissions[sidebar.id] ?? {}).some(Boolean))
+    .map((sidebar) => sidebar.id);
   return { bypassed: false, blocked: false, roleId: role.id, roleName: role.name, allowedSidebarIds: allowed };
 }
 
@@ -199,6 +204,7 @@ function apiResourcePaths(pathname: string, method: string) {
     "business-growth": [
       "/dashboard/business-growth",
       "/dashboard/business-growth/",
+      "/dashboard/business-growth/overview",
       "/dashboard/business-growth/funnels",
       "/dashboard/business-growth/customer",
       "/dashboard/business-growth/spend",
@@ -227,6 +233,7 @@ function pageResourcePaths(pathname: string) {
   // permission. This keeps direct reloads authorized just like navigating from
   // the parent list.
   const parents = [
+    ...(pathname === "/dashboard/business-growth/overview" ? ["/dashboard/business-growth"] : []),
     ...(pathname.startsWith("/dashboard/admin/menu/") ? ["/dashboard/admin/menu"] : []),
     ...(pathname.startsWith("/dashboard/admin/pages/") ? ["/dashboard/admin/pages"] : []),
     ...(pathname.startsWith("/dashboard/orders/") ? ["/dashboard/orders"] : []),
