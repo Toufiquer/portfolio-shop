@@ -121,18 +121,28 @@ export async function POST(request: Request) {
     itemsByUrl.delete("/dashboard/Admin");
     itemsByUrl.set(legacyAdmin.url, legacyAdmin);
   }
-  // Preserve the existing sidebar record (and its role permissions) when the
-  // customer-management feature is renamed to Business Growth.
-  const legacyCustomer = itemsByUrl.get("/dashboard/admin/customer");
-  if (target !== "pages" && legacyCustomer && !itemsByUrl.has("/dashboard/admin/business-growth")) {
-    await collection.updateOne(
-      { id: legacyCustomer.id },
-      { $set: { url: "/dashboard/admin/business-growth", updatedAt: new Date() } },
-    );
-    legacyCustomer.url = "/dashboard/admin/business-growth";
-    itemsByUrl.delete("/dashboard/admin/customer");
-    itemsByUrl.set(legacyCustomer.url, legacyCustomer);
-  }
+  // Preserve existing sidebar IDs and role permissions while Business Growth
+  // moves out of the Admin route. The import remains safe to retry because a
+  // legacy row moves only when its new URL does not already exist.
+  const businessGrowthPathMigrations = [
+    ["/dashboard/admin/business-growth/", "/dashboard/business-growth/"],
+    ["/dashboard/admin/business-growth", "/dashboard/business-growth"],
+    ["/dashboard/admin/business-growth/funnels", "/dashboard/business-growth/funnels"],
+    ["/dashboard/admin/business-growth/customer", "/dashboard/business-growth/customer"],
+    ["/dashboard/admin/business-growth/spend", "/dashboard/business-growth/spend"],
+    ["/dashboard/admin/business-growth/councillor", "/dashboard/business-growth/councillor"],
+    ["/dashboard/admin/business-growth/task", "/dashboard/business-growth/task"],
+    ["/dashboard/admin/customer", "/dashboard/business-growth"],
+  ] as const;
+  if (target !== "pages")
+    for (const [oldUrl, newUrl] of businessGrowthPathMigrations) {
+      const legacyItem = itemsByUrl.get(oldUrl);
+      if (!legacyItem || itemsByUrl.has(newUrl)) continue;
+      await collection.updateOne({ id: legacyItem.id }, { $set: { url: newUrl, updatedAt: new Date() } });
+      legacyItem.url = newUrl;
+      itemsByUrl.delete(oldUrl);
+      itemsByUrl.set(newUrl, legacyItem);
+    }
   let inserted = 0;
   let updated = 0;
 

@@ -20,8 +20,6 @@ import {
   SlidersHorizontal,
   Trash2,
   Users,
-  Wallet,
-  Workflow,
 } from "lucide-react";
 import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
 import * as XLSX from "xlsx";
@@ -66,6 +64,7 @@ import {
   useUpdateFunnelMutation,
   useUpdateSpendMutation,
 } from "@/redux/features/dashboard/business-growth/businessGrowthSlice";
+export type BusinessGrowthSection = "funnels" | "customer" | "overview" | "spend" | "councillor" | "task";
 type Tab = "funnels" | "customers" | "overview" | "spend" | "admin" | "task";
 type AdminSubTab = "councillors" | "customers";
 type ImportRow = Partial<Customer> & { number?: string };
@@ -97,9 +96,9 @@ const errorMessage = (error: unknown, fallback: string) =>
   typeof (error as { data?: { error?: string } }).data?.error === "string"
     ? (error as { data: { error: string } }).data.error
     : fallback;
-export default function BusinessGrowthPage() {
-  const [tab, setTab] = useState<Tab>("funnels"),
-    [search, setSearch] = useState(""),
+export default function BusinessGrowthPage({ section = "overview" }: { section?: BusinessGrowthSection }) {
+  const tab: Tab = section === "customer" ? "customers" : section === "councillor" ? "admin" : section;
+  const [search, setSearch] = useState(""),
     [status, setStatus] = useState<CustomerStatus>(),
     [funnelFilter, setFunnelFilter] = useState(""),
     [filterOpen, setFilterOpen] = useState(false),
@@ -132,7 +131,7 @@ export default function BusinessGrowthPage() {
     [selectedSpends, setSelectedSpends] = useState<string[]>([]),
     [confirmBulkSpendDelete, setConfirmBulkSpendDelete] = useState(false);
   const [adminSelected, setAdminSelected] = useState<string[]>([]),
-    [adminSubTab, setAdminSubTab] = useState<AdminSubTab>("councillors"),
+    [adminSubTab] = useState<AdminSubTab>("councillors"),
     [adminSearch, setAdminSearch] = useState(""),
     [adminStatus, setAdminStatus] = useState<CustomerStatus>(),
     [adminFunnel, setAdminFunnel] = useState(""),
@@ -505,28 +504,6 @@ export default function BusinessGrowthPage() {
             </button>
           )}
         </div>
-        <div className="mt-6 grid grid-cols-2 gap-1 rounded-sm border border-[#eadfca] bg-[#fffaf0] p-1 sm:inline-flex sm:w-auto">
-          {(
-            [
-              ["funnels", "Funnels", Workflow],
-              ["customers", "Customers", Users],
-              ["spend", "Spend", Wallet],
-              ["overview", "Overview", Users],
-              ...(workspace?.isAdmin ? [["admin", "Admin", Users] as const] : []),
-              ...(workspace?.isCouncilor || workspace?.isAdmin ? [["task", "Task", Workflow] as const] : []),
-            ] as const
-          ).map(([v, l, I]) => (
-            <button
-              className={`flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm font-medium sm:px-4 ${tab === v ? "bg-amber-700 text-white" : "text-stone-600"}`}
-              key={v}
-              onClick={() => setTab(v)}
-              type="button"
-            >
-              <I className="h-4 w-4" />
-              {l}
-            </button>
-          ))}
-        </div>
         {workspaceBusy && <LoadingState label="Loading business growth workspace" overlay />}
         {tab === "funnels" && (
           <section className="mt-5">
@@ -636,6 +613,30 @@ export default function BusinessGrowthPage() {
                   {selected.length} customer{selected.length === 1 ? "" : "s"} selected
                 </span>
                 <div className="flex flex-wrap gap-2">
+                  {workspace?.isAdmin && (
+                    <>
+                      <select
+                        className="input w-56"
+                        onChange={(event) => setAssignedCouncilor(event.target.value)}
+                        value={assignedCouncilor}
+                      >
+                        <option value="">Assign to councillor</option>
+                        {(councilors?.items ?? []).map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name || item.email}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        className="primary-button"
+                        disabled={!assignedCouncilor || assignCustomersState.isLoading}
+                        onClick={() => void assignSelectedCustomers()}
+                        type="button"
+                      >
+                        Assign
+                      </button>
+                    </>
+                  )}
                   <button className="secondary-button" onClick={() => setBulkStatusOpen(true)} type="button">
                     <Edit3 className="h-4 w-4" />
                     Bulk edit status
@@ -708,27 +709,6 @@ export default function BusinessGrowthPage() {
                 overlay
               />
             )}
-            <div className="mb-3 flex flex-wrap gap-1 rounded-sm border border-[#eadfca] bg-[#fffaf0] p-1">
-              {(
-                [
-                  ["councillors", "Councillor"],
-                  ["customers", "Customers"],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  className={`rounded-sm px-4 py-2 text-sm font-medium ${adminSubTab === value ? "bg-amber-700 text-white" : "text-stone-600"}`}
-                  key={value}
-                  onClick={() => {
-                    setAdminSubTab(value);
-                    setAdminSelected([]);
-                    setPage(1);
-                  }}
-                  type="button"
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
             {adminSubTab === "councillors" ? (
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-amber-200 bg-amber-50 p-4">

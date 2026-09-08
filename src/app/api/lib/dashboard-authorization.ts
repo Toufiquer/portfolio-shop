@@ -196,7 +196,22 @@ function apiResourcePaths(pathname: string, method: string) {
     categories: ["/dashboard/category"],
     products: ["/dashboard/products"],
     orders: ["/dashboard/orders"],
-    "business-growth": ["/dashboard/admin/business-growth"],
+    "business-growth": [
+      "/dashboard/business-growth",
+      "/dashboard/business-growth/",
+      "/dashboard/business-growth/funnels",
+      "/dashboard/business-growth/customer",
+      "/dashboard/business-growth/spend",
+      "/dashboard/business-growth/councillor",
+      "/dashboard/business-growth/task",
+      "/dashboard/admin/business-growth",
+      "/dashboard/admin/business-growth/",
+      "/dashboard/admin/business-growth/funnels",
+      "/dashboard/admin/business-growth/customer",
+      "/dashboard/admin/business-growth/spend",
+      "/dashboard/admin/business-growth/councillor",
+      "/dashboard/admin/business-growth/task",
+    ],
     navigation: ["/dashboard/developer/navigation"],
   };
   return resources[resource] ?? [];

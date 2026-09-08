@@ -85,5 +85,3 @@ Now pleas generate step by step of  prompt. and at the top please add a line 'Pl
 ============================================================================================================================
 look at the file 'business-growth.txt' Now write a prompt to create this business features, so I can use this prompt in others applications. I want all features same as business-growth page. 
 ============================================================================================================================
-Look at the 
-

@@ -50,12 +50,24 @@ export const sidebarDefaults: ImportSidebarDefault[] = [
       { name: "WhatsApp", url: "/dashboard/admin/whatsapp", icon: "MessageCircle" },
     ],
   },
+  {
+    name: "Business Growth",
+    url: "/dashboard/business-growth/",
+    icon: "Users",
+    children: [
+      { name: "Overview", url: "/dashboard/business-growth", icon: "Users" },
+      { name: "Funnels", url: "/dashboard/business-growth/funnels", icon: "Workflow" },
+      { name: "Customer", url: "/dashboard/business-growth/customer", icon: "Users" },
+      { name: "Spend", url: "/dashboard/business-growth/spend", icon: "Wallet" },
+      { name: "Councillor", url: "/dashboard/business-growth/councillor", icon: "Users" },
+      { name: "Task", url: "/dashboard/business-growth/task", icon: "Workflow" },
+    ],
+  },
   { name: "Media", url: "/dashboard/media", icon: "Image" },
   { name: "Profile", url: "/dashboard/profile", icon: "User" },
   { name: "Products", url: "/dashboard/products", icon: "Package" },
   { name: "Category", url: "/dashboard/category", icon: "ShoppingCart" },
   { name: "Orders", url: "/dashboard/orders", icon: "DollarSign" },
-  { name: "Business Growth", url: "/dashboard/admin/business-growth", icon: "Users" },
   { name: "Install", url: "/dashboard/install", icon: "Download" },
 ];
 export const pageDefaults: ImportPageDefault[] = [
