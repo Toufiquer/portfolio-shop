@@ -8,9 +8,11 @@
 
 import { rateLimit } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
-import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
+import { authorizeDashboardRequest, getDashboardAccessState } from "@/app/api/lib/dashboard-authorization";
 import {
   customerCollection,
+  councilorCollection,
+  customerFollowUps,
   funnelCollection,
   funnelStages,
   id,
@@ -19,9 +21,11 @@ import {
   now,
   spendCollection,
   type CustomerRecord,
+  type CouncilorRecord,
   type Funnel,
   type SpendRecord,
   serializeFunnel,
+  serializeFollowUps,
 } from "@/lib/customers/server";
 import { customerStatuses } from "@/lib/dashboard/customers";
 const guard = async (r: Request, method: "GET" | "POST") => {
@@ -29,16 +33,89 @@ const guard = async (r: Request, method: "GET" | "POST") => {
   if (limited) return limited;
   const s = await auth.api.getSession({ headers: r.headers });
   if (!s) return Response.json({ error: "Sign in required." }, { status: 401 });
-  const a = await authorizeDashboardRequest(s, "/api/dashboard/customer/v1", method);
+  const a = await authorizeDashboardRequest(s, "/api/dashboard/business-growth/v1", method);
   return a.allowed ? null : Response.json({ error: a.state.message ?? "Unauthorized." }, { status: 403 });
 };
 const text = (v: unknown, max: number) => (typeof v === "string" && v.trim().length <= max ? v.trim() : "");
 const customerStatus = (value: unknown) => (value === "inactive" || value === "archived" ? "inactive" : "active");
+const followUpAuthor = (session: { user?: { email?: unknown; name?: unknown } } | null) => ({
+  authorEmail: typeof session?.user?.email === "string" ? session.user.email.trim().toLowerCase() : "",
+  authorName: typeof session?.user?.name === "string" ? session.user.name.trim() : "",
+});
+const isAdministrator = (roleName: string | null) => /^(admin|super admin)$/i.test(roleName?.trim() ?? "");
+async function sessionAccess(request: Request) {
+  const session = await auth.api.getSession({ headers: request.headers });
+  return { session, access: session ? await getDashboardAccessState(session) : null };
+}
 export async function GET(r: Request) {
   const g = await guard(r, "GET");
   if (g) return g;
   const q = new URL(r.url).searchParams;
   const kind = q.get("kind") ?? "customers";
+  const { session, access } = await sessionAccess(r);
+  if (!session || !access) return Response.json({ error: "Sign in required." }, { status: 401 });
+  const admin = access.bypassed || isAdministrator(access.roleName);
+  if (kind === "workspace")
+    return Response.json({
+      isAdmin: admin,
+      isCouncilor: Boolean(
+        await councilorCollection().findOne({
+          $or: [{ userId: session.user.id }, { email: normalize(session.user.email) }],
+        }),
+      ),
+    });
+  if (kind === "councilors") {
+    if (!admin) return Response.json({ error: "Administrator access required." }, { status: 403 });
+    const items = await councilorCollection().find({}).sort({ createdAt: -1 }).toArray();
+    const counts = new Map(
+      (
+        await customerCollection()
+          .aggregate<{ _id: string; count: number }>([{ $group: { _id: "$councilorId", count: { $sum: 1 } } }])
+          .toArray()
+      ).map((row) => [row._id, row.count]),
+    );
+    const statusCounts = new Map(
+      (
+        await customerCollection()
+          .aggregate<{ _id: { councilorId: string; status: "active" | "inactive" }; count: number }>([
+            { $match: { councilorId: { $exists: true, $ne: null } } },
+            {
+              $project: {
+                councilorId: 1,
+                status: {
+                  $cond: [{ $in: ["$customerStatus", ["inactive", "archived"]] }, "inactive", "active"],
+                },
+              },
+            },
+            { $group: { _id: { councilorId: "$councilorId", status: "$status" }, count: { $sum: 1 } } },
+          ])
+          .toArray()
+      ).map((row) => [`${row._id.councilorId}:${row._id.status}`, row.count]),
+    );
+    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const counsellingCounts = new Map(
+      (
+        await customerCollection()
+          .aggregate<{ _id: string; count: number }>([
+            { $match: { councilorId: { $exists: true, $ne: null } } },
+            { $unwind: "$followUps" },
+            { $match: { "followUps.createdAt": { $gte: last24Hours } } },
+            { $group: { _id: "$councilorId", count: { $sum: 1 } } },
+          ])
+          .toArray()
+      ).map((row) => [row._id, row.count]),
+    );
+    return Response.json({
+      items: items.map((item) => ({
+        ...item,
+        assignedCount: counts.get(item.id) ?? 0,
+        activeCount: statusCounts.get(`${item.id}:active`) ?? 0,
+        inactiveCount: statusCounts.get(`${item.id}:inactive`) ?? 0,
+        counsellingLast24Hours: counsellingCounts.get(item.id) ?? 0,
+        createdAt: item.createdAt.toISOString(),
+      })),
+    });
+  }
   if (kind === "funnels") {
     const legacy = await funnelCollection()
       .find({ position: { $exists: false } })
@@ -96,7 +173,7 @@ export async function GET(r: Request) {
         .toArray(),
     ]);
     const funnels = await funnelCollection()
-      .find({}, { projection: { id: 1, name: 1, minimumAmount: 1, maximumAmount: 1 } })
+      .find({}, { projection: { id: 1, name: 1, color: 1, minimumAmount: 1, maximumAmount: 1 } })
       .toArray();
     const counts = new Map(funnelCounts.map((item) => [item._id, item.count]));
     const spends = new Map(spendRows.map((item) => [item._id, item.amount]));
@@ -119,13 +196,15 @@ export async function GET(r: Request) {
           Number.isFinite(minimum) && minimum >= 0 && Number.isFinite(maximum) && maximum !== null && maximum >= minimum
             ? Math.round((minimum + maximum) / 2)
             : 0;
-        const estimatedReturn = funnel.name.trim().toLocaleLowerCase() === "vip customer" ? 5000 : rangeAverage;
+        const averageReturn = funnel.name.trim().toLocaleLowerCase() === "vip customer" ? 5000 : rangeAverage;
         return {
           id: funnel.id,
           name: funnel.name,
+          color: funnel.color || "#d97706",
           count: counts.get(funnel.id) ?? 0,
           spend: spends.get(funnel.id) ?? 0,
-          estimatedReturn,
+          averageReturn,
+          estimatedReturn: (counts.get(funnel.id) ?? 0) * averageReturn,
         };
       }),
       unassigned: counts.get(null) ?? 0,
@@ -137,12 +216,27 @@ export async function GET(r: Request) {
   const search = normalize(q.get("search"));
   const status = q.get("status");
   const funnelId = q.get("funnelId");
+  const assignment = q.get("assignment");
   const pageSize = Math.min(100, Math.max(10, Number.parseInt(q.get("pageSize") ?? "25", 10) || 25));
+  const councilorOnly = kind === "tasks";
+  if (
+    councilorOnly &&
+    !admin &&
+    !(await councilorCollection().findOne({
+      $or: [{ userId: session.user.id }, { email: normalize(session.user.email) }],
+    }))
+  )
+    return Response.json({ error: "Councilor access required." }, { status: 403 });
   const filter: Record<string, unknown> = {
+    ...(councilorOnly ? { councilorEmail: normalize(session.user.email) } : {}),
     ...(status && customerStatuses.includes(status as never)
       ? { customerStatus: status === "active" ? { $in: ["active", "lead"] } : { $in: ["inactive", "archived"] } }
       : {}),
     ...(funnelId ? { funnelId } : {}),
+    ...(assignment === "assigned" ? { councilorId: { $exists: true, $ne: null } } : {}),
+    ...(assignment === "unassigned"
+      ? { $and: [{ $or: [{ councilorId: { $exists: false } }, { councilorId: null }] }] }
+      : {}),
     ...(search
       ? {
           $or: [
@@ -154,7 +248,25 @@ export async function GET(r: Request) {
         }
       : {}),
   };
-  const total = await customerCollection().countDocuments(filter);
+  const assignmentFilter = councilorOnly ? { councilorEmail: normalize(session.user.email) } : filter;
+  const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const [total, assigned, active, inactive, counsellingRows] = await Promise.all([
+    customerCollection().countDocuments(filter),
+    customerCollection().countDocuments(assignmentFilter),
+    customerCollection().countDocuments({ ...assignmentFilter, customerStatus: { $in: ["active", "lead"] as never } }),
+    customerCollection().countDocuments({
+      ...assignmentFilter,
+      customerStatus: { $in: ["inactive", "archived"] as never },
+    }),
+    customerCollection()
+      .aggregate<{ count: number }>([
+        { $match: assignmentFilter },
+        { $unwind: "$followUps" },
+        { $match: { "followUps.createdAt": { $gte: last24Hours } } },
+        { $count: "count" },
+      ])
+      .toArray(),
+  ]);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const requestedPage = Math.max(1, Number.parseInt(q.get("page") ?? "1", 10) || 1);
   const page = Math.min(requestedPage, totalPages);
@@ -168,6 +280,7 @@ export async function GET(r: Request) {
     items: await Promise.all(
       items.map(async (x) => ({
         ...x,
+        followUps: serializeFollowUps(x.followUps),
         customerStatus: customerStatus(x.customerStatus),
         createdAt: x.createdAt.toISOString(),
         updatedAt: x.updatedAt.toISOString(),
@@ -177,18 +290,37 @@ export async function GET(r: Request) {
     total,
     page,
     pageSize,
+    summary: {
+      assigned,
+      active,
+      inactive,
+      counsellingLast24Hours: counsellingRows[0]?.count ?? 0,
+    },
   });
 }
 export async function POST(r: Request) {
   const g = await guard(r, "POST");
   if (g) return g;
+  const session = await auth.api.getSession({ headers: r.headers });
   const b = (await r.json().catch(() => null)) as Record<string, unknown> | null;
   const kind = b?.kind ?? "customer";
+  const access = await getDashboardAccessState(session!);
+  const admin = access.bypassed || isAdministrator(access.roleName);
+  if (kind === "councilor") {
+    if (!admin) return Response.json({ error: "Administrator access required." }, { status: 403 });
+    const email = normalize(b?.email);
+    if (!email) return Response.json({ error: "Enter a valid user email." }, { status: 400 });
+    const existing = await councilorCollection().findOne({ email });
+    if (existing) return Response.json({ error: "This email is already a councilor." }, { status: 409 });
+    const item: CouncilorRecord = { id: id(), name: email, email, createdAt: now() };
+    await councilorCollection().insertOne(item);
+    return Response.json({ item: { ...item, createdAt: item.createdAt.toISOString() } }, { status: 201 });
+  }
   if (kind === "demo-spends") {
     const funnels = await funnelCollection().find({}).sort({ position: 1, createdAt: 1 }).limit(5).toArray();
     if (funnels.length < 5)
       return Response.json({ error: "Create all five funnels before importing demo spend." }, { status: 400 });
-    const amounts = [[130, 130, 130, 130, 130, 130], [98, 98, 97, 97], [33, 32], [39], [26]];
+    const amounts = [[500, 500, 500, 500, 500, 500], [375, 375, 375, 375], [125, 125], [150], [100]];
     const items: SpendRecord[] = amounts.flatMap((entries, funnelIndex) =>
       entries.map((amount) => ({ id: id(), funnelId: funnels[funnelIndex].id, amount, createdAt: now() })),
     );
@@ -252,6 +384,7 @@ export async function POST(r: Request) {
     notes: text(b?.notes, 2000),
     customerStatus: customerStatuses.includes(b?.customerStatus as never) ? (b?.customerStatus as never) : "active",
     tags: Array.isArray(b?.tags) ? b.tags.filter((v): v is string => typeof v === "string").slice(0, 30) : [],
+    followUps: customerFollowUps(b?.followUps).map((followUp) => ({ ...followUp, ...followUpAuthor(session) })),
     createdAt: now(),
     updatedAt: now(),
   };
@@ -260,6 +393,7 @@ export async function POST(r: Request) {
     {
       item: {
         ...x,
+        followUps: serializeFollowUps(x.followUps),
         createdAt: x.createdAt.toISOString(),
         updatedAt: x.updatedAt.toISOString(),
         metrics: await metricsFor(x),

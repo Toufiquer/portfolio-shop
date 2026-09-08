@@ -44,8 +44,25 @@ export type CustomerRecord = {
   notes: string;
   customerStatus: CustomerStatus;
   tags: string[];
+  followUps?: CustomerFollowUpRecord[];
+  councilorId?: string | null;
+  councilorEmail?: string | null;
   createdAt: Date;
   updatedAt: Date;
+};
+export type CouncilorRecord = {
+  id: string;
+  userId?: string;
+  name: string;
+  email: string;
+  createdAt: Date;
+};
+export type CustomerFollowUpRecord = {
+  id: string;
+  note: string;
+  createdAt: Date;
+  authorEmail: string;
+  authorName: string;
 };
 export type SpendRecord = { id: string; funnelId: string; amount: number; createdAt: Date };
 const db = () => client.db();
@@ -81,8 +98,33 @@ export function metricsFor(c: CustomerRecord) {
 export const customerCollection = () => db().collection<CustomerRecord>("customers");
 export const funnelCollection = () => db().collection<Funnel>("customer-funnels");
 export const spendCollection = () => db().collection<SpendRecord>("customer-spends");
+// Keep councilors in the existing application database, alongside customer growth data.
+export const councilorCollection = () => db().collection<CouncilorRecord>("business-growth-councilors");
 export const now = () => new Date();
 export const id = () => randomUUID();
+export const customerFollowUps = (value: unknown): CustomerFollowUpRecord[] =>
+  Array.isArray(value)
+    ? value
+        .map((followUp) => {
+          if (!followUp || typeof followUp !== "object") return null;
+          const item = followUp as Partial<CustomerFollowUpRecord>;
+          const note = typeof item.note === "string" ? item.note.trim() : "";
+          const createdAt = new Date(item.createdAt ?? "");
+          return note && note.length <= 2000 && !Number.isNaN(createdAt.getTime())
+            ? {
+                id: item.id || id(),
+                note,
+                createdAt,
+                authorEmail: typeof item.authorEmail === "string" ? item.authorEmail.trim().toLowerCase() : "",
+                authorName: typeof item.authorName === "string" ? item.authorName.trim() : "",
+              }
+            : null;
+        })
+        .filter((followUp): followUp is CustomerFollowUpRecord => Boolean(followUp))
+        .slice(-100)
+    : [];
+export const serializeFollowUps = (value: unknown) =>
+  customerFollowUps(value).map((followUp) => ({ ...followUp, createdAt: followUp.createdAt.toISOString() }));
 export const funnelStages = (value: unknown): FunnelStage[] =>
   Array.isArray(value)
     ? value

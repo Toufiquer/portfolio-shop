@@ -121,6 +121,18 @@ export async function POST(request: Request) {
     itemsByUrl.delete("/dashboard/Admin");
     itemsByUrl.set(legacyAdmin.url, legacyAdmin);
   }
+  // Preserve the existing sidebar record (and its role permissions) when the
+  // customer-management feature is renamed to Business Growth.
+  const legacyCustomer = itemsByUrl.get("/dashboard/admin/customer");
+  if (target !== "pages" && legacyCustomer && !itemsByUrl.has("/dashboard/admin/business-growth")) {
+    await collection.updateOne(
+      { id: legacyCustomer.id },
+      { $set: { url: "/dashboard/admin/business-growth", updatedAt: new Date() } },
+    );
+    legacyCustomer.url = "/dashboard/admin/business-growth";
+    itemsByUrl.delete("/dashboard/admin/customer");
+    itemsByUrl.set(legacyCustomer.url, legacyCustomer);
+  }
   let inserted = 0;
   let updated = 0;
 

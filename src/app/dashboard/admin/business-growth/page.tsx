@@ -32,6 +32,7 @@ import { LoadingState } from "@/components/ui/loading-state";
 import {
   customerStatuses,
   type Customer,
+  type Councilor,
   type CustomerFunnel,
   type CustomerSpend,
   type CustomerStatus,
@@ -44,6 +45,7 @@ import {
   useCreateDemoSpendsMutation,
   useCreateFunnelMutation,
   useCreateSpendMutation,
+  useDeleteSpendMutation,
   useDeleteFunnelMutation,
   useGetCustomerOverviewQuery,
   useGetCustomersQuery,
@@ -51,10 +53,21 @@ import {
   useGetSpendsQuery,
   useImportCustomersMutation,
   useImportDemoCustomersWithOrdersMutation,
+  useBulkDeleteSpendsMutation,
+  useAssignCustomersToCouncilorMutation,
+  useArchiveCustomerMutation,
+  useCreateCouncilorMutation,
+  useGetCouncilorsQuery,
+  useGetGrowthWorkspaceQuery,
+  useGetTaskCustomersQuery,
+  useUpdateCouncilorMutation,
+  useDeleteCouncilorMutation,
   useUpdateCustomerMutation,
   useUpdateFunnelMutation,
-} from "@/redux/features/dashboard/customer/customerSlice";
-type Tab = "funnels" | "customers" | "overview" | "spend";
+  useUpdateSpendMutation,
+} from "@/redux/features/dashboard/business-growth/businessGrowthSlice";
+type Tab = "funnels" | "customers" | "overview" | "spend" | "admin" | "task";
+type AdminSubTab = "councillors" | "customers";
 type ImportRow = Partial<Customer> & { number?: string };
 const pageSizes = [10, 25, 50, 100] as const;
 const demoFunnels = [
@@ -64,6 +77,19 @@ const demoFunnels = [
   ["Premium Customer", "", 1001, 10000, "#f59e0b"],
   ["VIP Customer", "", 10001, null, "#e11d48"],
 ] as const;
+const demoImportCounts = [235, 470, 705] as const;
+const demoUserMix = (count: number) => {
+  const flexibleUsers = Math.max(0, count - 5);
+  const follower = Math.round((flexibleUsers * 181) / 230);
+  const interested = Math.round((flexibleUsers * 33) / 230);
+  return [
+    ["follower", follower],
+    ["interested", interested],
+    ["paid customer", flexibleUsers - follower - interested],
+    ["premium customer", 4],
+    ["vip customer", 1],
+  ] as const;
+};
 const errorMessage = (error: unknown, fallback: string) =>
   typeof error === "object" &&
   error &&
@@ -71,7 +97,7 @@ const errorMessage = (error: unknown, fallback: string) =>
   typeof (error as { data?: { error?: string } }).data?.error === "string"
     ? (error as { data: { error: string } }).data.error
     : fallback;
-export default function CustomerPage() {
+export default function BusinessGrowthPage() {
   const [tab, setTab] = useState<Tab>("funnels"),
     [search, setSearch] = useState(""),
     [status, setStatus] = useState<CustomerStatus>(),
@@ -87,7 +113,6 @@ export default function CustomerPage() {
     [spendPageSize, setSpendPageSize] = useState<(typeof pageSizes)[number]>(10),
     [selected, setSelected] = useState<string[]>([]),
     [bulkStatus, setBulkStatus] = useState<CustomerStatus>("active"),
-    [bulkFunnelId, setBulkFunnelId] = useState("__unchanged"),
     [bulkStatusOpen, setBulkStatusOpen] = useState(false),
     [funnelForm, setFunnelForm] = useState<CustomerFunnel | null | undefined>(),
     [customerForm, setCustomerForm] = useState<Customer | null | undefined>(),
@@ -99,11 +124,29 @@ export default function CustomerPage() {
     [selectedFunnels, setSelectedFunnels] = useState<string[]>([]),
     [importRows, setImportRows] = useState<ImportRow[] | null>(null),
     [demoImportOpen, setDemoImportOpen] = useState(false),
-    [demoCount, setDemoCount] = useState(50),
+    [demoCount, setDemoCount] = useState(235),
     [importingDemo, setImportingDemo] = useState(false),
-    [spendFormOpen, setSpendFormOpen] = useState(false);
+    [spendForm, setSpendForm] = useState<CustomerSpend | null | undefined>(),
+    [viewSpend, setViewSpend] = useState<CustomerSpend | null>(null),
+    [deleteSpend, setDeleteSpend] = useState<CustomerSpend | null>(null),
+    [selectedSpends, setSelectedSpends] = useState<string[]>([]),
+    [confirmBulkSpendDelete, setConfirmBulkSpendDelete] = useState(false);
+  const [adminSelected, setAdminSelected] = useState<string[]>([]),
+    [adminSubTab, setAdminSubTab] = useState<AdminSubTab>("councillors"),
+    [adminSearch, setAdminSearch] = useState(""),
+    [adminStatus, setAdminStatus] = useState<CustomerStatus>(),
+    [adminFunnel, setAdminFunnel] = useState(""),
+    [adminAssignment, setAdminAssignment] = useState<"assigned" | "unassigned" | "">(""),
+    [assignedCouncilor, setAssignedCouncilor] = useState(""),
+    [councilorDialogOpen, setCouncilorDialogOpen] = useState(false),
+    [editingCouncilor, setEditingCouncilor] = useState<Councilor | null>(null),
+    [taskSearch, setTaskSearch] = useState(""),
+    [taskPage, setTaskPage] = useState(1),
+    [taskPageSize, setTaskPageSize] = useState<(typeof pageSizes)[number]>(10),
+    [taskSelected, setTaskSelected] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
   const { data: funnels, isLoading: funnelsLoading, isFetching: funnelsFetching } = useGetFunnelsQuery();
+  const { data: workspace, isLoading: workspaceLoading, isFetching: workspaceFetching } = useGetGrowthWorkspaceQuery();
   const {
     data: customers,
     isLoading: customersLoading,
@@ -115,7 +158,35 @@ export default function CustomerPage() {
     page,
     pageSize,
   });
+  const {
+    data: adminCustomers,
+    isLoading: adminCustomersLoading,
+    isFetching: adminCustomersFetching,
+  } = useGetCustomersQuery(
+    {
+      search: adminSearch,
+      status: adminStatus,
+      funnelId: adminFunnel || undefined,
+      assignment: adminAssignment || undefined,
+      page,
+      pageSize,
+    },
+    { skip: !workspace?.isAdmin || tab !== "admin" || adminSubTab !== "customers" },
+  );
   const { data: overview, isLoading: overviewLoading, isFetching: overviewFetching } = useGetCustomerOverviewQuery();
+  const {
+    data: councilors,
+    isLoading: councilorsLoading,
+    isFetching: councilorsFetching,
+  } = useGetCouncilorsQuery(undefined, { skip: !workspace?.isAdmin });
+  const {
+    data: taskCustomers,
+    isLoading: taskLoading,
+    isFetching: taskFetching,
+  } = useGetTaskCustomersQuery(
+    { search: taskSearch, page: taskPage, pageSize: taskPageSize },
+    { skip: !workspace?.isCouncilor && !workspace?.isAdmin },
+  );
   const { data: spends, isLoading: spendsLoading, isFetching: spendsFetching } = useGetSpendsQuery();
   const [createFunnel, createFunnelState] = useCreateFunnelMutation();
   const [updateFunnel, updateFunnelState] = useUpdateFunnelMutation();
@@ -123,11 +194,19 @@ export default function CustomerPage() {
   const [createCustomer, createCustomerState] = useCreateCustomerMutation();
   const [updateCustomer, updateCustomerState] = useUpdateCustomerMutation();
   const [bulkUpdate, bulkUpdateState] = useBulkUpdateCustomersMutation();
+  const [archiveCustomer, archiveCustomerState] = useArchiveCustomerMutation();
+  const [assignCustomers, assignCustomersState] = useAssignCustomersToCouncilorMutation();
+  const [createCouncilor, createCouncilorState] = useCreateCouncilorMutation();
+  const [updateCouncilor, updateCouncilorState] = useUpdateCouncilorMutation();
+  const [deleteCouncilor, deleteCouncilorState] = useDeleteCouncilorMutation();
   const [bulkDelete, bulkDeleteState] = useBulkDeleteCustomersMutation();
   const [bulkDeleteFunnels, bulkDeleteFunnelsState] = useBulkDeleteFunnelsMutation();
   const [importCustomers, importState] = useImportCustomersMutation();
-  const [importDemoCustomersWithOrders] = useImportDemoCustomersWithOrdersMutation();
+  const [importDemoCustomersWithOrders, importDemoCustomersState] = useImportDemoCustomersWithOrdersMutation();
   const [createSpend, createSpendState] = useCreateSpendMutation();
+  const [updateSpend, updateSpendState] = useUpdateSpendMutation();
+  const [removeSpend, removeSpendState] = useDeleteSpendMutation();
+  const [bulkDeleteSpends, bulkDeleteSpendsState] = useBulkDeleteSpendsMutation();
   const [createDemoSpends, createDemoSpendsState] = useCreateDemoSpendsMutation();
   const busy =
     createFunnelState.isLoading ||
@@ -143,10 +222,44 @@ export default function CustomerPage() {
   const spendTotalPages = Math.max(1, Math.ceil(spendItems.length / spendPageSize));
   const activeSpendPage = Math.min(spendPage, spendTotalPages);
   const visibleSpends = spendItems.slice((activeSpendPage - 1) * spendPageSize, activeSpendPage * spendPageSize);
-  const funnelsBusy = funnelsLoading || funnelsFetching;
-  const customersBusy = customersLoading || customersFetching || funnelsFetching;
+  const workspaceBusy = workspaceLoading || workspaceFetching;
+  const funnelsBusy =
+    funnelsLoading ||
+    funnelsFetching ||
+    createFunnelState.isLoading ||
+    updateFunnelState.isLoading ||
+    removeFunnelState.isLoading ||
+    bulkDeleteFunnelsState.isLoading;
+  const customersBusy =
+    customersLoading ||
+    customersFetching ||
+    funnelsFetching ||
+    createCustomerState.isLoading ||
+    updateCustomerState.isLoading ||
+    bulkUpdateState.isLoading ||
+    bulkDeleteState.isLoading ||
+    importState.isLoading ||
+    importDemoCustomersState.isLoading ||
+    importingDemo;
   const overviewBusy = overviewLoading || overviewFetching;
-  const spendBusy = spendsLoading || spendsFetching || funnelsFetching;
+  const adminCouncilorsBusy =
+    councilorsLoading ||
+    councilorsFetching ||
+    createCouncilorState.isLoading ||
+    updateCouncilorState.isLoading ||
+    deleteCouncilorState.isLoading;
+  const adminCustomersBusy =
+    adminCustomersLoading || adminCustomersFetching || funnelsFetching || assignCustomersState.isLoading;
+  const taskBusy = taskLoading || taskFetching || updateCustomerState.isLoading || archiveCustomerState.isLoading;
+  const spendBusy =
+    spendsLoading ||
+    spendsFetching ||
+    funnelsFetching ||
+    createSpendState.isLoading ||
+    updateSpendState.isLoading ||
+    removeSpendState.isLoading ||
+    bulkDeleteSpendsState.isLoading ||
+    createDemoSpendsState.isLoading;
   async function saveFunnel(
     form: Pick<CustomerFunnel, "name" | "description" | "minimumAmount" | "maximumAmount" | "color">,
   ) {
@@ -208,7 +321,6 @@ export default function CustomerPage() {
           ? await bulkUpdate({
               ids: selected,
               status: bulkStatus,
-              funnelId: bulkFunnelId === "__unchanged" ? undefined : bulkFunnelId || null,
             }).unwrap()
           : await bulkDelete(selected).unwrap();
       toast.success(`${"updatedCount" in result ? result.updatedCount : result.deletedCount} customers ${action}d.`);
@@ -219,10 +331,22 @@ export default function CustomerPage() {
       toast.error(errorMessage(e, "Bulk action failed."));
     }
   }
+  async function assignSelectedCustomers() {
+    if (!adminSelected.length || !assignedCouncilor) return;
+    try {
+      const result = await assignCustomers({ ids: adminSelected, councilorId: assignedCouncilor }).unwrap();
+      toast.success(`${result.updatedCount} customers assigned.`);
+      setAdminSelected([]);
+      setAssignedCouncilor("");
+    } catch (error) {
+      toast.error(errorMessage(error, "Could not assign customers."));
+    }
+  }
   async function removeCustomer() {
     if (!deleteCustomer) return;
     try {
-      await bulkDelete([deleteCustomer.id]).unwrap();
+      if (tab === "task") await archiveCustomer(deleteCustomer.id).unwrap();
+      else await bulkDelete([deleteCustomer.id]).unwrap();
       toast.success("Customer deleted.");
       setSelected((items) => items.filter((id) => id !== deleteCustomer.id));
       setDeleteCustomer(null);
@@ -296,13 +420,10 @@ export default function CustomerPage() {
         demoFunnelItems = created;
       }
       const stamp = Date.now();
-      const funnelThresholds = [0.6, 0.9, 0.95, 0.98, 1];
+      const funnelForIndex = demoUserMix(demoCount).flatMap(([name, count]) =>
+        Array.from({ length: count }, () => demoFunnelItems.find((item) => item.name.trim().toLowerCase() === name)),
+      );
       const rows: Partial<Customer>[] = Array.from({ length: demoCount }, (_, index) => {
-        const ratioPosition = (index + 1) / demoCount;
-        const funnelIndex = Math.min(
-          demoFunnelItems.length - 1,
-          funnelThresholds.findIndex((threshold) => ratioPosition <= threshold),
-        );
         return {
           name: `Demo Customer ${index + 1}`,
           email: `demo.customer.${stamp}.${index + 1}@example.com`,
@@ -313,7 +434,7 @@ export default function CustomerPage() {
           author: "Demo data",
           notes: "Generated demo customer.",
           tags: ["demo"],
-          funnelId: demoFunnelItems[funnelIndex].id,
+          funnelId: funnelForIndex[index]?.id ?? demoFunnelItems[index % demoFunnelItems.length].id,
           customerStatus: customerStatuses[index % customerStatuses.length],
         };
       });
@@ -329,17 +450,38 @@ export default function CustomerPage() {
   }
   async function saveSpend(form: { funnelId: string; amount: number }) {
     try {
-      await createSpend(form).unwrap();
-      setSpendFormOpen(false);
-      toast.success("Marketing spend recorded.");
+      if (spendForm) {
+        await updateSpend({ ...form, id: spendForm.id }).unwrap();
+        toast.success("Marketing spend updated.");
+      } else {
+        await createSpend(form).unwrap();
+        toast.success("Marketing spend recorded.");
+      }
+      setSpendForm(undefined);
     } catch (error) {
-      toast.error(errorMessage(error, "Could not record marketing spend."));
+      toast.error(errorMessage(error, "Could not save marketing spend."));
+    }
+  }
+  async function deleteSelectedSpends(ids: string[]) {
+    try {
+      const result =
+        ids.length === 1
+          ? await removeSpend(ids[0])
+              .unwrap()
+              .then(() => ({ deletedCount: 1 }))
+          : await bulkDeleteSpends(ids).unwrap();
+      toast.success(`${result.deletedCount} spend ${result.deletedCount === 1 ? "entry" : "entries"} deleted.`);
+      setSelectedSpends([]);
+      setDeleteSpend(null);
+      setConfirmBulkSpendDelete(false);
+    } catch (error) {
+      toast.error(errorMessage(error, "Could not delete spend entries."));
     }
   }
   async function importDemoSpends() {
     try {
       const result = await createDemoSpends().unwrap();
-      toast.success(`${result.createdCount} demo spend entries totaling ৳1,300 were added.`);
+      toast.success(`${result.createdCount} demo spend entries totaling ৳5,000 were added.`);
     } catch (error) {
       toast.error(errorMessage(error, "Could not import demo spend."));
     }
@@ -349,7 +491,7 @@ export default function CustomerPage() {
       <section className="mx-auto max-w-7xl rounded-sm border border-[#eadfca] bg-white p-4 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold text-stone-900">Customer management</h1>
+            <h1 className="text-2xl font-semibold text-stone-900">Business growth</h1>
             <p className="mt-1 text-sm text-stone-600">Organize customer journeys, contacts, and performance.</p>
           </div>
           {(tab === "funnels" || tab === "customers") && (
@@ -363,17 +505,19 @@ export default function CustomerPage() {
             </button>
           )}
         </div>
-        <div className="mt-6 inline-flex rounded-sm border border-[#eadfca] bg-[#fffaf0] p-1">
+        <div className="mt-6 grid grid-cols-2 gap-1 rounded-sm border border-[#eadfca] bg-[#fffaf0] p-1 sm:inline-flex sm:w-auto">
           {(
             [
               ["funnels", "Funnels", Workflow],
               ["customers", "Customers", Users],
               ["spend", "Spend", Wallet],
               ["overview", "Overview", Users],
+              ...(workspace?.isAdmin ? [["admin", "Admin", Users] as const] : []),
+              ...(workspace?.isCouncilor || workspace?.isAdmin ? [["task", "Task", Workflow] as const] : []),
             ] as const
           ).map(([v, l, I]) => (
             <button
-              className={`flex items-center gap-2 rounded-sm px-4 py-2 text-sm font-medium ${tab === v ? "bg-amber-700 text-white" : "text-stone-600"}`}
+              className={`flex items-center justify-center gap-2 rounded-sm px-3 py-2 text-sm font-medium sm:px-4 ${tab === v ? "bg-amber-700 text-white" : "text-stone-600"}`}
               key={v}
               onClick={() => setTab(v)}
               type="button"
@@ -383,6 +527,7 @@ export default function CustomerPage() {
             </button>
           ))}
         </div>
+        {workspaceBusy && <LoadingState label="Loading business growth workspace" overlay />}
         {tab === "funnels" && (
           <section className="mt-5">
             {funnelsBusy && <LoadingState label="Loading funnels" overlay />}
@@ -485,12 +630,40 @@ export default function CustomerPage() {
               </button>
               <input accept=".xlsx,.xls" className="hidden" onChange={readImport} ref={fileRef} type="file" />
             </div>
+            {selected.length > 0 && (
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-sm border border-amber-200 bg-amber-50 p-3">
+                <span className="text-sm font-medium text-stone-800">
+                  {selected.length} customer{selected.length === 1 ? "" : "s"} selected
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button className="secondary-button" onClick={() => setBulkStatusOpen(true)} type="button">
+                    <Edit3 className="h-4 w-4" />
+                    Bulk edit status
+                  </button>
+                  <button
+                    className="secondary-button border-red-200 text-red-700 hover:bg-red-50"
+                    onClick={() => setConfirmBulkCustomerDelete(true)}
+                    type="button"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete selected
+                  </button>
+                </div>
+              </div>
+            )}
             <CustomerTable
               customers={customers?.items ?? []}
               edit={setCustomerForm}
               funnels={funnels?.items ?? []}
               loading={customersLoading}
               remove={setDeleteCustomer}
+              selected={selected}
+              toggle={(id) =>
+                setSelected((items) => (items.includes(id) ? items.filter((item) => item !== id) : [...items, id]))
+              }
+              toggleAll={(checked) =>
+                setSelected(checked ? (customers?.items ?? []).map((customer) => customer.id) : [])
+              }
               view={setViewCustomer}
             />
             {!customersLoading && !(customers?.total ?? 0) && (
@@ -527,6 +700,288 @@ export default function CustomerPage() {
             <Overview data={overview} />
           </>
         )}
+        {tab === "admin" && workspace?.isAdmin && (
+          <section className="mt-5">
+            {(adminSubTab === "councillors" ? adminCouncilorsBusy : adminCustomersBusy) && (
+              <LoadingState
+                label={adminSubTab === "councillors" ? "Loading councillors" : "Loading customer assignments"}
+                overlay
+              />
+            )}
+            <div className="mb-3 flex flex-wrap gap-1 rounded-sm border border-[#eadfca] bg-[#fffaf0] p-1">
+              {(
+                [
+                  ["councillors", "Councillor"],
+                  ["customers", "Customers"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  className={`rounded-sm px-4 py-2 text-sm font-medium ${adminSubTab === value ? "bg-amber-700 text-white" : "text-stone-600"}`}
+                  key={value}
+                  onClick={() => {
+                    setAdminSubTab(value);
+                    setAdminSelected([]);
+                    setPage(1);
+                  }}
+                  type="button"
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {adminSubTab === "councillors" ? (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-amber-200 bg-amber-50 p-4">
+                  <div>
+                    <h2 className="font-semibold text-stone-900">Councilor assignments</h2>
+                    <p className="text-sm text-stone-600">Select customers and assign them to a councilor.</p>
+                  </div>
+                  <button className="primary-button" onClick={() => setCouncilorDialogOpen(true)} type="button">
+                    <Plus className="h-4 w-4" />
+                    Add councilor
+                  </button>
+                </div>
+                <div className="mt-3 overflow-hidden rounded-sm border border-[#eadfca] bg-white">
+                  {(councilors?.items ?? []).map((item) => (
+                    <div
+                      className="flex items-center gap-3 border-b border-[#eadfca] p-3 last:border-b-0"
+                      key={item.id}
+                    >
+                      <span className="min-w-0 flex-1 break-all text-sm font-medium">{item.email}</span>
+                      <div className="flex flex-wrap items-center justify-end gap-1.5">
+                        <span className="rounded-sm bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                          {item.assignedCount} assigned
+                        </span>
+                        <span className="rounded-sm bg-green-50 px-2 py-1 text-xs text-green-800">
+                          Total active: {item.activeCount}
+                        </span>
+                        <span className="rounded-sm bg-red-50 px-2 py-1 text-xs text-red-700">
+                          Total inactive: {item.inactiveCount}
+                        </span>
+                        <span className="rounded-sm bg-sky-50 px-2 py-1 text-xs text-sky-800">
+                          24 H Counselling: {item.counsellingLast24Hours}
+                        </span>
+                      </div>
+                      <button
+                        className="icon-button"
+                        onClick={() => {
+                          setEditingCouncilor(item);
+                          setCouncilorDialogOpen(true);
+                        }}
+                        type="button"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </button>
+                      <button
+                        className="icon-button border-red-100 text-red-700"
+                        onClick={() => {
+                          if (window.confirm(`Delete ${item.email}? Assigned customers will be unassigned.`))
+                            void deleteCouncilor(item.id)
+                              .unwrap()
+                              .then(() => toast.success("Councilor deleted."))
+                              .catch((error) => toast.error(errorMessage(error, "Could not delete councilor.")));
+                        }}
+                        type="button"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ))}
+                  {!councilors?.items.length && (
+                    <p className="p-4 text-sm text-stone-600">No councilor emails added yet.</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="rounded-sm border border-[#eadfca] bg-white p-3">
+                  <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
+                    <label className="sr-only" htmlFor="admin-customer-search">
+                      Search customers
+                    </label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-stone-400" />
+                      <input
+                        className="input pl-9"
+                        id="admin-customer-search"
+                        onChange={(event) => {
+                          setAdminSearch(event.target.value);
+                          setPage(1);
+                        }}
+                        placeholder="Search customer name, contact, or email"
+                        value={adminSearch}
+                      />
+                    </div>
+                    <select
+                      className="input"
+                      onChange={(event) => {
+                        setAdminStatus((event.target.value || undefined) as CustomerStatus | undefined);
+                        setPage(1);
+                      }}
+                      value={adminStatus ?? ""}
+                    >
+                      <option value="">Active + inactive</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                    <select
+                      className="input"
+                      onChange={(event) => {
+                        setAdminFunnel(event.target.value);
+                        setPage(1);
+                      }}
+                      value={adminFunnel}
+                    >
+                      <option value="">All funnels</option>
+                      {(funnels?.items ?? []).map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="input"
+                      onChange={(event) => {
+                        setAdminAssignment(event.target.value as "assigned" | "unassigned" | "");
+                        setPage(1);
+                      }}
+                      value={adminAssignment}
+                    >
+                      <option value="">Assigned + unassigned</option>
+                      <option value="assigned">Assigned</option>
+                      <option value="unassigned">Unassigned</option>
+                    </select>
+                  </div>
+                </div>
+                {adminSelected.length > 0 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 p-3">
+                    <span className="mr-auto text-sm font-medium">{adminSelected.length} customers selected</span>
+                    <select
+                      className="input w-56"
+                      onChange={(event) => setAssignedCouncilor(event.target.value)}
+                      value={assignedCouncilor}
+                    >
+                      <option value="">Assign to councilor</option>
+                      {(councilors?.items ?? []).map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name || item.email}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="primary-button"
+                      disabled={!assignedCouncilor || assignCustomersState.isLoading}
+                      onClick={() => void assignSelectedCustomers()}
+                      type="button"
+                    >
+                      Assign
+                    </button>
+                  </div>
+                )}
+                <CustomerTable
+                  customers={adminCustomers?.items ?? []}
+                  edit={setCustomerForm}
+                  editable={false}
+                  funnels={funnels?.items ?? []}
+                  loading={adminCustomersLoading}
+                  remove={setDeleteCustomer}
+                  selected={adminSelected}
+                  toggle={(id) =>
+                    setAdminSelected((items) =>
+                      items.includes(id) ? items.filter((item) => item !== id) : [...items, id],
+                    )
+                  }
+                  toggleAll={(checked) =>
+                    setAdminSelected(checked ? (adminCustomers?.items ?? []).map((item) => item.id) : [])
+                  }
+                  view={setViewCustomer}
+                />
+                <PaginationBar
+                  activePage={adminCustomers?.page ?? page}
+                  isFetching={adminCustomersFetching}
+                  onPageChange={setPage}
+                  onPageSizeChange={(value) => {
+                    setPageSize(value);
+                    setPage(1);
+                    setAdminSelected([]);
+                  }}
+                  pageSize={pageSize}
+                  total={adminCustomers?.total ?? 0}
+                  totalPages={Math.max(1, Math.ceil((adminCustomers?.total ?? 0) / pageSize))}
+                  noun="customers"
+                />
+              </>
+            )}
+          </section>
+        )}
+        {tab === "task" && (workspace?.isCouncilor || workspace?.isAdmin) && (
+          <section className="mt-5">
+            {taskBusy && <LoadingState label="Loading customer tasks" overlay />}
+            <div className="rounded-sm border border-amber-200 bg-amber-50 p-4">
+              <h2 className="font-semibold text-stone-900">My customer tasks</h2>
+              <p className="text-sm text-stone-600">Review your assigned customers and record follow-up notes.</p>
+              <label className="relative mt-4 block max-w-md">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
+                <input
+                  className="input pl-9"
+                  onChange={(event) => {
+                    setTaskSearch(event.target.value);
+                    setTaskPage(1);
+                  }}
+                  placeholder="Search assigned customers"
+                  value={taskSearch}
+                />
+              </label>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-sm border border-[#eadfca] bg-white p-3">
+                <p className="text-xs text-stone-500">Total assigned customers</p>
+                <p className="mt-1 text-2xl font-semibold">{taskCustomers?.summary.assigned ?? 0}</p>
+              </div>
+              <div className="rounded-sm border border-[#eadfca] bg-white p-3">
+                <p className="text-xs text-stone-500">Active customers</p>
+                <p className="mt-1 text-2xl font-semibold">{taskCustomers?.summary.active ?? 0}</p>
+              </div>
+              <div className="rounded-sm border border-[#eadfca] bg-white p-3">
+                <p className="text-xs text-stone-500">Inactive customers</p>
+                <p className="mt-1 text-2xl font-semibold">{taskCustomers?.summary.inactive ?? 0}</p>
+              </div>
+              <div className="rounded-sm border border-[#eadfca] bg-white p-3">
+                <p className="text-xs text-stone-500">Counselling in last 24 hours</p>
+                <p className="mt-1 text-2xl font-semibold">{taskCustomers?.summary.counsellingLast24Hours ?? 0}</p>
+              </div>
+            </div>
+            <CustomerTable
+              customers={taskCustomers?.items ?? []}
+              edit={setCustomerForm}
+              funnels={funnels?.items ?? []}
+              loading={taskLoading}
+              remove={setDeleteCustomer}
+              selected={taskSelected}
+              toggle={(id) =>
+                setTaskSelected((items) => (items.includes(id) ? items.filter((item) => item !== id) : [...items, id]))
+              }
+              toggleAll={(checked) =>
+                setTaskSelected(checked ? (taskCustomers?.items ?? []).map((item) => item.id) : [])
+              }
+              view={setViewCustomer}
+            />
+            <PaginationBar
+              activePage={taskCustomers?.page ?? taskPage}
+              isFetching={taskFetching}
+              onPageChange={setTaskPage}
+              onPageSizeChange={(value) => {
+                setTaskPageSize(value);
+                setTaskPage(1);
+                setTaskSelected([]);
+              }}
+              pageSize={taskPageSize}
+              total={taskCustomers?.total ?? 0}
+              totalPages={Math.max(1, Math.ceil((taskCustomers?.total ?? 0) / taskPageSize))}
+              noun="customers"
+            />
+          </section>
+        )}
         {tab === "spend" && (
           <>
             {spendBusy && <LoadingState label="Loading marketing spend" overlay />}
@@ -535,9 +990,20 @@ export default function CustomerPage() {
               items={visibleSpends}
               totalItems={spendItems}
               loading={spendsLoading}
-              openForm={() => setSpendFormOpen(true)}
+              openForm={() => setSpendForm(null)}
               importDemo={() => void importDemoSpends()}
               importingDemo={createDemoSpendsState.isLoading}
+              edit={setSpendForm}
+              remove={setDeleteSpend}
+              selected={selectedSpends}
+              toggle={(id) =>
+                setSelectedSpends((items) =>
+                  items.includes(id) ? items.filter((item) => item !== id) : [...items, id],
+                )
+              }
+              toggleAll={(checked) => setSelectedSpends(checked ? visibleSpends.map((item) => item.id) : [])}
+              view={setViewSpend}
+              deleteSelected={() => setConfirmBulkSpendDelete(true)}
             />
             <PaginationBar
               activePage={activeSpendPage}
@@ -568,6 +1034,17 @@ export default function CustomerPage() {
         />
       )}{" "}
       {viewCustomer && <CustomerDetails customer={viewCustomer} close={() => setViewCustomer(null)} />}
+      {councilorDialogOpen && (
+        <CouncilorModal
+          close={() => {
+            setCouncilorDialogOpen(false);
+            setEditingCouncilor(null);
+          }}
+          createCouncilor={createCouncilor}
+          initial={editingCouncilor}
+          updateCouncilor={updateCouncilor}
+        />
+      )}
       {importRows && (
         <ImportPreview
           busy={importState.isLoading}
@@ -585,21 +1062,23 @@ export default function CustomerPage() {
           setCount={setDemoCount}
         />
       )}
-      {spendFormOpen && (
+      {spendForm !== undefined && (
         <SpendModal
-          busy={createSpendState.isLoading}
-          close={() => setSpendFormOpen(false)}
+          busy={createSpendState.isLoading || updateSpendState.isLoading}
+          close={() => setSpendForm(undefined)}
           funnels={funnels?.items ?? []}
+          initial={spendForm}
           save={saveSpend}
         />
       )}
+      {viewSpend && <SpendDetails close={() => setViewSpend(null)} funnels={funnels?.items ?? []} spend={viewSpend} />}
       {bulkStatusOpen && (
         <Dialog title="Update customer status">
           <p className="mt-2 text-sm text-stone-600">
             Choose the new status for {selected.length} selected customer{selected.length === 1 ? "" : "s"}.
           </p>
-          <div className="wfull flex gap-2">
-            <label className="w-full mt-5 block text-sm font-medium text-stone-700">
+          <div className="mt-5">
+            <label className="block text-sm font-medium text-stone-700">
               <span className="mb-1 block">New status</span>
               <select
                 className="input"
@@ -609,18 +1088,6 @@ export default function CustomerPage() {
                 {customerStatuses.map((item) => (
                   <option key={item} value={item}>
                     {item}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="w-full mt-4 block text-sm font-medium text-stone-700">
-              <span className="mb-1 block">Assign funnel</span>
-              <select className="input" onChange={(event) => setBulkFunnelId(event.target.value)} value={bulkFunnelId}>
-                <option value="__unchanged">Keep current funnel</option>
-                <option value="">No funnel</option>
-                {(funnels?.items ?? []).map((funnel) => (
-                  <option key={funnel.id} value={funnel.id}>
-                    {funnel.name}
                   </option>
                 ))}
               </select>
@@ -741,6 +1208,26 @@ export default function CustomerPage() {
         onConfirm={() => void bulk("delete")}
         open={confirmBulkCustomerDelete}
         title="Delete selected customers?"
+      />
+      <AlertDialog
+        busy={removeSpendState.isLoading || bulkDeleteSpendsState.isLoading}
+        confirmLabel="Delete spend entry"
+        description={
+          deleteSpend ? `Delete the ৳${deleteSpend.amount.toLocaleString()} spend entry? This cannot be undone.` : ""
+        }
+        onCancel={() => setDeleteSpend(null)}
+        onConfirm={() => deleteSpend && void deleteSelectedSpends([deleteSpend.id])}
+        open={Boolean(deleteSpend)}
+        title="Delete this spend entry?"
+      />
+      <AlertDialog
+        busy={bulkDeleteSpendsState.isLoading}
+        confirmLabel="Delete selected spend entries"
+        description={`Delete ${selectedSpends.length} selected spend ${selectedSpends.length === 1 ? "entry" : "entries"}? This cannot be undone.`}
+        onCancel={() => setConfirmBulkSpendDelete(false)}
+        onConfirm={() => void deleteSelectedSpends(selectedSpends)}
+        open={confirmBulkSpendDelete}
+        title="Delete selected spend entries?"
       />
     </main>
   );
@@ -921,91 +1408,205 @@ function FunnelTable({
 function CustomerTable({
   customers,
   edit,
+  editable = true,
   funnels,
   loading,
   remove,
+  selected,
+  toggle,
+  toggleAll,
   view,
 }: {
   customers: Customer[];
   edit: (customer: Customer) => void;
+  editable?: boolean;
   funnels: CustomerFunnel[];
   loading: boolean;
   remove: (customer: Customer) => void;
+  selected: string[];
+  toggle: (id: string) => void;
+  toggleAll: (checked: boolean) => void;
   view: (customer: Customer) => void;
 }) {
+  const allSelected = customers.length > 0 && customers.every((customer) => selected.includes(customer.id));
   return (
-    <div className="mt-4 overflow-x-auto rounded-sm border border-[#eadfca]">
-      <table className="w-full min-w-[900px] text-left text-sm">
-        <thead className="bg-[#fffdfa] text-stone-500">
-          <tr>
-            <th className="p-3">Customer</th>
-            <th className="p-3">Contact</th>
-            <th className="p-3">Funnel</th>
-            <th className="p-3">Status</th>
-            <th className="p-3">Spent</th>
-            <th className="p-3 text-right">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {loading ? (
+    <div className="mt-4 overflow-hidden rounded-sm border border-[#eadfca]">
+      <div className="hidden overflow-x-auto lg:block">
+        <table className="w-full min-w-[900px] text-left text-sm">
+          <thead className="bg-[#fffdfa] text-stone-500">
             <tr>
-              <td className="p-6" colSpan={6}>
-                Loading customers…
-              </td>
+              <th className="w-12 p-3">
+                <input
+                  aria-label="Select all visible customers"
+                  checked={allSelected}
+                  onChange={(event) => toggleAll(event.target.checked)}
+                  type="checkbox"
+                />
+              </th>
+              <th className="p-3">Customer</th>
+              <th className="p-3">Contact</th>
+              <th className="p-3">Funnel</th>
+              <th className="p-3">Status</th>
+              <th className="p-3">Spent</th>
+              <th className="p-3 text-right">Actions</th>
             </tr>
-          ) : (
-            customers.map((x) => (
-              <tr className="border-t border-stone-100" key={x.id}>
-                <td className="p-3 font-medium">{x.name}</td>
-                <td className="p-3 text-stone-600">{x.mobileNumber || x.whatsappNumber || x.email}</td>
-                <td className="p-3">
-                  {(() => {
-                    const funnel = funnels.find((item) => item.id === x.funnelId);
-                    return funnel ? (
-                      <span
-                        className="inline-flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs font-medium"
-                        style={{ backgroundColor: `${funnel.color}22`, color: funnel.color }}
+          </thead>
+          <tbody>
+            {loading ? (
+              <tr>
+                <td className="p-6" colSpan={7}>
+                  Loading customers…
+                </td>
+              </tr>
+            ) : (
+              customers.map((x) => (
+                <tr className="border-t border-stone-100" key={x.id}>
+                  <td className="p-3">
+                    <input
+                      aria-label={`Select ${x.name}`}
+                      checked={selected.includes(x.id)}
+                      onChange={() => toggle(x.id)}
+                      type="checkbox"
+                    />
+                  </td>
+                  <td className="p-3 font-medium">{x.name}</td>
+                  <td className="p-3 text-stone-600">{x.mobileNumber || x.whatsappNumber || x.email}</td>
+                  <td className="p-3">
+                    {(() => {
+                      const funnel = funnels.find((item) => item.id === x.funnelId);
+                      return funnel ? (
+                        <span
+                          className="inline-flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs font-medium"
+                          style={{ backgroundColor: `${funnel.color}22`, color: funnel.color }}
+                        >
+                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: funnel.color }} />
+                          {funnel.name}
+                        </span>
+                      ) : (
+                        "—"
+                      );
+                    })()}
+                  </td>
+                  <td className="p-3">
+                    <span
+                      className={`rounded-sm px-2 py-1 text-xs font-medium ${customerStatusClass(x.customerStatus)}`}
+                    >
+                      {x.customerStatus}
+                    </span>
+                  </td>
+                  <td className="p-3">৳{x.metrics.amountSpent}</td>
+                  <td className="p-3 text-right">
+                    <button aria-label={`View ${x.name}`} className="icon-button" onClick={() => view(x)} type="button">
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    {editable && (
+                      <button
+                        aria-label={`Edit ${x.name}`}
+                        className="icon-button ml-1"
+                        onClick={() => edit(x)}
+                        type="button"
                       >
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: funnel.color }} />
-                        {funnel.name}
+                        <Edit3 className="h-4 w-4" />
+                      </button>
+                    )}
+                    {editable && (
+                      <button
+                        aria-label={`Delete ${x.name}`}
+                        className="icon-button ml-1 border-red-100 text-red-700 hover:bg-red-50"
+                        onClick={() => remove(x)}
+                        type="button"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className="grid gap-3 p-3 lg:hidden">
+        {loading ? (
+          <p className="p-3 text-sm text-stone-600">Loading customers…</p>
+        ) : (
+          customers.map((customer) => {
+            const funnel = funnels.find((item) => item.id === customer.funnelId);
+            return (
+              <article className="rounded-sm border border-[#eadfca] bg-[#fffdfa] p-3" key={customer.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <label className="flex min-w-0 items-start gap-3">
+                    <input
+                      aria-label={`Select ${customer.name}`}
+                      checked={selected.includes(customer.id)}
+                      className="mt-1"
+                      onChange={() => toggle(customer.id)}
+                      type="checkbox"
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold text-stone-900">{customer.name}</span>
+                      <span className="mt-1 block break-words text-sm text-stone-600">
+                        {customer.mobileNumber || customer.whatsappNumber || customer.email || "No contact details"}
                       </span>
-                    ) : (
-                      "—"
-                    );
-                  })()}
-                </td>
-                <td className="p-3">
-                  <span className={`rounded-sm px-2 py-1 text-xs font-medium ${customerStatusClass(x.customerStatus)}`}>
-                    {x.customerStatus}
-                  </span>
-                </td>
-                <td className="p-3">৳{x.metrics.amountSpent}</td>
-                <td className="p-3 text-right">
-                  <button aria-label={`View ${x.name}`} className="icon-button" onClick={() => view(x)} type="button">
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button
-                    aria-label={`Edit ${x.name}`}
-                    className="icon-button ml-1"
-                    onClick={() => edit(x)}
-                    type="button"
+                    </span>
+                  </label>
+                  <span
+                    className={`shrink-0 rounded-sm px-2 py-1 text-xs font-medium ${customerStatusClass(customer.customerStatus)}`}
                   >
-                    <Edit3 className="h-4 w-4" />
-                  </button>
+                    {customer.customerStatus}
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-[#eadfca] pt-3 text-sm">
+                  <span className="text-stone-600">
+                    Spent <strong className="text-stone-900">৳{customer.metrics.amountSpent}</strong>
+                  </span>
+                  {funnel ? (
+                    <span
+                      className="inline-flex items-center gap-1.5 rounded-sm px-2 py-1 text-xs font-medium"
+                      style={{ backgroundColor: `${funnel.color}22`, color: funnel.color }}
+                    >
+                      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: funnel.color }} />
+                      {funnel.name}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-stone-500">No funnel</span>
+                  )}
+                </div>
+                <div className="mt-3 flex justify-end gap-1 border-t border-[#eadfca] pt-3">
+                  {editable && (
+                    <button
+                      aria-label={`View ${customer.name}`}
+                      className="icon-button"
+                      onClick={() => view(customer)}
+                      type="button"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                  )}
+                  {editable && (
+                    <button
+                      aria-label={`Edit ${customer.name}`}
+                      className="icon-button"
+                      onClick={() => edit(customer)}
+                      type="button"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </button>
+                  )}
                   <button
-                    aria-label={`Delete ${x.name}`}
-                    className="icon-button ml-1 border-red-100 text-red-700 hover:bg-red-50"
-                    onClick={() => remove(x)}
+                    aria-label={`Delete ${customer.name}`}
+                    className="icon-button border-red-100 text-red-700 hover:bg-red-50"
+                    onClick={() => remove(customer)}
                     type="button"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
-                </td>
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+                </div>
+              </article>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
@@ -1023,6 +1624,13 @@ function SpendPanel({
   openForm,
   importDemo,
   importingDemo,
+  edit,
+  remove,
+  selected,
+  toggle,
+  toggleAll,
+  view,
+  deleteSelected,
 }: {
   funnels: CustomerFunnel[];
   items: CustomerSpend[];
@@ -1031,8 +1639,16 @@ function SpendPanel({
   openForm: () => void;
   importDemo: () => void;
   importingDemo: boolean;
+  edit: (spend: CustomerSpend) => void;
+  remove: (spend: CustomerSpend) => void;
+  selected: string[];
+  toggle: (id: string) => void;
+  toggleAll: (checked: boolean) => void;
+  view: (spend: CustomerSpend) => void;
+  deleteSelected: () => void;
 }) {
   const total = totalItems.reduce((sum, item) => sum + item.amount, 0);
+  const allSelected = items.length > 0 && items.every((item) => selected.includes(item.id));
   return (
     <section className="mt-5">
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-[#eadfca] bg-[#fffdfa] p-4">
@@ -1054,25 +1670,57 @@ function SpendPanel({
         <Summary label="Total recorded spend" value={total} prefix="৳" />
         <Summary label="Spend entries" value={totalItems.length} />
       </div>
+      {selected.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-sm border border-red-200 bg-red-50 p-3">
+          <span className="text-sm font-medium text-stone-800">
+            {selected.length} spend {selected.length === 1 ? "entry" : "entries"} selected
+          </span>
+          <button
+            className="secondary-button border-red-200 text-red-700 hover:bg-red-50"
+            onClick={deleteSelected}
+            type="button"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete selected
+          </button>
+        </div>
+      )}
       <div className="mt-4 overflow-x-auto rounded-sm border border-[#eadfca]">
         <table className="w-full min-w-[560px] text-left text-sm">
           <thead className="bg-[#fffdfa] text-stone-500">
             <tr>
+              <th className="w-12 p-3">
+                <input
+                  aria-label="Select all visible spend entries"
+                  checked={allSelected}
+                  onChange={(event) => toggleAll(event.target.checked)}
+                  type="checkbox"
+                />
+              </th>
               <th className="p-3">Funnel</th>
               <th className="p-3">Amount</th>
               <th className="p-3">Recorded date & time</th>
+              <th className="p-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td className="p-6" colSpan={3}>
+                <td className="p-6" colSpan={5}>
                   Loading spend history…
                 </td>
               </tr>
             ) : items.length ? (
               items.map((item) => (
                 <tr className="border-t border-stone-100" key={item.id}>
+                  <td className="p-3">
+                    <input
+                      aria-label={`Select spend entry ৳${item.amount}`}
+                      checked={selected.includes(item.id)}
+                      onChange={() => toggle(item.id)}
+                      type="checkbox"
+                    />
+                  </td>
                   <td className="p-3 font-medium">
                     {funnels.find((funnel) => funnel.id === item.funnelId)?.name ?? "Deleted funnel"}
                   </td>
@@ -1082,11 +1730,37 @@ function SpendPanel({
                       new Date(item.createdAt),
                     )}
                   </td>
+                  <td className="p-3 text-right">
+                    <button
+                      aria-label="View spend entry"
+                      className="icon-button"
+                      onClick={() => view(item)}
+                      type="button"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button
+                      aria-label="Edit spend entry"
+                      className="icon-button ml-1"
+                      onClick={() => edit(item)}
+                      type="button"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </button>
+                    <button
+                      aria-label="Delete spend entry"
+                      className="icon-button ml-1 border-red-100 text-red-700 hover:bg-red-50"
+                      onClick={() => remove(item)}
+                      type="button"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td className="p-6 text-center text-stone-600" colSpan={3}>
+                <td className="p-6 text-center text-stone-600" colSpan={5}>
                   <p>No marketing spend recorded yet.</p>
                   <button
                     className="secondary-button mt-3"
@@ -1094,7 +1768,7 @@ function SpendPanel({
                     onClick={importDemo}
                     type="button"
                   >
-                    {importingDemo && <Loader2 className="h-4 w-4 animate-spin" />}Import 14 demo spends (৳1,300)
+                    {importingDemo && <Loader2 className="h-4 w-4 animate-spin" />}Import 14 demo spends (৳5,000)
                   </button>
                   {funnels.length < 5 && (
                     <p className="mt-2 text-xs text-amber-800">Create all five funnels to use the demo split.</p>
@@ -1113,16 +1787,18 @@ function SpendModal({
   close,
   save,
   busy,
+  initial,
 }: {
   funnels: CustomerFunnel[];
   close: () => void;
   save: (form: { funnelId: string; amount: number }) => Promise<void>;
   busy: boolean;
+  initial: CustomerSpend | null;
 }) {
-  const [funnelId, setFunnelId] = useState(funnels[0]?.id ?? "");
-  const [amount, setAmount] = useState("");
+  const [funnelId, setFunnelId] = useState(initial?.funnelId ?? funnels[0]?.id ?? "");
+  const [amount, setAmount] = useState(initial?.amount.toString() ?? "");
   return (
-    <Dialog title="Add marketing spend">
+    <Dialog title={initial ? "Edit marketing spend" : "Add marketing spend"}>
       <form
         className="mt-5 space-y-4"
         onSubmit={(event: FormEvent) => {
@@ -1158,10 +1834,41 @@ function SpendModal({
             Cancel
           </button>
           <button className="primary-button" disabled={busy} type="submit">
-            {busy && <Loader2 className="h-4 w-4 animate-spin" />}Save spend
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+            {initial ? "Save changes" : "Save spend"}
           </button>
         </div>
       </form>
+    </Dialog>
+  );
+}
+function SpendDetails({
+  close,
+  funnels,
+  spend,
+}: {
+  close: () => void;
+  funnels: CustomerFunnel[];
+  spend: CustomerSpend;
+}) {
+  const funnel = funnels.find((item) => item.id === spend.funnelId);
+  return (
+    <Dialog title="Spend entry details">
+      <dl className="mt-5 space-y-3 text-sm">
+        <Detail label="Funnel" value={funnel?.name ?? "Deleted funnel"} />
+        <Detail label="Amount" value={formatBDT(spend.amount)} />
+        <Detail
+          label="Recorded"
+          value={new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
+            new Date(spend.createdAt),
+          )}
+        />
+      </dl>
+      <div className="mt-5 flex justify-end">
+        <button className="secondary-button" onClick={close} type="button">
+          Close
+        </button>
+      </div>
     </Dialog>
   );
 }
@@ -1171,7 +1878,15 @@ function Overview({
   data?: {
     total: number;
     statuses: { _id: CustomerStatus; count: number }[];
-    funnels: { id: string; name: string; count: number; spend: number; estimatedReturn: number }[];
+    funnels: {
+      id: string;
+      name: string;
+      color: string;
+      count: number;
+      spend: number;
+      averageReturn: number;
+      estimatedReturn: number;
+    }[];
     unassigned: number;
     monthly: { label: string; count: number }[];
     newLast30: number;
@@ -1180,6 +1895,7 @@ function Overview({
 }) {
   const total = data?.total ?? 0;
   const active = data?.statuses.find((item) => item._id === "active")?.count ?? 0;
+  const inactive = data?.statuses.find((item) => item._id === "inactive")?.count ?? 0;
   const chartMax = Math.max(...(data?.monthly.map((item) => item.count) ?? [0]), 1);
   const growth = data?.newPrevious30
     ? Math.round(((data.newLast30 - data.newPrevious30) / data.newPrevious30) * 100)
@@ -1188,13 +1904,33 @@ function Overview({
       : 0;
   const totalSpend = data?.funnels.reduce((sum, funnel) => sum + funnel.spend, 0) ?? 0;
   const totalReturn = data?.funnels.reduce((sum, funnel) => sum + funnel.estimatedReturn, 0) ?? 0;
+  const newCustomers = data?.newLast30 ?? 0;
+  const customerPercent = (value: number) => (total ? Math.round((value / total) * 100) : 0);
   return (
     <section className="mt-5">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Summary label="All customers" value={total} />
-        <Summary label="New in 30 days" value={data?.newLast30 ?? 0} />
-        <Summary label="Active customers" value={active} />
-        <Summary label="Active rate" value={total ? Math.round((active / total) * 100) : 0} suffix="%" />
+        <OverviewMetric label="All customers" value={total} percent={100} detail="Customer base" tone="amber" />
+        <OverviewMetric
+          label="New in 30 days"
+          value={newCustomers}
+          percent={customerPercent(newCustomers)}
+          detail="Of all customers"
+          tone="sky"
+        />
+        <OverviewMetric
+          label="Active customers"
+          value={active}
+          percent={customerPercent(active)}
+          detail="Currently active"
+          tone="emerald"
+        />
+        <OverviewMetric
+          label="Inactive users"
+          value={inactive}
+          percent={customerPercent(inactive)}
+          detail="Need re-engagement"
+          tone="rose"
+        />
       </div>
       <div className="mt-5 grid gap-4 lg:grid-cols-[1.5fr_1fr]">
         <section className="rounded-sm border border-[#eadfca] bg-[#fffdfa] p-4">
@@ -1270,47 +2006,106 @@ function Overview({
         </section>
       </div>
       <section className="mt-5 rounded-sm border border-[#eadfca] bg-white p-4">
-        <div>
-          <h2 className="font-semibold text-stone-900">Funnel spend &amp; return</h2>
-          <p className="mt-1 text-sm text-stone-600">
-            Return is the average of the funnel&apos;s configured amount range. An incomplete range is shown as 0 BDT.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-stone-900">Funnel spend &amp; return</h2>
+            <p className="mt-1 text-sm text-stone-600">
+              Return uses each funnel&apos;s average configured value multiplied by its customer count.
+            </p>
+          </div>
+          <span className="rounded-sm bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800">
+            {formatBDT(totalReturn)} estimated return
+          </span>
         </div>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Summary label="Total spend" suffix=" BDT" value={totalSpend} />
           <Summary label="Total return from averages" suffix=" BDT" value={totalReturn} />
         </div>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[620px] text-left text-sm">
-            <thead className="border-b border-[#eadfca] text-stone-500">
-              <tr>
-                <th className="p-3">Funnel</th>
-                <th className="p-3 text-right">Customers</th>
-                <th className="p-3 text-right">Spend</th>
-                <th className="p-3 text-right">Average return</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data?.funnels ?? []).map((funnel) => (
-                <tr className="border-b border-stone-100 last:border-0" key={funnel.id}>
-                  <td className="p-3 font-medium text-stone-900">{funnel.name}</td>
-                  <td className="p-3 text-right text-stone-600">{funnel.count}</td>
-                  <td className="p-3 text-right font-medium">{formatBDT(funnel.spend)}</td>
-                  <td className="p-3 text-right font-medium text-emerald-700">{formatBDT(funnel.estimatedReturn)}</td>
-                </tr>
-              ))}
-              {!data?.funnels.length && (
-                <tr>
-                  <td className="p-6 text-center text-stone-600" colSpan={4}>
-                    No funnels to report yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          {(data?.funnels ?? []).map((funnel) => (
+            <FunnelReturnCard funnel={funnel} total={total} key={funnel.id} />
+          ))}
+          {!data?.funnels.length && (
+            <p className="rounded-sm border border-dashed border-[#eadfca] p-6 text-center text-sm text-stone-600 lg:col-span-2">
+              No funnels to report yet.
+            </p>
+          )}
         </div>
       </section>
     </section>
+  );
+}
+function OverviewMetric({
+  label,
+  value,
+  percent,
+  detail,
+  tone,
+}: {
+  label: string;
+  value: number;
+  percent: number;
+  detail: string;
+  tone: "amber" | "sky" | "emerald" | "rose";
+}) {
+  const tones = {
+    amber: "border-amber-200 bg-amber-50 text-amber-800",
+    sky: "border-sky-200 bg-sky-50 text-sky-800",
+    emerald: "border-emerald-200 bg-emerald-50 text-emerald-800",
+    rose: "border-rose-200 bg-rose-50 text-rose-800",
+  };
+  return (
+    <section className={`rounded-sm border p-4 ${tones[tone]}`}>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm font-medium">{label}</p>
+        <span className="rounded-sm bg-white/70 px-2 py-1 text-xs font-bold">{percent}%</span>
+      </div>
+      <p className="mt-3 text-3xl font-semibold text-stone-900">{value.toLocaleString()}</p>
+      <p className="mt-1 text-xs font-medium text-stone-600">{detail}</p>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-sm bg-white/70">
+        <div className="h-full rounded-sm bg-current" style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} />
+      </div>
+    </section>
+  );
+}
+function FunnelReturnCard({
+  funnel,
+  total,
+}: {
+  funnel: { name: string; color: string; count: number; spend: number; averageReturn: number; estimatedReturn: number };
+  total: number;
+}) {
+  const customerPercent = total ? Math.round((funnel.count / total) * 100) : 0;
+  return (
+    <section className="overflow-hidden rounded-sm border border-[#eadfca] bg-[#fffdfa]">
+      <div className="h-1.5" style={{ backgroundColor: funnel.color }} />
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: funnel.color }} />
+            <h3 className="font-semibold text-stone-900">{funnel.name}</h3>
+          </div>
+          <span className="rounded-sm bg-white px-2 py-1 text-xs font-bold text-stone-700">{customerPercent}%</span>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+          <Metric label="Customers" value={String(funnel.count)} />
+          <Metric label="Spend" value={formatBDT(funnel.spend)} />
+          <Metric label="Avg. return" value={formatBDT(funnel.averageReturn)} />
+        </div>
+        <div className="mt-4 flex items-end justify-between gap-3 border-t border-[#eadfca] pt-3">
+          <span className="text-xs font-medium text-stone-500">Estimated total return</span>
+          <strong className="text-base text-emerald-700">{formatBDT(funnel.estimatedReturn)}</strong>
+        </div>
+      </div>
+    </section>
+  );
+}
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-xs text-stone-500">{label}</p>
+      <p className="mt-1 font-semibold text-stone-800">{value}</p>
+    </div>
   );
 }
 function formatBDT(value: number) {
@@ -1529,11 +2324,100 @@ function CustomerDetails({ customer, close }: { customer: Customer; close: () =>
         <Detail label="Purchase count" value={String(customer.metrics.purchaseCount)} />
         <Detail label="Total spent" value={formatBDT(customer.metrics.amountSpent)} />
       </dl>
+      <section className="mt-5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="font-semibold text-stone-900">FollowUp</h3>
+          <span className="rounded-sm bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800">
+            {customer.followUps.length}
+          </span>
+        </div>
+        {customer.followUps.length ? (
+          <div className="mt-3 space-y-2">
+            {[...customer.followUps].reverse().map((followUp) => (
+              <details className="rounded-sm border border-[#eadfca] bg-[#fffdfa]" key={followUp.id}>
+                <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-stone-800">
+                  {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
+                    new Date(followUp.createdAt),
+                  )}
+                </summary>
+                <p className="border-t border-[#eadfca] px-3 py-3 whitespace-pre-wrap text-sm text-stone-700">
+                  {followUp.note}
+                </p>
+                <p className="border-t border-[#eadfca] px-3 py-2 text-xs text-stone-500">
+                  Author: {followUp.authorName || "Unknown author"} · {followUp.authorEmail || "—"}
+                </p>
+              </details>
+            ))}
+          </div>
+        ) : (
+          <p className="mt-3 rounded-sm border border-dashed border-[#eadfca] p-3 text-sm text-stone-600">
+            No follow-up notes yet.
+          </p>
+        )}
+      </section>
       <div className="mt-5 flex justify-end">
         <button className="secondary-button" onClick={close} type="button">
           Close
         </button>
       </div>
+    </Dialog>
+  );
+}
+function CouncilorModal({
+  close,
+  createCouncilor,
+  initial,
+  updateCouncilor,
+}: {
+  close: () => void;
+  createCouncilor: ReturnType<typeof useCreateCouncilorMutation>[0];
+  initial: Councilor | null;
+  updateCouncilor: ReturnType<typeof useUpdateCouncilorMutation>[0];
+}) {
+  const [email, setEmail] = useState(initial?.email ?? ""),
+    [saving, setSaving] = useState(false);
+  async function add() {
+    setSaving(true);
+    try {
+      if (initial) await updateCouncilor({ id: initial.id, email }).unwrap();
+      else await createCouncilor({ email }).unwrap();
+      toast.success(initial ? "Councilor email updated." : "Councilor added.");
+      close();
+    } catch (error) {
+      toast.error(errorMessage(error, "Could not add councilor."));
+    } finally {
+      setSaving(false);
+    }
+  }
+  return (
+    <Dialog title={initial ? "Edit councilor email" : "Add councilor"}>
+      <form
+        className="mt-5 space-y-4"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void add();
+        }}
+      >
+        <Field label="User email">
+          <input
+            autoFocus
+            className="input"
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="name@example.com"
+            required
+            type="email"
+            value={email}
+          />
+        </Field>
+        <div className="flex justify-end gap-2">
+          <button className="secondary-button" onClick={close} type="button">
+            Cancel
+          </button>
+          <button className="primary-button" disabled={saving} type="submit">
+            {saving ? "Saving…" : "Add"}
+          </button>
+        </div>
+      </form>
     </Dialog>
   );
 }
@@ -1556,7 +2440,14 @@ function CustomerModal({
     email: initial?.email ?? "",
     funnelId: initial?.funnelId ?? "",
     customerStatus: (initial?.customerStatus === "inactive" ? "inactive" : "active") as CustomerStatus,
+    followUps: initial?.followUps ?? [],
   });
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [followUpNote, setFollowUpNote] = useState("");
+  const [followUpCreatedAt, setFollowUpCreatedAt] = useState("");
+  const [viewFollowUp, setViewFollowUp] = useState<Customer["followUps"][number] | null>(null);
+  const [editingFollowUp, setEditingFollowUp] = useState<Customer["followUps"][number] | null>(null);
+  const [deleteFollowUp, setDeleteFollowUp] = useState<Customer["followUps"][number] | null>(null);
   return (
     <Dialog title={initial ? "Edit customer" : "Create customer"}>
       <form
@@ -1572,6 +2463,7 @@ function CustomerModal({
             author: initial?.author ?? "",
             notes: initial?.notes ?? "",
             tags: initial?.tags ?? [],
+            followUps: form.followUps,
           });
         }}
       >
@@ -1625,6 +2517,81 @@ function CustomerModal({
             ))}
           </select>
         </Field>
+        {initial && (
+          <section className="rounded-sm border border-[#eadfca] bg-[#fffdfa] p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-stone-900">FollowUp</p>
+                <p className="mt-1 text-xs text-stone-600">Save a dated note for the next customer conversation.</p>
+              </div>
+              <button
+                className="secondary-button"
+                onClick={() => {
+                  setEditingFollowUp(null);
+                  setFollowUpCreatedAt(new Date().toISOString());
+                  setFollowUpNote("");
+                  setFollowUpOpen(true);
+                }}
+                type="button"
+              >
+                <Plus className="h-4 w-4" />
+                Add FollowUp
+              </button>
+            </div>
+            {form.followUps.length ? (
+              <div className="mt-4 space-y-2 border-t border-[#eadfca] pt-3">
+                {[...form.followUps].reverse().map((followUp) => (
+                  <article className="rounded-sm border border-[#eadfca] bg-white p-3" key={followUp.id}>
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="line-clamp-2 whitespace-pre-wrap text-sm text-stone-800">{followUp.note}</p>
+                        <p className="mt-1 text-xs text-stone-500">
+                          {followUp.authorName || "Unknown author"} ·{" "}
+                          {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
+                            new Date(followUp.createdAt),
+                          )}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 gap-1">
+                        <button
+                          aria-label="View follow-up"
+                          className="icon-button"
+                          onClick={() => setViewFollowUp(followUp)}
+                          type="button"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          aria-label="Edit follow-up"
+                          className="icon-button"
+                          onClick={() => {
+                            setEditingFollowUp(followUp);
+                            setFollowUpNote(followUp.note);
+                            setFollowUpCreatedAt(followUp.createdAt);
+                            setFollowUpOpen(true);
+                          }}
+                          type="button"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </button>
+                        <button
+                          aria-label="Delete follow-up"
+                          className="icon-button text-red-700 hover:bg-red-50"
+                          onClick={() => setDeleteFollowUp(followUp)}
+                          type="button"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-4 border-t border-[#eadfca] pt-3 text-sm text-stone-600">No follow-up notes yet.</p>
+            )}
+          </section>
+        )}
         <div className="flex justify-end gap-2">
           <button className="secondary-button" onClick={close} type="button">
             Cancel
@@ -1634,6 +2601,112 @@ function CustomerModal({
           </button>
         </div>
       </form>
+      {followUpOpen && (
+        <FollowUpModal
+          close={() => setFollowUpOpen(false)}
+          createdAt={followUpCreatedAt}
+          editing={Boolean(editingFollowUp)}
+          note={followUpNote}
+          setNote={setFollowUpNote}
+          save={() => {
+            const note = followUpNote.trim();
+            if (!note) return;
+            const next = editingFollowUp
+              ? form.followUps.map((item) => (item.id === editingFollowUp.id ? { ...item, note } : item))
+              : [
+                  ...form.followUps,
+                  {
+                    id: `${Date.now()}-${form.followUps.length}`,
+                    note,
+                    createdAt: followUpCreatedAt,
+                    authorEmail: "",
+                    authorName: "",
+                  },
+                ];
+            setForm({ ...form, followUps: next });
+            setEditingFollowUp(null);
+            setFollowUpOpen(false);
+          }}
+        />
+      )}
+      {viewFollowUp && <FollowUpDetails close={() => setViewFollowUp(null)} followUp={viewFollowUp} />}
+      <AlertDialog
+        confirmLabel="Delete follow-up"
+        description="Delete this follow-up note? This cannot be undone."
+        onCancel={() => setDeleteFollowUp(null)}
+        onConfirm={() => {
+          if (deleteFollowUp)
+            setForm({ ...form, followUps: form.followUps.filter((item) => item.id !== deleteFollowUp.id) });
+          setDeleteFollowUp(null);
+        }}
+        open={Boolean(deleteFollowUp)}
+        title="Delete this follow-up?"
+      />
+    </Dialog>
+  );
+}
+function FollowUpModal({
+  close,
+  createdAt,
+  editing,
+  note,
+  setNote,
+  save,
+}: {
+  close: () => void;
+  createdAt: string;
+  editing: boolean;
+  note: string;
+  setNote: (value: string) => void;
+  save: () => void;
+}) {
+  return (
+    <Dialog title={editing ? "Edit FollowUp" : "Add FollowUp"}>
+      <p className="mt-2 rounded-sm bg-amber-50 p-3 text-sm text-amber-900">
+        {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(createdAt))}
+      </p>
+      <Field label="FollowUp note">
+        <textarea
+          autoFocus
+          className="input mt-4 min-h-32"
+          maxLength={2000}
+          onChange={(event) => setNote(event.target.value)}
+          placeholder="Write the discussion, next step, or reminder…"
+          value={note}
+        />
+      </Field>
+      <div className="mt-5 flex justify-end gap-2">
+        <button className="secondary-button" onClick={close} type="button">
+          Cancel
+        </button>
+        <button className="primary-button" disabled={!note.trim()} onClick={save} type="button">
+          {editing ? "Save FollowUp" : "Add FollowUp"}
+        </button>
+      </div>
+    </Dialog>
+  );
+}
+function FollowUpDetails({ followUp, close }: { followUp: Customer["followUps"][number]; close: () => void }) {
+  return (
+    <Dialog title="FollowUp details">
+      <dl className="mt-5 space-y-3 text-sm">
+        <Detail label="Author" value={followUp.authorName || "Unknown author"} />
+        <Detail label="Author email" value={followUp.authorEmail || "—"} />
+        <Detail
+          label="Date"
+          value={new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
+            new Date(followUp.createdAt),
+          )}
+        />
+      </dl>
+      <p className="mt-5 whitespace-pre-wrap rounded-sm border border-[#eadfca] bg-[#fffdfa] p-3 text-sm text-stone-700">
+        {followUp.note}
+      </p>
+      <div className="mt-5 flex justify-end">
+        <button className="secondary-button" onClick={close} type="button">
+          Close
+        </button>
+      </div>
     </Dialog>
   );
 }
@@ -1694,18 +2767,28 @@ function DemoImportModal({
       <p className="mt-2 text-sm text-stone-600">
         Choose how many demo customers to create. They will be distributed across your funnels and customer statuses.
       </p>
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {[50, 100, 150, 200].map((value) => (
+      <div className="mt-5 grid grid-cols-3 gap-3">
+        {demoImportCounts.map((value, index) => (
           <button
             className={`rounded-sm border p-3 text-sm font-semibold ${count === value ? "border-amber-700 bg-amber-700 text-white" : "border-[#eadfca] bg-white text-stone-700"}`}
             key={value}
             onClick={() => setCount(value)}
             type="button"
           >
-            {value} users
+            {index + 1}× · {value} users
           </button>
         ))}
       </div>
+      <p className="mt-4 rounded-sm bg-amber-50 p-3 text-sm text-amber-900">
+        Selected mix:{" "}
+        {demoUserMix(count)
+          .map(
+            ([name, total]) =>
+              `${total} ${name === "vip customer" ? "VIP Customer" : name.replace(/\b\w/g, (letter) => letter.toUpperCase())}`,
+          )
+          .join(", ")}
+        {"; "}fixed at 4 Premium Customer and 1 VIP Customer for every option.
+      </p>
       <div className="mt-5 flex justify-end gap-2">
         <button className="secondary-button" disabled={busy} onClick={close} type="button">
           Cancel

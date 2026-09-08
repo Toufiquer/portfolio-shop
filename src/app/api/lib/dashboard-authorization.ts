@@ -196,7 +196,7 @@ function apiResourcePaths(pathname: string, method: string) {
     categories: ["/dashboard/category"],
     products: ["/dashboard/products"],
     orders: ["/dashboard/orders"],
-    customer: ["/dashboard/admin/customer"],
+    "business-growth": ["/dashboard/admin/business-growth"],
     navigation: ["/dashboard/developer/navigation"],
   };
   return resources[resource] ?? [];

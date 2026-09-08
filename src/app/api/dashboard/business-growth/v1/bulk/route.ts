@@ -8,8 +8,17 @@
 
 import { rateLimit } from "@/app/api/lib/api-rate-limit";
 import { auth, client } from "@/app/api/lib/auth";
-import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
-import { customerCollection, funnelCollection, id, now, normalize, type CustomerRecord } from "@/lib/customers/server";
+import { authorizeDashboardRequest, getDashboardAccessState } from "@/app/api/lib/dashboard-authorization";
+import {
+  councilorCollection,
+  customerCollection,
+  funnelCollection,
+  id,
+  now,
+  normalize,
+  spendCollection,
+  type CustomerRecord,
+} from "@/lib/customers/server";
 import { type Product } from "@/lib/dashboard/catalog";
 import { customerStatuses, type CustomerStatus } from "@/lib/dashboard/customers";
 import { type Order, type OrderItemSnapshot } from "@/lib/dashboard/orders";
@@ -20,7 +29,7 @@ async function guard(request: Request, method: "POST" | "PATCH" | "DELETE") {
   if (limited) return limited;
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
-  const access = await authorizeDashboardRequest(session, "/api/dashboard/customer/v1", method);
+  const access = await authorizeDashboardRequest(session, "/api/dashboard/business-growth/v1", method);
   return access.allowed ? null : Response.json({ error: access.state.message ?? "Unauthorized." }, { status: 403 });
 }
 const text = (value: unknown, max: number) =>
@@ -43,10 +52,26 @@ export async function PATCH(request: Request) {
     ids?: unknown;
     status?: unknown;
     funnelId?: unknown;
+    councilorId?: unknown;
   } | null;
   const selected = ids(body);
-  if (!selected.length || !customerStatuses.includes(body?.status as CustomerStatus))
-    return Response.json({ error: "Select up to 100 customers and a valid status." }, { status: 400 });
+  if (!selected.length) return Response.json({ error: "Select up to 100 customers." }, { status: 400 });
+  if (body?.councilorId !== undefined) {
+    const session = await auth.api.getSession({ headers: request.headers });
+    const access = session ? await getDashboardAccessState(session) : null;
+    if (!access || (!access.bypassed && !/^(admin|super admin)$/i.test(access.roleName?.trim() ?? "")))
+      return Response.json({ error: "Administrator access required." }, { status: 403 });
+    const councilorId = typeof body.councilorId === "string" ? body.councilorId.trim() : "";
+    const councilor = councilorId ? await councilorCollection().findOne({ id: councilorId }) : null;
+    if (councilorId && !councilor) return Response.json({ error: "Choose a valid councilor." }, { status: 400 });
+    const result = await customerCollection().updateMany(
+      { id: { $in: selected } },
+      { $set: { councilorId: councilorId || null, councilorEmail: councilor?.email ?? null, updatedAt: now() } },
+    );
+    return Response.json({ updatedCount: result.modifiedCount });
+  }
+  if (!customerStatuses.includes(body?.status as CustomerStatus))
+    return Response.json({ error: "Select a valid status." }, { status: 400 });
   const hasFunnelChange = body?.funnelId !== undefined;
   const funnelId = typeof body?.funnelId === "string" && body.funnelId.trim() ? body.funnelId.trim() : null;
   if (funnelId && !(await funnelCollection().findOne({ id: funnelId }, { projection: { id: 1 } })))
@@ -75,6 +100,10 @@ export async function DELETE(request: Request) {
       { funnelId: { $in: selected } },
       { $set: { funnelId: null, updatedAt: now() } },
     );
+    return Response.json({ deletedCount: result.deletedCount });
+  }
+  if (body?.kind === "spends") {
+    const result = await spendCollection().deleteMany({ id: { $in: selected } });
     return Response.json({ deletedCount: result.deletedCount });
   }
   const result = await customerCollection().deleteMany({ id: { $in: selected } });

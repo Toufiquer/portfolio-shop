@@ -33,6 +33,13 @@ export type CustomerSpend = {
   amount: number;
   createdAt: string;
 };
+export type CustomerFollowUp = {
+  id: string;
+  note: string;
+  createdAt: string;
+  authorEmail: string;
+  authorName: string;
+};
 export type Customer = {
   id: string;
   funnelId: string | null;
@@ -46,9 +53,23 @@ export type Customer = {
   notes: string;
   customerStatus: CustomerStatus;
   tags: string[];
+  followUps: CustomerFollowUp[];
+  councilorId?: string | null;
+  councilorEmail?: string | null;
   createdAt: string;
   updatedAt: string;
   metrics: CustomerMetrics;
+};
+export type Councilor = {
+  id: string;
+  userId?: string;
+  name: string;
+  email: string;
+  assignedCount: number;
+  activeCount: number;
+  inactiveCount: number;
+  counsellingLast24Hours: number;
+  createdAt: string;
 };
 /*
 |-----------------------------------------
