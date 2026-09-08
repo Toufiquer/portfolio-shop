@@ -17,6 +17,7 @@ import {
   type OrderCustomer,
   type OrderItemSnapshot,
   type OrderSettings,
+  type OrderStatus,
   type ParsedCheckout,
 } from "@/lib/dashboard/orders";
 
@@ -108,7 +109,11 @@ async function acquireCheckoutLock(userId: string) {
   }
 }
 
-async function createOrderUnchecked(customer: OrderCustomer, input: ParsedCheckout): Promise<CreateOrderResult> {
+async function createOrderUnchecked(
+  customer: OrderCustomer,
+  input: ParsedCheckout,
+  initialStatus: Extract<OrderStatus, "incomplete" | "placed">,
+): Promise<CreateOrderResult> {
   await orders().createIndex({ id: 1 }, { name: "unique_order_id", unique: true });
   const loaded = await Promise.all(
     input.items.map(async ({ productId }) => [productId, await products().findOne({ id: productId })] as const),
@@ -182,7 +187,7 @@ async function createOrderUnchecked(customer: OrderCustomer, input: ParsedChecko
     ...(coupon ? { couponCode: coupon.code } : {}),
     total: subtotal - discount,
     currency: "BDT",
-    status: "placed",
+    status: initialStatus,
     createdAt: now,
     updatedAt: now,
     statusUpdatedAt: now,
@@ -208,11 +213,15 @@ async function createOrderUnchecked(customer: OrderCustomer, input: ParsedChecko
   }
 }
 
-export async function createOrder(sessionUser: SessionUser, input: ParsedCheckout): Promise<CreateOrderResult> {
+export async function createOrder(
+  sessionUser: SessionUser,
+  input: ParsedCheckout,
+  initialStatus: Extract<OrderStatus, "incomplete" | "placed"> = "placed",
+): Promise<CreateOrderResult> {
   const customer = customerFrom(sessionUser, input.customer);
   if (!customer) return { ok: false, status: 401, code: "AUTH_REQUIRED", error: "Sign in required." };
   const settings = await getOrderSettings();
-  if (!settings.orderLimitEnabled) return createOrderUnchecked(customer, input);
+  if (!settings.orderLimitEnabled) return createOrderUnchecked(customer, input, initialStatus);
 
   const token = await acquireCheckoutLock(customer.userId);
   if (!token)
@@ -227,7 +236,7 @@ export async function createOrder(sessionUser: SessionUser, input: ParsedCheckou
       .find(
         {
           "customer.userId": customer.userId,
-          status: { $ne: "cancelled" },
+          status: { $nin: ["cancelled", "incomplete"] },
           createdAt: { $gte: windowStart },
         },
         { projection: { createdAt: 1 } },
@@ -250,7 +259,7 @@ export async function createOrder(sessionUser: SessionUser, input: ParsedCheckou
         };
       }
     }
-    return await createOrderUnchecked(customer, input);
+    return await createOrderUnchecked(customer, input, initialStatus);
   } finally {
     await checkoutLocks().deleteOne({ userId: customer.userId, token });
   }

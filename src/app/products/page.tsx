@@ -16,17 +16,48 @@ import { getPublicCategories, getPublicProducts } from "@/lib/products/server";
 
 export const metadata: Metadata = { title: "Products", description: "Explore our curated technology collection." };
 
-export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
-  const { category: requestedCategory } = await searchParams;
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ category?: string; collection?: string; sort?: string }>;
+}) {
+  const { category: requestedCategory, collection, sort } = await searchParams;
   const categorySlug = requestedCategory?.trim().toLowerCase();
-  const [{ items, category }, categories] = await Promise.all([getPublicProducts(categorySlug), getPublicCategories()]);
-  const title = category ? category.name : "Discover what moves you";
+  const view =
+    collection?.trim().toLowerCase() === "deals" ? "deals" : sort?.trim().toLowerCase() === "newest" ? "newest" : "all";
+  const [{ items, category }, categories] = await Promise.all([
+    getPublicProducts(categorySlug, view),
+    getPublicCategories(),
+  ]);
+  const header =
+    view === "deals"
+      ? {
+          eyebrow: "Limited-time savings",
+          title: "Deals worth grabbing",
+          description: "Shop active offers and save on technology picked for you.",
+          tone: "border-rose-100 bg-[radial-gradient(circle_at_12%_0%,#ffe0df,transparent_34%),radial-gradient(circle_at_92%_30%,#fff0bf,transparent_30%)]",
+        }
+      : view === "newest"
+        ? {
+            eyebrow: "Just arrived",
+            title: "New arrivals",
+            description: "The latest products added to our collection, first.",
+            tone: "border-sky-100 bg-[radial-gradient(circle_at_12%_0%,#dcefff,transparent_34%),radial-gradient(circle_at_92%_30%,#e5f8df,transparent_30%)]",
+          }
+        : {
+            eyebrow: "Curated technology",
+            title: category ? category.name : "Discover what moves you",
+            description: "Explore our curated technology collection.",
+            tone: "border-amber-100 bg-[radial-gradient(circle_at_12%_0%,#fde8bc,transparent_34%),radial-gradient(circle_at_92%_30%,#fee2d1,transparent_30%)]",
+          };
   return (
     <main className="min-h-screen bg-[#fffdf8] text-stone-900">
-      <section className="overflow-hidden border-b border-amber-100 bg-[radial-gradient(circle_at_12%_0%,#fde8bc,transparent_34%),radial-gradient(circle_at_92%_30%,#fee2d1,transparent_30%)]">
+      <section className={`overflow-hidden border-b ${header.tone}`}>
         <div className="mx-auto max-w-7xl px-5 py-16 sm:px-8">
-          <h1 className="max-w-3xl text-4xl font-black tracking-tight sm:text-6xl">{title}</h1>
-          <div>
+          <p className="text-xs font-bold tracking-[0.18em] text-amber-800 uppercase">{header.eyebrow}</p>
+          <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight sm:text-6xl">{header.title}</h1>
+          <div className="mt-4">
+            <p className="max-w-2xl text-sm text-stone-600">{header.description}</p>
             <p className="text-sm font-bold text-stone-500">
               {items.length} {items.length === 1 ? "product" : "products"} Found
             </p>
@@ -77,7 +108,14 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                         <Star className="fill-current" size={15} /> {product.star.toFixed(1)}
                       </div>
                       <div className="mt-4 flex items-center justify-between">
-                        <span className="text-lg font-black">৳{product.discountPrice.toLocaleString("en-BD")}</span>
+                        <span>
+                          <span className="text-lg font-black">৳{product.discountPrice.toLocaleString("en-BD")}</span>
+                          {view === "deals" && product.discount > 0 ? (
+                            <span className="ml-2 text-xs font-medium text-stone-400 line-through">
+                              ৳{product.realPrice.toLocaleString("en-BD")}
+                            </span>
+                          ) : null}
+                        </span>
                         <ArrowRight className="transition group-hover:translate-x-1" size={18} />
                       </div>
                     </div>

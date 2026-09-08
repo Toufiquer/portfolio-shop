@@ -10,6 +10,7 @@ import { client } from "@/app/api/lib/auth";
 import { type Order, type OrderStatus } from "@/lib/dashboard/orders";
 
 export const allowedOrderTransitions: Record<OrderStatus, OrderStatus[]> = {
+  incomplete: ["placed", "cancelled"],
   placed: ["confirmed", "processing", "completed", "cancelled"],
   confirmed: ["placed", "processing", "completed", "cancelled"],
   processing: ["placed", "confirmed", "completed", "cancelled"],

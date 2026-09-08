@@ -55,6 +55,8 @@ export function CartDrawer() {
   const [couponCode, setCouponCode] = useState("");
   const [checkoutStatus, setCheckoutStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
   const [confirmedOrderId, setConfirmedOrderId] = useState<string | null>(null);
+  const [incompleteOrderId, setIncompleteOrderId] = useState<string | null>(null);
+  const [creatingIncompleteOrder, setCreatingIncompleteOrder] = useState(false);
   const [message, setMessage] = useState("");
   const [cooldownExpiresAt, setCooldownExpiresAt] = useState<string | null>(null);
   const [countdownSeconds, setCountdownSeconds] = useState(0);
@@ -143,7 +145,52 @@ export function CartDrawer() {
 
   const phoneValidation = validatePhoneNumber(phone);
   const checkoutDisabled =
-    checkoutStatus === "processing" || countdownSeconds > 0 || !items.length || !phoneValidation.isValid;
+    checkoutStatus === "processing" ||
+    creatingIncompleteOrder ||
+    countdownSeconds > 0 ||
+    !items.length ||
+    !phoneValidation.isValid;
+
+  const createIncompleteOrder = async (phoneNumber = phone): Promise<string | null> => {
+    if (incompleteOrderId) return incompleteOrderId;
+    const validation = validatePhoneNumber(phoneNumber);
+    if (!validation.isValid || !items.length || creatingIncompleteOrder) return null;
+    setCreatingIncompleteOrder(true);
+    try {
+      const response = await fetch("/api/orders/v1", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+          customer: { phone: phoneNumber.trim(), address: address.trim() },
+          couponCode: couponCode.trim(),
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        code?: string;
+        error?: string;
+        cooldownExpiresAt?: string;
+        order?: LocalOrderHistoryItem;
+      } | null;
+      if (!response.ok || !payload?.ok || !payload.order?.id) {
+        if (payload?.code === "ORDER_LIMITED" && payload.cooldownExpiresAt)
+          setCooldownExpiresAt(payload.cooldownExpiresAt);
+        setCheckoutStatus("error");
+        setMessage(payload?.error ?? "Could not save your incomplete order. Please try again.");
+        return null;
+      }
+      setIncompleteOrderId(payload.order.id);
+      saveOrderToHistory(payload.order);
+      return payload.order.id;
+    } catch {
+      setCheckoutStatus("error");
+      setMessage("Could not save your incomplete order. Check your connection and try again.");
+      return null;
+    } finally {
+      setCreatingIncompleteOrder(false);
+    }
+  };
 
   const handleCheckout = async () => {
     setPhoneTouched(true);
@@ -157,13 +204,14 @@ export function CartDrawer() {
     setConfirmedOrderId(null);
     setMessage("");
     try {
+      const orderId = incompleteOrderId ?? (await createIncompleteOrder());
+      if (!orderId) return;
       const response = await fetch("/api/orders/v1", {
-        method: "POST",
+        method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+          id: orderId,
           customer: { phone: phone.trim(), address: address.trim() },
-          couponCode: couponCode.trim(),
         }),
       });
       const payload = (await response.json().catch(() => null)) as {
@@ -183,6 +231,11 @@ export function CartDrawer() {
       if (!payload.order?.id) throw new Error("The order confirmation was incomplete.");
       saveOrderToHistory(payload.order);
       clearCart();
+      setIncompleteOrderId(null);
+      setPhone("");
+      setPhoneTouched(false);
+      setAddress("");
+      setCouponCode("");
       setConfirmedOrderId(payload.order.id);
       setCheckoutStatus("success");
       setMessage(`Order ${payload.order.id} was placed successfully.`);
@@ -427,8 +480,10 @@ export function CartDrawer() {
                   }
                   onBlur={() => setPhoneTouched(true)}
                   onChange={(event) => {
-                    setPhone(event.target.value);
+                    const nextPhone = event.target.value;
+                    setPhone(nextPhone);
                     if (!phoneTouched) setPhoneTouched(true);
+                    if (validatePhoneNumber(nextPhone).isValid) void createIncompleteOrder(nextPhone);
                   }}
                   placeholder="Phone number (required: 01... or +880...)"
                   required
@@ -468,11 +523,13 @@ export function CartDrawer() {
             >
               {checkoutStatus === "processing"
                 ? "Placing order…"
-                : countdownSeconds > 0
-                  ? `Try again in ${formatCountdown(countdownSeconds)}`
-                  : phoneTouched && !phoneValidation.isValid
-                    ? "Valid phone number required"
-                    : "Place order"}
+                : creatingIncompleteOrder
+                  ? "Saving incomplete order…"
+                  : countdownSeconds > 0
+                    ? `Try again in ${formatCountdown(countdownSeconds)}`
+                    : phoneTouched && !phoneValidation.isValid
+                      ? "Valid phone number required"
+                      : "Place order"}
             </Button>
           </div>
         ) : null}

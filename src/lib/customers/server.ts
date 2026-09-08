@@ -72,7 +72,7 @@ export function metricsFor(c: CustomerRecord) {
   return db()
     .collection<Order>("orders")
     .find({
-      status: { $ne: "cancelled" },
+      status: { $nin: ["cancelled", "incomplete"] },
       $or: [
         { "customer.userId": c.id },
         ...(c.email ? [{ "customer.email": normalize(c.email) }] : []),

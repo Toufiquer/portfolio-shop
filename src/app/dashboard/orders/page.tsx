@@ -32,6 +32,7 @@ const pageSizes = [10, 25, 50, 100] as const;
 const displayDate = (value: string) =>
   new Intl.DateTimeFormat("en-BD", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 const statusTone: Record<OrderStatus, string> = {
+  incomplete: "bg-stone-100 text-stone-700 ring-stone-200",
   placed: "bg-amber-100 text-amber-900 ring-amber-200",
   confirmed: "bg-sky-100 text-sky-900 ring-sky-200",
   processing: "bg-violet-100 text-violet-900 ring-violet-200",

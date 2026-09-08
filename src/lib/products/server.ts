@@ -32,7 +32,9 @@ const activeCategories = () =>
 
 export const getPublicCategories = activeCategories;
 
-export async function getPublicProducts(categorySlug?: string) {
+export type PublicProductView = "all" | "newest" | "deals";
+
+export async function getPublicProducts(categorySlug?: string, view: PublicProductView = "all") {
   const category = categorySlug
     ? (await activeCategories()).find((item) => item.slug === categorySlug.toLowerCase())
     : undefined;
@@ -41,10 +43,17 @@ export async function getPublicProducts(categorySlug?: string) {
   const items = await unstable_cache(
     () =>
       products()
-        .find({ status: "active", ...(category ? { categories: category.id } : {}) }, { projection: { _id: 0 } })
-        .sort({ isFeatured: -1, updatedAt: -1, name: 1 })
+        .find(
+          {
+            status: "active",
+            ...(category ? { categories: category.id } : {}),
+            ...(view === "deals" ? { discount: { $gt: 0 } } : {}),
+          },
+          { projection: { _id: 0 } },
+        )
+        .sort(view === "newest" ? { createdAt: -1, name: 1 } : { isFeatured: -1, updatedAt: -1, name: 1 })
         .toArray(),
-    ["public-products", categoryId],
+    ["public-products", categoryId, view],
     { revalidate: false, tags: [productCatalogCacheTag, productCategoryCacheTag] },
   )();
   return { category: category ?? null, items };

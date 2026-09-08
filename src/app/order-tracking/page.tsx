@@ -15,11 +15,12 @@ import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/all-icons/all-icons";
 import { formatBDT } from "@/lib/cart";
+import type { OrderStatus } from "@/lib/dashboard/orders";
 import { saveOrderToHistory } from "@/lib/order-history";
 
 type TrackingOrder = {
   id: string;
-  status: "placed" | "confirmed" | "processing" | "completed" | "cancelled";
+  status: OrderStatus;
   total: number;
   currency: "BDT";
   itemCount: number;
@@ -38,6 +39,7 @@ type TrackingOrder = {
 
 const steps = ["Order", "Received Order", "Packing", "Shipment", "Delivery", "Cancel", "Delivered"];
 const statusStep: Record<TrackingOrder["status"], number> = {
+  incomplete: 0,
   placed: 1,
   confirmed: 2,
   processing: 3,
@@ -95,7 +97,9 @@ export default function OrderTrackingPage() {
             <div>
               <p className="text-xs font-bold tracking-[0.18em] text-amber-700 uppercase">Order tracking</p>
               <h1 className="mt-2 text-2xl font-bold text-stone-950">Order {order.id}</h1>
-              <p className="mt-1 text-sm text-stone-500">Placed {new Date(order.createdAt).toLocaleString()}</p>
+              <p className="mt-1 text-sm text-stone-500">
+                {order.status === "incomplete" ? "Started" : "Placed"} {new Date(order.createdAt).toLocaleString()}
+              </p>
             </div>
             <span
               className={`rounded-full px-3 py-1.5 text-sm font-bold capitalize ${isCancelled ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-950"}`}
@@ -135,7 +139,9 @@ export default function OrderTrackingPage() {
             <span className="font-bold text-stone-950">Estimated date: </span>
             {estimatedDate
               ? estimatedDate.toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" })
-              : "Cancelled order"}
+              : order.status === "incomplete"
+                ? "Pending placement"
+                : "Cancelled order"}
           </div>
         </section>
 
@@ -190,7 +196,7 @@ export default function OrderTrackingPage() {
 }
 
 function estimatedDeliveryDate(order: TrackingOrder) {
-  if (order.status === "cancelled") return null;
+  if (order.status === "cancelled" || order.status === "incomplete") return null;
   if (order.status === "completed") return new Date(order.updatedAt);
   const days = order.status === "processing" ? 2 : order.status === "confirmed" ? 4 : 5;
   const date = new Date(order.createdAt);

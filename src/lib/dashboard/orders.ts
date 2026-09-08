@@ -6,7 +6,7 @@
 |-----------------------------------------
 */
 
-export const orderStatuses = ["placed", "confirmed", "processing", "completed", "cancelled"] as const;
+export const orderStatuses = ["incomplete", "placed", "confirmed", "processing", "completed", "cancelled"] as const;
 
 export type OrderStatus = (typeof orderStatuses)[number];
 

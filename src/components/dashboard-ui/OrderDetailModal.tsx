@@ -33,6 +33,10 @@ const displayDate = (value: string) => {
 };
 
 const statusStyles: Record<OrderStatus, { badge: string; dot: string }> = {
+  incomplete: {
+    badge: "border-stone-300 bg-stone-50 text-stone-700",
+    dot: "bg-stone-500",
+  },
   placed: {
     badge: "border-amber-300 bg-amber-50 text-amber-900",
     dot: "bg-amber-500",
@@ -62,13 +66,16 @@ export type OrderDetailModalProps = {
 };
 
 export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetailModalProps) {
-  const isMounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
+  const isMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false,
+  );
   const [update, updateState] = useUpdateOrderStatusMutation();
   const [copied, setCopied] = useState(false);
   const [statusOverride, setStatusOverride] = useState<{ id: string; status: OrderStatus } | null>(null);
 
-  const currentStatus =
-    (order && statusOverride?.id === order.id ? statusOverride.status : order?.status) || "placed";
+  const currentStatus = (order && statusOverride?.id === order.id ? statusOverride.status : order?.status) || "placed";
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -301,7 +308,9 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
                     Delivery Address
                   </h3>
                   <div className="text-xs text-stone-700 leading-relaxed whitespace-pre-wrap">
-                    {order.customer.address || <span className="italic text-stone-400">No delivery address provided</span>}
+                    {order.customer.address || (
+                      <span className="italic text-stone-400">No delivery address provided</span>
+                    )}
                   </div>
                 </div>
               </div>
