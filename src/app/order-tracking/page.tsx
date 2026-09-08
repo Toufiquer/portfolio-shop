@@ -77,8 +77,9 @@ export default function OrderTrackingPage() {
   if (pageError) return <TrackingState title="Order unavailable" detail={pageError} />;
   if (!order) return <TrackingState title="Loading order" detail="Getting the latest delivery information…" />;
 
-  const currentStep = statusStep[order.status];
   const isCancelled = order.status === "cancelled";
+  const timelineSteps = isCancelled ? steps : steps.filter((step) => step !== "Cancel");
+  const currentStep = isCancelled ? statusStep.cancelled : order.status === "completed" ? 5 : statusStep[order.status];
   const estimatedDate = estimatedDeliveryDate(order);
   return (
     <main className="min-h-screen bg-[#fffaf0] px-4 py-10 sm:px-6">
@@ -96,15 +97,17 @@ export default function OrderTrackingPage() {
               <h1 className="mt-2 text-2xl font-bold text-stone-950">Order {order.id}</h1>
               <p className="mt-1 text-sm text-stone-500">Placed {new Date(order.createdAt).toLocaleString()}</p>
             </div>
-            <span className="rounded-full bg-amber-100 px-3 py-1.5 text-sm font-bold text-amber-950 capitalize">
+            <span
+              className={`rounded-full px-3 py-1.5 text-sm font-bold capitalize ${isCancelled ? "bg-red-100 text-red-800" : "bg-amber-100 text-amber-950"}`}
+            >
               {order.status}
             </span>
           </div>
 
           <div className="mt-8 overflow-x-auto pb-2">
             <div className="flex min-w-[680px] items-start">
-              {steps.map((step, index) => {
-                const active = isCancelled ? index === 0 || index === currentStep : index !== 5 && index <= currentStep;
+              {timelineSteps.map((step, index) => {
+                const active = isCancelled ? index === 0 || index === currentStep : index <= currentStep;
                 const isCurrent = index === currentStep;
                 return (
                   <div className="flex flex-1 items-start" key={step}>
@@ -118,9 +121,9 @@ export default function OrderTrackingPage() {
                         {step}
                       </span>
                     </div>
-                    {index < steps.length - 1 ? (
+                    {index < timelineSteps.length - 1 ? (
                       <span
-                        className={`mt-3 h-0.5 flex-1 ${!isCancelled && index < currentStep && index !== 4 ? "bg-amber-700" : "bg-stone-200"}`}
+                        className={`mt-3 h-0.5 flex-1 ${!isCancelled && index < currentStep ? "bg-amber-700" : "bg-stone-200"}`}
                       />
                     ) : null}
                   </div>

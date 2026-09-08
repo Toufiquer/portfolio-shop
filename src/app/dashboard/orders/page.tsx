@@ -8,7 +8,7 @@
 
 "use client";
 
-import { Eye, Loader2, Pencil, Search, Trash2 } from "lucide-react";
+import { ChevronDown, Eye, Loader2, Pencil, Search, SlidersHorizontal, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { useConfirmDelete } from "@/components/confirm-delete-provider";
@@ -31,6 +31,13 @@ const bdt = (value: number) => `৳${value.toLocaleString("en-BD")}`;
 const pageSizes = [10, 25, 50, 100] as const;
 const displayDate = (value: string) =>
   new Intl.DateTimeFormat("en-BD", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+const statusTone: Record<OrderStatus, string> = {
+  placed: "bg-amber-100 text-amber-900 ring-amber-200",
+  confirmed: "bg-sky-100 text-sky-900 ring-sky-200",
+  processing: "bg-violet-100 text-violet-900 ring-violet-200",
+  completed: "bg-emerald-100 text-emerald-900 ring-emerald-200",
+  cancelled: "bg-red-100 text-red-800 ring-red-200",
+};
 const errorMessage = (error: unknown) =>
   typeof error === "object" &&
   error &&
@@ -152,37 +159,43 @@ export default function OrdersPage() {
             </button>
           </div>
         </div>
-        <div className="mt-5 grid max-w-2xl gap-3 sm:grid-cols-2">
-          <label className="relative">
-            <span className="sr-only">Search order ID</span>
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
-            <input
-              aria-label="Search order ID"
-              className="input pl-9"
-              onChange={(event) => updateSearch(event.target.value)}
-              placeholder="Search by order ID, e.g. AB-1234"
-              value={search}
-            />
+        <div className="mt-5 grid max-w-2xl gap-3 rounded-sm border border-[#eadfca] bg-[#fffaf0] p-3 sm:grid-cols-2">
+          <label className="block space-y-1.5 text-sm font-medium text-stone-700">
+            <span>Search order ID</span>
+            <span className="relative block">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-amber-700" />
+              <input
+                aria-label="Search order ID"
+                className="input bg-white pl-9"
+                onChange={(event) => updateSearch(event.target.value)}
+                placeholder="e.g. AB-1234"
+                value={search}
+              />
+            </span>
           </label>
-          <label className="block text-sm font-medium text-stone-700">
+          <label className="block space-y-1.5 text-sm font-medium text-stone-700">
             <span className="flex items-center gap-2">
-              Status
+              <SlidersHorizontal className="size-3.5 text-amber-700" /> Status
               {isFetching ? (
                 <Loader2 aria-label="Loading orders" className="size-3.5 animate-spin text-amber-700" />
               ) : null}
             </span>
-            <select
-              className="mt-1 h-10 w-full rounded-sm border border-[#eadfca] bg-white px-3"
-              onChange={(event) => updateFilter(event.target.value as OrderStatus | "")}
-              value={status}
-            >
-              <option value="">All statuses</option>
-              {orderStatuses.map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </select>
+            <span className="relative block">
+              <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-amber-700" />
+              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-stone-500" />
+              <select
+                className="h-10 w-full appearance-none rounded-sm border border-[#eadfca] bg-white px-3 pl-9 text-sm text-stone-800 outline-none transition duration-700 focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                onChange={(event) => updateFilter(event.target.value as OrderStatus | "")}
+                value={status}
+              >
+                <option value="">All statuses</option>
+                {orderStatuses.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </span>
           </label>
         </div>
         {selectedIds.length ? (
@@ -296,30 +309,39 @@ export default function OrdersPage() {
                         </ul>
                       </td>
                       <td className="p-3 font-semibold text-stone-900">{bdt(order.total)}</td>
-                      <td className="p-3 capitalize">{order.status}</td>
+                      <td className="p-3">
+                        <span
+                          className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold capitalize ring-1 ${statusTone[order.status]}`}
+                        >
+                          {order.status}
+                        </span>
+                      </td>
                       <td className="p-3 text-stone-600">{displayDate(order.createdAt)}</td>
                       <td className="p-3">
-                        <div className="flex justify-end gap-1">
+                        <div className="flex justify-end gap-1.5">
                           <button
                             aria-label={`View order ${order.id}`}
-                            className="grid size-8 cursor-pointer place-items-center rounded-sm text-stone-600 transition hover:bg-amber-100 hover:text-stone-900"
+                            className="grid size-8 cursor-pointer place-items-center rounded-sm border border-amber-200 bg-amber-50 text-amber-800 transition duration-700 hover:bg-amber-100 hover:text-amber-950"
                             onClick={() => setViewingOrder(order)}
+                            title="View order"
                             type="button"
                           >
                             <Eye className="size-4" />
                           </button>
                           <button
                             aria-label={`Edit status for ${order.id}`}
-                            className="grid size-8 place-items-center rounded-sm hover:bg-amber-100"
+                            className="grid size-8 place-items-center rounded-sm border border-emerald-200 bg-emerald-50 text-emerald-800 transition duration-700 hover:bg-emerald-100 hover:text-emerald-950"
                             onClick={() => setEditing(order)}
+                            title="Edit status"
                             type="button"
                           >
                             <Pencil className="size-4" />
                           </button>
                           <button
                             aria-label={`Delete order ${order.id}`}
-                            className="grid size-8 place-items-center rounded-sm text-red-700 hover:bg-red-50"
+                            className="grid size-8 place-items-center rounded-sm border border-red-200 bg-red-50 text-red-700 transition duration-700 hover:bg-red-100 hover:text-red-800"
                             onClick={() => void deleteOrder(order)}
+                            title="Delete order"
                             type="button"
                           >
                             <Trash2 className="size-4" />
