@@ -35,6 +35,8 @@ export type Order = {
   items: OrderItemSnapshot[];
   itemCount: number;
   subtotal: number;
+  discount?: number;
+  couponCode?: string;
   total: number;
   currency: "BDT";
   status: OrderStatus;
@@ -54,7 +56,7 @@ export type OrderSettings = {
 
 export type CheckoutItemInput = { productId: string; quantity: number };
 export type CheckoutCustomerInput = { phone?: string; address?: string };
-export type CheckoutInput = { items: CheckoutItemInput[]; customer?: CheckoutCustomerInput };
+export type CheckoutInput = { items: CheckoutItemInput[]; customer?: CheckoutCustomerInput; couponCode?: string };
 
 export type OrderApiErrorCode =
   | "AUTH_REQUIRED"
@@ -69,6 +71,7 @@ export type OrderApiErrorCode =
 export type ParsedCheckout = {
   items: CheckoutItemInput[];
   customer: Required<CheckoutCustomerInput>;
+  couponCode: string;
 };
 
 const isObject = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object";
@@ -142,9 +145,13 @@ export function parseCheckoutInput(body: unknown): ParsedCheckout | { code: Orde
     return { code: "INVALID_CHECKOUT", error: phoneCheck.error ?? "Invalid phone number." };
   }
 
+  const couponCode = body.couponCode === undefined ? "" : text(body.couponCode, 60);
+  if (couponCode === null) return { code: "INVALID_CHECKOUT", error: "Coupon code is invalid." };
+
   return {
     items: [...quantities].map(([productId, quantity]) => ({ productId, quantity })),
     customer: { phone: phone.trim(), address },
+    couponCode: couponCode.toUpperCase(),
   };
 }
 

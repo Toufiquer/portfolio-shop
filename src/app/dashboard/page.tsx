@@ -7,13 +7,30 @@
 
 "use client";
 
-import { ArrowUpRight, BarChart3, FolderTree, Layers3, PanelLeft, Sparkles } from "lucide-react";
+import {
+  ArrowUpRight,
+  BarChart3,
+  FileText,
+  FolderTree,
+  ImageIcon,
+  Layers3,
+  Package,
+  PanelLeft,
+  ShoppingCart,
+  Sparkles,
+  Users,
+} from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 
 import { authClient } from "@/app/api/lib/auth-client";
 import { iconMap } from "@/components/all-icons/all-icons";
 import { LoadingState } from "@/components/ui/loading-state";
+import { useGetCustomerOverviewQuery } from "@/redux/features/dashboard/business-growth/businessGrowthSlice";
+import { useGetCategoriesQuery } from "@/redux/features/dashboard/categories/categoriesSlice";
+import { useGetMediaQuery } from "@/redux/features/dashboard/media/mediaSlice";
+import { useGetOrdersQuery } from "@/redux/features/dashboard/orders/ordersSlice";
+import { useGetProductsQuery } from "@/redux/features/dashboard/products/productsSlice";
 import { useGetSidebarsQuery } from "@/redux/features/dashboard/sidebars/sidebarSlice";
 import { type SidebarItem } from "@/redux/features/dashboard/types";
 
@@ -41,6 +58,28 @@ export default function DashboardHomePage() {
   const { data, isLoading, isError } = useGetSidebarsQuery(undefined, { skip: !session });
   const items = useMemo(() => data?.items ?? [], [data?.items]);
   const groups = useMemo(() => groupItems(items), [items]);
+  const paths = useMemo(() => new Set(items.map((item) => item.url)), [items]);
+  const canReadBusinessGrowth = items.some((item) => item.url.startsWith("/dashboard/business-growth"));
+  const canReadMedia = paths.has("/dashboard/media");
+  const canReadProducts = paths.has("/dashboard/products");
+  const canReadCategories = paths.has("/dashboard/category");
+  const canReadOrders = paths.has("/dashboard/orders");
+  const { data: growthData, isLoading: growthLoading } = useGetCustomerOverviewQuery(undefined, {
+    skip: !canReadBusinessGrowth,
+  });
+  const { data: mediaData, isLoading: mediaLoading } = useGetMediaQuery(undefined, { skip: !canReadMedia });
+  const { data: productsData, isLoading: productsLoading } = useGetProductsQuery(
+    { limit: 1, page: 1 },
+    { skip: !canReadProducts },
+  );
+  const { data: categoriesData, isLoading: categoriesLoading } = useGetCategoriesQuery(
+    { page: 1, pageSize: 1 },
+    { skip: !canReadCategories },
+  );
+  const { data: ordersData, isLoading: ordersLoading } = useGetOrdersQuery(
+    { page: 1, pageSize: 100 },
+    { skip: !canReadOrders },
+  );
   const childCount = items.filter((item) => item.parentId).length;
   const largest = groups.reduce<Group | null>(
     (current, group) => (!current || group.children.length > current.children.length ? group : current),
@@ -54,6 +93,69 @@ export default function DashboardHomePage() {
     },
     { offset: 0, stops: [] as string[] },
   ).stops;
+  const completedOrders = ordersData?.items.filter((item) => item.status === "completed").length ?? 0;
+  const recentOrderValue = ordersData?.items.reduce((sum, item) => sum + item.total, 0) ?? 0;
+  const mediaTypes = mediaData?.items.reduce<Record<string, number>>((counts, item) => {
+    counts[item.type] = (counts[item.type] ?? 0) + 1;
+    return counts;
+  }, {});
+  const topMediaType = Object.entries(mediaTypes ?? {}).sort((a, b) => b[1] - a[1])[0];
+  const liveSections = [
+    canReadBusinessGrowth && {
+      name: "Business Growth",
+      href: "/dashboard/business-growth/overview",
+      icon: Users,
+      color: "#8b5cf6",
+      value: growthLoading ? null : (growthData?.total ?? 0),
+      detail: `${growthData?.newLast30 ?? 0} new customers in 30 days`,
+      chart: growthData?.total ?? 0,
+    },
+    canReadMedia && {
+      name: "Media",
+      href: "/dashboard/media",
+      icon: ImageIcon,
+      color: "#0ea5e9",
+      value: mediaLoading ? null : (mediaData?.items.length ?? 0),
+      detail: topMediaType ? `${topMediaType[1]} ${topMediaType[0]} files` : "No media files yet",
+      chart: mediaData?.items.length ?? 0,
+    },
+    canReadProducts && {
+      name: "Products",
+      href: "/dashboard/products",
+      icon: Package,
+      color: "#10b981",
+      value: productsLoading ? null : (productsData?.total ?? 0),
+      detail: `${productsData?.summary.inStock ?? 0} products in stock`,
+      chart: productsData?.total ?? 0,
+    },
+    canReadCategories && {
+      name: "Categories",
+      href: "/dashboard/category",
+      icon: ShoppingCart,
+      color: "#f59e0b",
+      value: categoriesLoading ? null : (categoriesData?.total ?? 0),
+      detail: `${categoriesData?.items.filter((item) => item.status === "active").length ?? 0} active on this page`,
+      chart: categoriesData?.total ?? 0,
+    },
+    canReadOrders && {
+      name: "Orders",
+      href: "/dashboard/orders",
+      icon: FileText,
+      color: "#f43f5e",
+      value: ordersLoading ? null : (ordersData?.total ?? 0),
+      detail: `${completedOrders} completed in latest 100`,
+      chart: ordersData?.total ?? 0,
+    },
+  ].filter(Boolean) as {
+    name: string;
+    href: string;
+    icon: typeof PanelLeft;
+    color: string;
+    value: number | null;
+    detail: string;
+    chart: number;
+  }[];
+  const liveChartMax = Math.max(...liveSections.map((section) => section.chart), 1);
 
   if (isPending || isLoading) return <LoadingState label="Loading dashboard summary" />;
   if (isError) return <DashboardError />;
@@ -79,7 +181,64 @@ export default function DashboardHomePage() {
           </div>
         </section>
 
-        <section className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {liveSections.length > 0 && (
+          <section className="mt-6">
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <h2 className="text-xl font-semibold text-stone-900">Live business summary</h2>
+                <p className="mt-1 text-sm text-stone-600">
+                  Current totals from the dashboard areas your role can access.
+                </p>
+              </div>
+              <span className="rounded-sm bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800">
+                Live data
+              </span>
+            </div>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+              {liveSections.map((section) => (
+                <LiveSummaryCard key={section.name} section={section} />
+              ))}
+            </div>
+            <section className="mt-6 rounded-sm border border-[#eadfca] bg-white p-5 shadow-sm sm:p-6">
+              <div className="flex flex-wrap items-end justify-between gap-2">
+                <div>
+                  <h2 className="text-lg font-semibold text-stone-900">Section totals</h2>
+                  <p className="mt-1 text-sm text-stone-600">
+                    Compare the current volume across your main dashboard areas.
+                  </p>
+                </div>
+                {canReadOrders && (
+                  <span className="rounded-sm bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700">
+                    Latest 100 orders: ৳{recentOrderValue.toLocaleString()}
+                  </span>
+                )}
+              </div>
+              <div className="mt-7 flex h-56 items-end gap-3 border-b border-l border-[#eadfca] px-3 pt-4 sm:gap-5">
+                {liveSections.map((section) => (
+                  <Link
+                    className="group flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-2"
+                    href={section.href}
+                    key={section.name}
+                  >
+                    <span className="text-xs font-semibold text-stone-700">{section.value ?? "…"}</span>
+                    <span
+                      className="w-full max-w-16 rounded-t-sm shadow-[0_-8px_24px_-12px_rgba(120,53,15,.55)] transition-all duration-700 ease-out group-hover:brightness-110"
+                      style={{
+                        backgroundColor: section.color,
+                        height: `${Math.max(10, (section.chart / liveChartMax) * 100)}%`,
+                      }}
+                    />
+                    <span className="w-full truncate text-center text-[11px] font-medium text-stone-600">
+                      {section.name}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          </section>
+        )}
+
+        <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Metric icon={PanelLeft} label="Visible sidebar items" value={items.length} color="amber" />
           <Metric icon={FolderTree} label="Top-level areas" value={groups.length} color="sky" />
           <Metric icon={Layers3} label="Nested tools" value={childCount} color="emerald" />
@@ -236,6 +395,32 @@ function Metric({
       <p className="mt-4 text-2xl font-semibold text-stone-900">{value}</p>
       <p className="mt-1 text-sm text-stone-600">{label}</p>
     </div>
+  );
+}
+function LiveSummaryCard({
+  section,
+}: {
+  section: { name: string; href: string; icon: typeof PanelLeft; color: string; value: number | null; detail: string };
+}) {
+  const Icon = section.icon;
+  return (
+    <Link
+      className="group rounded-sm border border-[#eadfca] bg-white p-5 shadow-sm transition duration-700 hover:-translate-y-1 hover:shadow-[0_18px_38px_-28px_rgba(120,53,15,.5)]"
+      href={section.href}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <span
+          className="grid h-10 w-10 place-items-center rounded-sm text-white"
+          style={{ backgroundColor: section.color }}
+        >
+          <Icon className="h-5 w-5" />
+        </span>
+        <ArrowUpRight className="h-4 w-4 text-stone-400 transition duration-700 group-hover:text-amber-800" />
+      </div>
+      <p className="mt-4 text-2xl font-semibold text-stone-900">{section.value ?? "…"}</p>
+      <h3 className="mt-1 font-semibold text-stone-900">{section.name}</h3>
+      <p className="mt-1 text-xs leading-5 text-stone-600">{section.detail}</p>
+    </Link>
   );
 }
 function EmptyState() {

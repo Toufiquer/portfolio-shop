@@ -17,6 +17,7 @@ export type OrderItem = Omit<Order, "createdAt" | "updatedAt" | "statusUpdatedAt
 
 export type OrdersQuery = {
   status?: OrderStatus;
+  search?: string;
   page?: number;
   pageSize?: number;
 };
@@ -37,6 +38,7 @@ export const ordersApi = apiSlice.injectEndpoints({
         const values: OrdersQuery = typeof params === "string" ? { status: params || undefined } : (params ?? {});
         const query = new URLSearchParams();
         if (values?.status) query.set("status", values.status);
+        if (values?.search?.trim()) query.set("search", values.search.trim());
         if (values?.page) query.set("page", String(values.page));
         if (values?.pageSize) query.set("pageSize", String(values.pageSize));
         const search = query.toString();

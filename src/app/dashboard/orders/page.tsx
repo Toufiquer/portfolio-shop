@@ -8,7 +8,7 @@
 
 "use client";
 
-import { Eye, Pencil, Trash2 } from "lucide-react";
+import { Eye, Loader2, Pencil, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { useConfirmDelete } from "@/components/confirm-delete-provider";
@@ -41,10 +41,12 @@ const errorMessage = (error: unknown) =>
 
 export default function OrdersPage() {
   const [status, setStatus] = useState<OrderStatus | "">("");
+  const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<(typeof pageSizes)[number]>(10);
   const { data, error, isFetching, isLoading, refetch } = useGetOrdersQuery({
     status: status || undefined,
+    search,
     page,
     pageSize,
   });
@@ -70,6 +72,11 @@ export default function OrdersPage() {
   const updateFilter = (value: OrderStatus | "") => {
     setSelectedIds([]);
     setStatus(value);
+    setPage(1);
+  };
+  const updateSearch = (value: string) => {
+    setSelectedIds([]);
+    setSearch(value);
     setPage(1);
   };
   const updatePageSize = (value: (typeof pageSizes)[number]) => {
@@ -145,21 +152,39 @@ export default function OrdersPage() {
             </button>
           </div>
         </div>
-        <label className="mt-5 block max-w-xs text-sm font-medium text-stone-700">
-          Status
-          <select
-            className="mt-1 h-10 w-full rounded-sm border border-[#eadfca] bg-white px-3"
-            onChange={(event) => updateFilter(event.target.value as OrderStatus | "")}
-            value={status}
-          >
-            <option value="">All statuses</option>
-            {orderStatuses.map((value) => (
-              <option key={value} value={value}>
-                {value}
-              </option>
-            ))}
-          </select>
-        </label>
+        <div className="mt-5 grid max-w-2xl gap-3 sm:grid-cols-2">
+          <label className="relative">
+            <span className="sr-only">Search order ID</span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
+            <input
+              aria-label="Search order ID"
+              className="input pl-9"
+              onChange={(event) => updateSearch(event.target.value)}
+              placeholder="Search by order ID, e.g. AB-1234"
+              value={search}
+            />
+          </label>
+          <label className="block text-sm font-medium text-stone-700">
+            <span className="flex items-center gap-2">
+              Status
+              {isFetching ? (
+                <Loader2 aria-label="Loading orders" className="size-3.5 animate-spin text-amber-700" />
+              ) : null}
+            </span>
+            <select
+              className="mt-1 h-10 w-full rounded-sm border border-[#eadfca] bg-white px-3"
+              onChange={(event) => updateFilter(event.target.value as OrderStatus | "")}
+              value={status}
+            >
+              <option value="">All statuses</option>
+              {orderStatuses.map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
         {selectedIds.length ? (
           <div className="mt-4 flex flex-col gap-3 rounded-sm border border-amber-200 bg-amber-50 p-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm font-semibold text-amber-950">
@@ -211,7 +236,14 @@ export default function OrdersPage() {
         ) : null}
         {items.length ? (
           <>
-            <div className="mt-5 overflow-x-auto rounded-sm border border-[#eadfca]">
+            <div aria-busy={isFetching} className="relative mt-5 overflow-x-auto rounded-sm border border-[#eadfca]">
+              {isFetching ? (
+                <div className="absolute inset-0 z-10 grid place-items-center bg-white/65" role="status">
+                  <span className="inline-flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 shadow-sm">
+                    <Loader2 className="size-4 animate-spin" /> Loading orders…
+                  </span>
+                </div>
+              ) : null}
               <table className="min-w-[900px] w-full text-left text-sm">
                 <thead className="bg-[#fffaf0] text-stone-600">
                   <tr>

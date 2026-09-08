@@ -10,6 +10,7 @@ import { randomInt, randomUUID } from "crypto";
 
 import { client } from "@/app/api/lib/auth";
 import { type Product } from "@/lib/dashboard/catalog";
+import { couponDiscount, type Coupon } from "@/lib/dashboard/coupons";
 import {
   type Order,
   type OrderApiErrorCode,
@@ -33,9 +34,9 @@ export type CreateOrderResult =
 const products = () => client.db().collection<Product>("products");
 const orders = () => client.db().collection<Order>("orders");
 const orderSettings = () => client.db().collection<OrderSettings>("order-settings");
+const coupons = () => client.db().collection<Coupon>("coupons");
 const checkoutLocks = () =>
   client.db().collection<{ userId: string; token: string; expiresAt: Date }>("order-checkout-locks");
-const FIVE_MINUTES = 5 * 60 * 1000;
 const ORDER_ID_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 function createOrderId() {
@@ -141,6 +142,13 @@ async function createOrderUnchecked(customer: OrderCustomer, input: ParsedChecko
     };
   });
 
+  const subtotal = snapshots.reduce((sum, item) => sum + item.lineTotal, 0);
+  const couponCode = input.couponCode.trim().toUpperCase();
+  const coupon = couponCode ? await coupons().findOne({ code: couponCode, active: true }) : null;
+  if (couponCode && !coupon)
+    return { ok: false, status: 400, code: "INVALID_CHECKOUT", error: "This coupon is invalid or inactive." };
+  const discount = coupon ? couponDiscount(coupon, subtotal) : 0;
+
   const decremented: { productId: string; quantity: number }[] = [];
   for (const item of snapshots) {
     const updated = await products().findOneAndUpdate(
@@ -165,13 +173,14 @@ async function createOrderUnchecked(customer: OrderCustomer, input: ParsedChecko
   }
 
   const now = new Date();
-  const subtotal = snapshots.reduce((sum, item) => sum + item.lineTotal, 0);
   const order: Omit<Order, "id"> = {
     customer,
     items: snapshots,
     itemCount: snapshots.reduce((sum, item) => sum + item.quantity, 0),
     subtotal,
-    total: subtotal,
+    discount,
+    ...(coupon ? { couponCode: coupon.code } : {}),
+    total: subtotal - discount,
     currency: "BDT",
     status: "placed",
     createdAt: now,

@@ -28,7 +28,9 @@ export async function GET(request: Request) {
   const query = new URL(request.url).searchParams;
   const status = query.get("status");
   const selectedStatus = orderStatuses.find((orderStatus) => orderStatus === status);
-  const filter = selectedStatus ? { status: selectedStatus } : {};
+  const filter: Record<string, unknown> = selectedStatus ? { status: selectedStatus } : {};
+  const search = query.get("search")?.trim();
+  if (search) filter.id = { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" };
   const requestedPageSize = Number(query.get("pageSize"));
   const pageSize = pageSizes.includes(requestedPageSize) ? requestedPageSize : 10;
   const total = await orders().countDocuments(filter);

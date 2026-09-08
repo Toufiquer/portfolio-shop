@@ -68,6 +68,7 @@ export const sidebarDefaults: ImportSidebarDefault[] = [
   { name: "Products", url: "/dashboard/products", icon: "Package" },
   { name: "Category", url: "/dashboard/category", icon: "ShoppingCart" },
   { name: "Orders", url: "/dashboard/orders", icon: "FileText" },
+  { name: "Coupons", url: "/dashboard/coupon", icon: "Ticket" },
   { name: "Install", url: "/dashboard/install", icon: "Download" },
 ];
 export const pageDefaults: ImportPageDefault[] = [

@@ -201,6 +201,7 @@ function apiResourcePaths(pathname: string, method: string) {
     categories: ["/dashboard/category"],
     products: ["/dashboard/products"],
     orders: ["/dashboard/orders"],
+    coupons: ["/dashboard/coupon"],
     "business-growth": [
       "/dashboard/business-growth",
       "/dashboard/business-growth/",

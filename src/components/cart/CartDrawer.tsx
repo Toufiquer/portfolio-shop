@@ -18,6 +18,7 @@ import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import {
   CART_DRAWER_OPEN_EVENT,
   CART_STORAGE_KEY,
@@ -51,6 +52,7 @@ export function CartDrawer() {
   const [phone, setPhone] = useState("");
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [address, setAddress] = useState("");
+  const [couponCode, setCouponCode] = useState("");
   const [checkoutStatus, setCheckoutStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
   const [confirmedOrderId, setConfirmedOrderId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
@@ -161,6 +163,7 @@ export function CartDrawer() {
         body: JSON.stringify({
           items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
           customer: { phone: phone.trim(), address: address.trim() },
+          couponCode: couponCode.trim(),
         }),
       });
       const payload = (await response.json().catch(() => null)) as {
@@ -413,40 +416,43 @@ export function CartDrawer() {
 
         {activeTab === "cart" && items.length ? (
           <div className="border-t border-[#eadfca] bg-white px-5 py-4">
-            <div className="space-y-1.5">
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div>
-                  <Input
-                    aria-describedby={phoneTouched && !phoneValidation.isValid ? "cart-phone-error" : undefined}
-                    aria-invalid={phoneTouched && !phoneValidation.isValid}
-                    aria-label="Phone number"
-                    className={
-                      phoneTouched && !phoneValidation.isValid ? "border-red-400 focus-visible:ring-red-300" : ""
-                    }
-                    onBlur={() => setPhoneTouched(true)}
-                    onChange={(event) => {
-                      setPhone(event.target.value);
-                      if (!phoneTouched) setPhoneTouched(true);
-                    }}
-                    placeholder="Phone number (required: 01... or +880...)"
-                    required
-                    value={phone}
-                  />
-                  {phoneTouched && !phoneValidation.isValid ? (
-                    <p className="mt-1 text-xs font-medium text-red-600" id="cart-phone-error">
-                      {phoneValidation.error}
-                    </p>
-                  ) : null}
-                </div>
-                <div>
-                  <Input
-                    aria-label="Delivery address"
-                    onChange={(event) => setAddress(event.target.value)}
-                    placeholder="Delivery address (optional)"
-                    value={address}
-                  />
-                </div>
+            <div className="space-y-3">
+              <div>
+                <Input
+                  aria-describedby={phoneTouched && !phoneValidation.isValid ? "cart-phone-error" : undefined}
+                  aria-invalid={phoneTouched && !phoneValidation.isValid}
+                  aria-label="Phone number"
+                  className={
+                    phoneTouched && !phoneValidation.isValid ? "border-red-400 focus-visible:ring-red-300" : ""
+                  }
+                  onBlur={() => setPhoneTouched(true)}
+                  onChange={(event) => {
+                    setPhone(event.target.value);
+                    if (!phoneTouched) setPhoneTouched(true);
+                  }}
+                  placeholder="Phone number (required: 01... or +880...)"
+                  required
+                  value={phone}
+                />
+                {phoneTouched && !phoneValidation.isValid ? (
+                  <p className="mt-1 text-xs font-medium text-red-600" id="cart-phone-error">
+                    {phoneValidation.error}
+                  </p>
+                ) : null}
               </div>
+              <Textarea
+                aria-label="Delivery address"
+                onChange={(event) => setAddress(event.target.value)}
+                placeholder="Delivery address (optional)"
+                rows={3}
+                value={address}
+              />
+              <Input
+                aria-label="Coupon code"
+                onChange={(event) => setCouponCode(event.target.value.toUpperCase())}
+                placeholder="Coupon code (optional)"
+                value={couponCode}
+              />
             </div>
             {countdownSeconds > 0 ? (
               <p className="mt-3 text-center text-sm font-semibold text-red-700">
