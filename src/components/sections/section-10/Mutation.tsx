@@ -249,7 +249,6 @@ const MutationSection10 = ({ data, onChange }: Section10FormProps) => {
                           height={100}
                           src={story.image}
                           alt={story.name}
-                          unoptimized
                           loading={index === 0 ? "eager" : "lazy"}
                           className="w-full h-full object-cover"
                         />
@@ -358,7 +357,6 @@ const MutationSection10 = ({ data, onChange }: Section10FormProps) => {
                               alt={`${story.name || "Student"} profile preview`}
                               width={320}
                               height={240}
-                              unoptimized
                               loading="eager"
                               className="mb-3 h-48 w-full rounded-sm border border-slate-200 object-cover"
                             />

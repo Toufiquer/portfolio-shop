@@ -1,6 +1,19 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "i.ibb.co" },
+      { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "i.pravatar.cc" },
+      { protocol: "https", hostname: "placehold.co" },
+      { protocol: "https", hostname: "upload.wikimedia.org" },
+      { protocol: "https", hostname: "flagcdn.com" },
+      { protocol: "https", hostname: "**.ufs.sh" },
+      { protocol: "https", hostname: "**.utfs.io" },
+      { protocol: "https", hostname: "**.uploadthing.com" },
+    ],
+  },
   async headers() {
     return [
       {

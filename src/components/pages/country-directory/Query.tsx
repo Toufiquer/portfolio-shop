@@ -8,10 +8,9 @@
 
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- flag URLs are editable Page Builder data and can use arbitrary hosts. */
-
 import { AnimatePresence, motion } from "framer-motion";
 import { Globe2, MapPin, Search, X } from "lucide-react";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 
 import { cn } from "@/app/api/lib/utils";
@@ -104,10 +103,12 @@ const RegionSection = ({
           <span className="relative flex h-10 w-14 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-slate-200 bg-slate-100 text-xl leading-none shadow-sm">
             {country.flag}
             {country.flagImage && (
-              <img
+              <Image
                 src={country.flagImage}
                 alt={`${country.name} flag`}
                 className="absolute inset-0 h-full w-full object-cover"
+                fill
+                sizes="56px"
                 loading="lazy"
                 onError={(event) => {
                   event.currentTarget.style.display = "none";
@@ -276,10 +277,12 @@ const QueryCountryDirectory = ({ data }: CountryDirectoryProps) => {
                   <div className="relative flex h-20 w-28 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-slate-200 bg-slate-100 text-4xl shadow-md">
                     {selectedCountry.flag}
                     {selectedCountry.flagImage && (
-                      <img
+                      <Image
                         src={selectedCountry.flagImage}
                         alt={`${selectedCountry.name} flag`}
                         className="absolute inset-0 h-full w-full object-cover"
+                        fill
+                        sizes="112px"
                         onError={(event) => {
                           event.currentTarget.style.display = "none";
                         }}

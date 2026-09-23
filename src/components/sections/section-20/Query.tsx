@@ -182,7 +182,6 @@ const QuerySection20 = ({ data }: Section20Props) => {
                       height={200}
                       src={logo.image}
                       alt={logo.alt}
-                      unoptimized
                       className={cn(
                         "max-w-full h-12 w-auto object-contain transition-all duration-300",
                         grayscale
@@ -198,7 +197,6 @@ const QuerySection20 = ({ data }: Section20Props) => {
                       height={200}
                       src={logo.image}
                       alt={logo.alt}
-                      unoptimized
                       className={cn(
                         "max-w-full h-12 w-auto object-contain transition-all duration-300",
                         grayscale

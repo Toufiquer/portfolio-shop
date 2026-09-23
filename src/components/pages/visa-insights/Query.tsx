@@ -66,7 +66,6 @@ const BlogImage = ({
         sizes="(max-width: 768px) 100vw, 50vw"
         src={blog.imageUrl}
         loading={priority ? "eager" : "lazy"}
-        unoptimized
       />
     ) : (
       <div className="grid h-full w-full place-items-center bg-slate-100 text-slate-300">

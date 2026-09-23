@@ -141,7 +141,6 @@ const ClientSection12: React.FC<Section12Props> = ({ data }) => {
                         alt={partner.name}
                         fill
                         className="object-contain"
-                        unoptimized
                         loading={idx === 0 ? "eager" : "lazy"}
                       />
                     ) : (

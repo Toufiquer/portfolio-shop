@@ -882,7 +882,6 @@ function DemoProductsModal({
                       className="h-10 w-10 shrink-0 rounded-xs border object-cover"
                       height={40}
                       src={progress.currentImage}
-                      unoptimized
                       width={40}
                     />
                   )}
@@ -1028,7 +1027,6 @@ function DemoProductsModal({
                       className="h-10 w-10 shrink-0 rounded-xs border object-cover"
                       height={40}
                       src={p.image}
-                      unoptimized
                       width={40}
                     />
                     <div className="min-w-0">
@@ -1094,7 +1092,6 @@ function ProductRow({
             className="h-11 w-11 rounded-sm border object-cover"
             height={44}
             src={item.primaryImage}
-            unoptimized
             width={44}
           />
           <div className="min-w-0">
@@ -1145,7 +1142,6 @@ function ProductCard({
         className="h-16 w-16 shrink-0 rounded-sm object-cover"
         height={64}
         src={item.primaryImage}
-        unoptimized
         width={64}
       />
       <div className="min-w-0 flex-1">
@@ -1462,7 +1458,6 @@ function ProductForm({
                           fill
                           sizes="150px"
                           src={url}
-                          unoptimized
                         />
                         <button
                           aria-label="Remove image"
@@ -1520,7 +1515,6 @@ function ImageSelect({ label, onClick, url }: { label: string; onClick: () => vo
             fill
             sizes="(max-width: 768px) 100vw, 520px"
             src={url}
-            unoptimized
           />
         </div>
       ) : (
@@ -1591,7 +1585,6 @@ function ProductViewModal({
               className="h-14 w-14 shrink-0 rounded-sm border border-[#eadfca] object-cover"
               height={56}
               src={item.primaryImage}
-              unoptimized
               width={56}
             />
             <div className="min-w-0">
@@ -1615,20 +1608,12 @@ function ProductViewModal({
                 priority
                 sizes="(max-width: 1024px) 100vw, 620px"
                 src={item.primaryImage}
-                unoptimized
               />
             </div>
             <div className="grid grid-cols-4 gap-2 sm:grid-cols-5">
               {item.images.map((url) => (
                 <div className="relative aspect-square overflow-hidden rounded-sm border border-[#eadfca]" key={url}>
-                  <Image
-                    alt={`${item.name} gallery image`}
-                    className="object-cover"
-                    fill
-                    sizes="120px"
-                    src={url}
-                    unoptimized
-                  />
+                  <Image alt={`${item.name} gallery image`} className="object-cover" fill sizes="120px" src={url} />
                 </div>
               ))}
             </div>

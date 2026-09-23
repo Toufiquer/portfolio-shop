@@ -48,14 +48,7 @@ const toast = { error: console.error, success: console.info };
 const BlogImagePreview = ({ src, alt }: { src: string; alt: string }) => (
   <div className="relative mt-3 h-40 overflow-hidden rounded-sm border border-slate-200 bg-white">
     {src ? (
-      <Image
-        alt={alt}
-        className="object-contain p-2"
-        fill
-        sizes="(max-width: 640px) 90vw, 320px"
-        src={src}
-        unoptimized
-      />
+      <Image alt={alt} className="object-contain p-2" fill sizes="(max-width: 640px) 90vw, 320px" src={src} />
     ) : (
       <div className="grid h-full place-items-center text-xs text-slate-400">No image selected</div>
     )}

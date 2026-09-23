@@ -176,13 +176,7 @@ const MutationSection38 = ({ data, onChange }: Section38FormProps) => {
                   <div className="flex flex-col gap-3">
                     <div className="relative aspect-video w-full overflow-hidden rounded-sm border border-[#eadfca] bg-white">
                       {formData[field] ? (
-                        <Image
-                          alt={`${label} preview`}
-                          className="object-cover"
-                          fill
-                          src={formData[field]}
-                          unoptimized
-                        />
+                        <Image alt={`${label} preview`} className="object-cover" fill src={formData[field]} />
                       ) : (
                         <div className="flex h-full items-center justify-center text-slate-500">
                           <ImageIcon className="h-7 w-7" />

@@ -94,7 +94,6 @@ function NavLink({
             className={`${imageCrop === "16:9" ? "h-5 w-9" : "size-5"} ${imageCrop === "full" ? "object-contain" : "object-cover"} ${imageRadius}`}
             height={imageHeight}
             src={item.imageUrl}
-            unoptimized
             width={imageWidth}
           />
         ) : itemIcon ? (
@@ -161,7 +160,6 @@ function MobileNavLink({
               className={`${imageCrop === "16:9" ? "h-5 w-9" : "size-5"} ${imageCrop === "full" ? "object-contain" : "object-cover"} ${imageRadius}`}
               height={imageHeight}
               src={item.imageUrl}
-              unoptimized
               width={imageWidth}
             />
           ) : itemIcon ? (

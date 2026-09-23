@@ -71,7 +71,6 @@ const ImagePanel = ({ src, className, delay, sizes, loading, reduceMotion }: Ima
       sizes={sizes}
       loading={loading}
       className="object-cover transition duration-700 ease-out group-hover:scale-110"
-      unoptimized
     />
     <span className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-blue-100/20 via-transparent to-white/20 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
   </motion.div>

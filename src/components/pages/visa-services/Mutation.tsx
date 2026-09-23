@@ -496,7 +496,6 @@ const MutationVisaServices = ({ data, onChange }: VisaServicesFormProps) => {
                                     className="h-full w-full object-cover"
                                     src={service.imageUrl}
                                     height={320}
-                                    unoptimized
                                     width={560}
                                   />
                                 ) : (

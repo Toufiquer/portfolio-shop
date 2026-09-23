@@ -504,7 +504,6 @@ const MutationSection7 = ({ data, onChange }: Section7FormProps) => {
                             height={100}
                             src={uni.image}
                             alt="logo"
-                            unoptimized
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -617,7 +616,6 @@ const MutationSection7 = ({ data, onChange }: Section7FormProps) => {
                                 alt={`${uni.name || "University"} preview`}
                                 width={320}
                                 height={180}
-                                unoptimized
                                 className="mb-3 h-36 w-full rounded-sm border border-slate-200 object-cover"
                               />
                             ) : (

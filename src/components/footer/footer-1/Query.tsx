@@ -7,11 +7,13 @@
 */
 
 "use client";
+
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/all-icons/all-icons";
 import { Button } from "@/components/ui/button";
+
 import type { FooterOneData } from "./data";
 
 type BeforeInstallPromptEvent = Event & {
@@ -68,7 +70,6 @@ export default function Query({ data }: { data: FooterOneData }) {
                 loading="eager"
                 sizes="192px"
                 src={data.logoUrl}
-                unoptimized
               />
             </div>
           )}

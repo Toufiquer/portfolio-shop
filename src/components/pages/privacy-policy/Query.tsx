@@ -88,7 +88,6 @@ const QueryPage4 = ({ data }: Section4Props) => {
               priority
               sizes="(max-width: 1024px) 92vw, 38vw"
               src={pageData.image}
-              unoptimized
             />
           </div>
         </div>

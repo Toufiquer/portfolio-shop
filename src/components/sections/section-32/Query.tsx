@@ -228,7 +228,7 @@ const TimelineItem = ({ data, index }: { data: Section32Data["stories"][0]; inde
 
         <div className="mb-4">
           <div className="relative w-full max-w-[200px] aspect-square rounded-sm overflow-hidden border border-slate-200 shadow-lg mb-4">
-            <Image src={data.image} alt={data.name} fill unoptimized loading="eager" className="object-cover" />
+            <Image src={data.image} alt={data.name} fill loading="eager" className="object-cover" />
           </div>
           <h3 className="text-2xl font-bold text-slate-900">{data.name}</h3>
           <span className="text-red-500 text-sm font-medium">{data.university}</span>
@@ -256,7 +256,6 @@ const ImageComponent = ({ src, alt, align }: { src: string; alt: string; align: 
         src={src}
         alt={alt}
         fill
-        unoptimized
         loading="eager"
         className="object-cover transition-transform duration-700 group-hover:scale-110"
       />

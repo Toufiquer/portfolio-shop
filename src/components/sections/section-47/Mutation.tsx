@@ -177,7 +177,6 @@ const MutationSection47 = ({ data, onChange }: Section47FormProps) => {
                         className="object-cover"
                         fill
                         src={formData.imageUrl}
-                        unoptimized
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center text-slate-500">

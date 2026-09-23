@@ -115,7 +115,6 @@ export default function Mutation({ data, onChange }: { data?: Partial<HomeData>;
               className="mt-4 aspect-[16/10] w-full rounded-sm border border-[#eadfca] bg-[#fffaf0] object-cover"
               height={380}
               src={values.imageUrl || defaultData.imageUrl}
-              unoptimized
               width={608}
             />
             <Button

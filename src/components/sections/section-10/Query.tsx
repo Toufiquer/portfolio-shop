@@ -141,7 +141,6 @@ const ReelStory = ({ item, index }: { item: IStory; index: number }) => {
                   src={item.image}
                   alt={item.name}
                   fill
-                  unoptimized
                   loading={index === 0 ? "eager" : "lazy"}
                   priority={index === 0}
                   className="object-cover"

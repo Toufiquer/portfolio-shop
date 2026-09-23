@@ -357,7 +357,7 @@ const MutationSection14 = ({ data, onChange }: Section14FormProps) => {
                       <div className="flex gap-3">
                         <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-sm border border-slate-200 bg-white">
                           {article.heroImage ? (
-                            <Image src={article.heroImage} alt="" fill unoptimized className="object-cover" />
+                            <Image src={article.heroImage} alt="" fill className="object-cover" />
                           ) : (
                             <div className="flex h-full items-center justify-center text-slate-500">
                               <ImageIcon size={16} />
@@ -493,7 +493,6 @@ const MutationSection14 = ({ data, onChange }: Section14FormProps) => {
                           className="object-cover"
                           fill
                           src={activeArticle.heroImage}
-                          unoptimized
                         />
                       ) : (
                         <div className="flex h-full items-center justify-center text-slate-500">
@@ -521,13 +520,7 @@ const MutationSection14 = ({ data, onChange }: Section14FormProps) => {
                   <div className="flex flex-col gap-4">
                     <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-white">
                       {activeArticle.author.avatar ? (
-                        <Image
-                          src={activeArticle.author.avatar}
-                          fill
-                          unoptimized
-                          alt="Author"
-                          className="object-cover"
-                        />
+                        <Image src={activeArticle.author.avatar} fill alt="Author" className="object-cover" />
                       ) : (
                         <User className="m-6 h-8 w-8 text-slate-500" />
                       )}
@@ -702,7 +695,6 @@ const MutationSection14 = ({ data, onChange }: Section14FormProps) => {
                                   className="object-cover"
                                   fill
                                   src={block.src}
-                                  unoptimized
                                 />
                               </div>
                             ) : (

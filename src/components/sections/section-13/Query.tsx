@@ -162,7 +162,6 @@ const ClientSection13: React.FC<Section13Props> = ({ data }) => {
                       src={event.image}
                       alt={event.title}
                       fill
-                      unoptimized
                       className="object-cover transition-transform duration-700 group-hover:scale-110"
                     />
                   ) : (

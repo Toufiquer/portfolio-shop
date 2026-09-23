@@ -163,7 +163,6 @@ export default function ImagePickerModal({
                       className="aspect-square w-full object-contain p-2"
                       height={160}
                       src={item.url}
-                      unoptimized
                       width={160}
                     />
                     <span className="block truncate border-t border-stone-100 px-2 py-2 text-xs text-stone-600">

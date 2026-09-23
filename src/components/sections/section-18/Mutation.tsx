@@ -262,7 +262,6 @@ const MutationSection18 = ({ data, onChange }: Section18FormProps) => {
                             width={96}
                             height={64}
                             loading="eager"
-                            unoptimized
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -313,7 +312,6 @@ const MutationSection18 = ({ data, onChange }: Section18FormProps) => {
                               className="object-cover"
                               fill
                               src={currentSlideData.image}
-                              unoptimized
                             />
                           ) : (
                             <div className="flex h-full items-center justify-center text-slate-500">

@@ -112,7 +112,6 @@ const QuerySection21 = ({ data }: Section21Props) => {
         height={200}
         src={item.url}
         alt={item.caption || "Gallery Image"}
-        unoptimized
         className={cn(
           "w-full h-full object-cover transition-all duration-500 ease-out",
           hoverClass,

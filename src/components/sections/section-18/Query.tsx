@@ -161,7 +161,6 @@ const QuerySection18 = ({ data }: Section18Props) => {
                     src={slide.image}
                     alt={slide.title}
                     loading={slideIndex === 0 ? "eager" : "lazy"}
-                    unoptimized
                     className={cn(
                       "h-full w-full object-cover transition-transform duration-[1800ms] ease-out md:group-hover:scale-105",
                       slideIndex === currentIndex ? "scale-105" : "scale-100",

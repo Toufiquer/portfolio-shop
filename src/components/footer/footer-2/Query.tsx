@@ -89,7 +89,6 @@ export default function Query({ data }: { data: FooterTwoData }) {
                     fill
                     sizes="48px"
                     src={data.logoUrl}
-                    unoptimized
                   />
                 </div>
               )}

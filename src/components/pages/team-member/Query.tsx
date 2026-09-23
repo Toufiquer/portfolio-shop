@@ -97,7 +97,6 @@ const MemberPhoto = ({
           fill
           priority={priority}
           sizes={size === "founder" ? "160px" : "96px"}
-          unoptimized
         />
       ) : (
         <span className="flex h-full w-full items-center justify-center text-2xl font-bold text-stone-600">

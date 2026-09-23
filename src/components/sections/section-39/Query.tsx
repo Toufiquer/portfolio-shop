@@ -87,7 +87,6 @@ const QuerySection39 = ({ data }: Section39Props) => {
               sizes="(max-width: 1024px) 68vw, 29vw"
               loading="eager"
               className="object-contain p-3 transition duration-700 group-hover:scale-105"
-              unoptimized
             />
           </motion.div>
 
@@ -105,7 +104,6 @@ const QuerySection39 = ({ data }: Section39Props) => {
               fill
               sizes="(max-width: 1024px) 38vw, 16vw"
               className="object-contain p-3 transition duration-700 group-hover:scale-110"
-              unoptimized
             />
           </motion.div>
 
@@ -123,7 +121,6 @@ const QuerySection39 = ({ data }: Section39Props) => {
               fill
               sizes="(max-width: 1024px) 46vw, 19vw"
               className="object-contain p-3 transition duration-700 group-hover:scale-110"
-              unoptimized
             />
           </motion.div>
         </motion.div>

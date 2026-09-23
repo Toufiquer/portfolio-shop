@@ -53,10 +53,7 @@ const RenderItem = ({ item, settings, priority = false, loading }: RenderItemPro
       <span className="absolute inset-x-0 top-0 z-10 h-0.5 origin-left scale-x-0 bg-amber-300 transition duration-500 group-hover:scale-x-100" />
 
       {/* Image block - fixed aspect ratio container with object-contain to render fully without cropping */}
-      <Link
-        href={detailUrl}
-        className="relative block aspect-[4/3] w-full shrink-0 overflow-hidden bg-[#faf8f5]"
-      >
+      <Link href={detailUrl} className="relative block aspect-[4/3] w-full shrink-0 overflow-hidden bg-[#faf8f5]">
         <Image
           src={item.image || templateImagePlaceholder}
           alt={item.title}
@@ -65,7 +62,6 @@ const RenderItem = ({ item, settings, priority = false, loading }: RenderItemPro
           className="object-contain p-2.5 transition-transform duration-500 group-hover:scale-105"
           priority={priority}
           loading={priority ? "eager" : (loading ?? "lazy")}
-          unoptimized
         />
 
         {/* Hover overlay with preview icon */}

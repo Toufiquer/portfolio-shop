@@ -188,7 +188,6 @@ const ClientSection6: React.FC<Section6Props> = ({ data }) => {
                   src={sectionData.bannerImage || "/placeholder.jpg"}
                   alt={sectionData.universityName}
                   fill
-                  unoptimized
                   className="object-cover transition-transform duration-1000 group-hover:scale-110"
                   sizes="(max-width: 768px) 100vw, 50vw"
                   priority
@@ -202,7 +201,6 @@ const ClientSection6: React.FC<Section6Props> = ({ data }) => {
                       src={sectionData.logoUrl || "/placeholder-logo.png"}
                       alt="Logo"
                       fill
-                      unoptimized
                       className="object-contain"
                     />
                   </div>

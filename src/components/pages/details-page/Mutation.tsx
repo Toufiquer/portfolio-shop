@@ -134,7 +134,6 @@ const MutationDetailsPage = ({ data, onChange }: DetailsPageFormProps) => {
                     className="h-full w-full object-cover"
                     src={settings.imageUrl}
                     height={320}
-                    unoptimized
                     width={560}
                   />
                 ) : (

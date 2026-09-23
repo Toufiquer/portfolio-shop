@@ -54,7 +54,6 @@ export default function Query({ data = defaultData }: { data?: Record<string, st
               priority
               sizes="(max-width: 1024px) 92vw, 42vw"
               src={data.image || defaultData.image}
-              unoptimized
             />
           </div>
         </div>

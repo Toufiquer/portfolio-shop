@@ -159,7 +159,6 @@ export default function OrderTrackingPage() {
                     className="size-16 rounded-sm object-cover"
                     height={64}
                     src={item.primaryImage}
-                    unoptimized
                     width={64}
                   />
                   <div className="min-w-0 flex-1">

@@ -198,7 +198,6 @@ const ClientSection7: React.FC<Section7Props> = ({ data }) => {
                               src={uni.image}
                               alt={uni.name}
                               fill
-                              unoptimized
                               className="object-cover group-hover:scale-110 transition-transform duration-500"
                             />
                           ) : (

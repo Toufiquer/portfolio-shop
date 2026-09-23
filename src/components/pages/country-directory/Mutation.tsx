@@ -8,8 +8,7 @@
 
 "use client";
 
-/* eslint-disable @next/next/no-img-element -- flag URLs are editable Page Builder data and can use arbitrary hosts. */
-
+import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { iconMap } from "@/components/all-icons/all-icons";
@@ -289,10 +288,12 @@ const MutationCountryDirectory = ({ data, onChange }: CountryDirectoryFormProps)
                   <div className="relative flex h-16 items-center justify-center overflow-hidden rounded-sm border border-slate-200 bg-white">
                     <span className="text-2xl">{country.flag}</span>
                     {country.flagImage && (
-                      <img
+                      <Image
                         src={country.flagImage}
                         alt={`${country.name} flag`}
                         className="absolute inset-0 h-full w-full object-cover"
+                        fill
+                        sizes="256px"
                         onError={(event) => {
                           event.currentTarget.style.display = "none";
                         }}

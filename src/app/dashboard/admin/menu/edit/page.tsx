@@ -500,7 +500,6 @@ export default function MenuEditPage() {
               height={512}
               src={menu.logoUrl}
               style={{ transform: `scale(${(menu.logoZoom ?? 100) / 100})` }}
-              unoptimized
               width={512}
             />
           ) : (
@@ -1184,7 +1183,6 @@ function MenuItemImagePreview({
         className={`h-full w-full ${crop === "full" ? "object-contain" : "object-cover"}`}
         height={160}
         src={src}
-        unoptimized
         width={320}
       />
     </div>
@@ -1356,7 +1354,6 @@ function LogoCropCanvas({
         className="pointer-events-none h-full w-full object-contain"
         height={288}
         src={src}
-        unoptimized
         width={512}
       />
       <div
@@ -1528,7 +1525,6 @@ function MainMenuPanel({
                       className={`h-full w-full ${imageCrop === "full" ? "object-contain" : "object-cover"}`}
                       height={56}
                       src={link.imageUrl}
-                      unoptimized
                       width={56}
                     />
                   ) : (
@@ -1668,7 +1664,6 @@ function MainMenuPanel({
                             className="h-full w-full object-cover"
                             height={56}
                             src={editing.imageUrl}
-                            unoptimized
                             width={56}
                           />
                         ) : (

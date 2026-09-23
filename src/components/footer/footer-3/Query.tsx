@@ -6,11 +6,13 @@
 |-----------------------------------------
 */
 "use client";
+
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
 import { Icon } from "@/components/all-icons/all-icons";
 import { Button } from "@/components/ui/button";
+
 import type { FooterThreeData, FooterThreeLink } from "./data";
 
 type BeforeInstallPromptEvent = Event & {
@@ -70,14 +72,7 @@ export default function Query({ data }: { data: FooterThreeData }) {
         <div>
           {data.showLogo && data.logoUrl && (
             <div className="relative h-12 w-40 max-w-full overflow-hidden">
-              <Image
-                alt={data.logoAlt}
-                className="object-contain object-left"
-                fill
-                sizes="160px"
-                src={data.logoUrl}
-                unoptimized
-              />
+              <Image alt={data.logoAlt} className="object-contain object-left" fill sizes="160px" src={data.logoUrl} />
             </div>
           )}
           <h2 className="mt-6 text-xl font-bold">{data.brand}</h2>

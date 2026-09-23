@@ -148,7 +148,6 @@ function QueueItem({ item, onAction }: { item: ModerationItem; onAction: () => v
             height={44}
             loading="eager"
             src={item.author.avatar}
-            unoptimized
             width={44}
           />
         ) : (

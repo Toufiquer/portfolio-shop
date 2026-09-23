@@ -475,7 +475,6 @@ function MenuLinkVisual({ item, size }: { item: MenuLink; size: "main" | "card" 
         className={`shrink-0 ${dimensions.className} ${item.imageCrop === "full" ? "object-contain" : "object-cover"} ${imageRadiusClass[item.imageRadius ?? "none"]}`}
         height={dimensions.height}
         src={item.imageUrl}
-        unoptimized
         width={dimensions.width}
       />
     );

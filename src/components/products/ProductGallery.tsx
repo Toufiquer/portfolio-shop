@@ -26,7 +26,6 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
             loading="eager"
             sizes="(min-width: 1024px) 52vw, 100vw"
             src={image}
-            unoptimized
           />
         ) : (
           <div className="grid h-full place-items-center text-sm text-stone-400">Product image coming soon</div>
@@ -42,7 +41,7 @@ export function ProductGallery({ images, name }: { images: string[]; name: strin
               onClick={() => setSelected(index)}
               type="button"
             >
-              <Image alt="" className="object-contain p-1" fill sizes="64px" src={item} unoptimized />
+              <Image alt="" className="object-contain p-1" fill sizes="64px" src={item} />
             </button>
           ))}
         </div>

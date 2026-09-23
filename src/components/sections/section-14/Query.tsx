@@ -148,7 +148,6 @@ const ArticleCard = ({ article, index, onClick }: { article: any; index: number;
               src={article.heroImage}
               alt={article.title}
               fill
-              unoptimized
               className="object-cover transition-transform duration-700 group-hover:scale-105"
             />
           ) : (
@@ -180,13 +179,7 @@ const ArticleCard = ({ article, index, onClick }: { article: any; index: number;
           <div className="flex items-center gap-3">
             <div className="relative h-8 w-8 overflow-hidden rounded-full border border-stone-200 bg-stone-50">
               {article.author.avatar ? (
-                <Image
-                  src={article.author.avatar}
-                  alt={article.author.name}
-                  fill
-                  unoptimized
-                  className="object-cover"
-                />
+                <Image src={article.author.avatar} alt={article.author.name} fill className="object-cover" />
               ) : (
                 <User size={16} className="m-2 text-zinc-500" />
               )}
@@ -234,7 +227,7 @@ const ArticleModal = ({ article, onClose }: { article: any; onClose: () => void 
           <div className="relative w-full h-[50vh] min-h-[400px]">
             <motion.div layoutId={`hero-image-${article.id}`} className="w-full h-full relative">
               {article.heroImage && (
-                <Image src={article.heroImage} alt={article.title} fill unoptimized className="object-cover" priority />
+                <Image src={article.heroImage} alt={article.title} fill className="object-cover" priority />
               )}
               <div className="absolute inset-0 bg-gradient-to-t from-white via-white/75 to-transparent" />
             </motion.div>
@@ -270,13 +263,7 @@ const ArticleModal = ({ article, onClose }: { article: any; onClose: () => void 
                 <div className="flex items-center gap-3">
                   <div className="relative w-10 h-10 rounded-full overflow-hidden border-2 border-indigo-500">
                     {article.author.avatar ? (
-                      <Image
-                        src={article.author.avatar}
-                        alt={article.author.name}
-                        fill
-                        unoptimized
-                        className="object-cover"
-                      />
+                      <Image src={article.author.avatar} alt={article.author.name} fill className="object-cover" />
                     ) : (
                       <User className="m-2" />
                     )}
@@ -372,7 +359,7 @@ const ContentBlock = ({ block }: { block: any; index: number }) => {
       return (
         <motion.figure {...commonAnim} className="my-8">
           <div className="relative aspect-video w-full overflow-hidden rounded-sm border border-stone-200 bg-stone-50">
-            <Image src={block.src} alt={block.alt} fill unoptimized className="object-cover" />
+            <Image src={block.src} alt={block.alt} fill className="object-cover" />
           </div>
           {block.caption && (
             <figcaption className="text-center text-sm text-zinc-500 mt-3 italic">{block.caption}</figcaption>

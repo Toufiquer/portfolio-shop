@@ -327,7 +327,6 @@ export default function MutationSection4({ data, onChange }: Props) {
                               className="size-20 rounded-sm border border-[#eadfca] bg-white object-cover"
                               height={80}
                               src={item.author.avatar}
-                              unoptimized
                               width={80}
                             />
                           ) : (

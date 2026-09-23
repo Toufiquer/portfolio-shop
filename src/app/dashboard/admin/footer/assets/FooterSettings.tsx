@@ -85,7 +85,6 @@ export default function FooterSettings({
                   fill
                   sizes="112px"
                   src={value.logoUrl}
-                  unoptimized
                 />
               </div>
             ) : (

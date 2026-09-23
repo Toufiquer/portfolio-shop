@@ -258,7 +258,6 @@ export default function QuerySection15({ data }: QuerySection15Props) {
                   alt={activeLocation.name}
                   fill
                   loading="eager"
-                  unoptimized
                   className="object-cover transition-transform duration-700 group-hover:scale-110 grayscale group-hover:grayscale-0"
                 />
               )}

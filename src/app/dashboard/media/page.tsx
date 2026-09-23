@@ -60,27 +60,9 @@ function youtubeThumbnail(url: string) {
 function previewFor(item: MediaItem) {
   const youtubeImage = item.uploadPlane === "Youtube" ? youtubeThumbnail(item.url) : null;
   if (youtubeImage)
-    return (
-      <Image
-        alt={item.name}
-        className="h-full w-full object-cover"
-        height={240}
-        src={youtubeImage}
-        unoptimized
-        width={320}
-      />
-    );
+    return <Image alt={item.name} className="h-full w-full object-cover" height={240} src={youtubeImage} width={320} />;
   if (item.type === "picture")
-    return (
-      <Image
-        alt={item.name}
-        className="h-full w-full object-cover"
-        height={240}
-        src={item.url}
-        unoptimized
-        width={320}
-      />
-    );
+    return <Image alt={item.name} className="h-full w-full object-cover" height={240} src={item.url} width={320} />;
   if (item.type === "video") return <Video className="h-8 w-8 text-violet-700" />;
   if (item.type === "audio") return <Music className="h-8 w-8 text-emerald-700" />;
   if (item.type === "zip") return <Package className="h-8 w-8 text-amber-700" />;

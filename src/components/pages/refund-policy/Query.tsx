@@ -89,7 +89,6 @@ const QueryPage7 = ({ data }: Page7Props) => {
               priority
               sizes="(max-width: 1024px) 92vw, 38vw"
               src={pageData.image}
-              unoptimized
             />
           </div>
         </div>

@@ -232,7 +232,6 @@ const MutationSection44 = ({ data, onChange }: Section44FormProps) => {
                         className="object-cover"
                         fill
                         src={formData.imageUrl}
-                        unoptimized
                       />
                     ) : (
                       <div className="flex h-full items-center justify-center text-slate-500">

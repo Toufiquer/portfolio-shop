@@ -70,7 +70,6 @@ export default function QueryDetailsPage({ data }: DetailsPageProps) {
             loading="eager"
             sizes="(max-width: 1024px) 100vw, 50vw"
             src={page.imageUrl}
-            unoptimized
           />
         </div>
         <div className="">

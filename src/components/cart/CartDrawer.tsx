@@ -404,7 +404,6 @@ export function CartDrawer() {
                     className="size-16 rounded-sm object-cover"
                     height={64}
                     src={item.image}
-                    unoptimized
                     width={64}
                   />
                   <div className="min-w-0 flex-1">

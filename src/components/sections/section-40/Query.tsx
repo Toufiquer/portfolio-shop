@@ -166,7 +166,6 @@ const QuerySection40 = ({ data }: Section40Props) => {
               fill
               sizes="(max-width: 1024px) 58vw, 27vw"
               className="object-contain p-4 transition duration-700 group-hover:scale-105"
-              unoptimized
             />
           </motion.div>
 
@@ -184,7 +183,6 @@ const QuerySection40 = ({ data }: Section40Props) => {
               fill
               sizes="(max-width: 1024px) 67vw, 31vw"
               className="object-contain p-4 transition duration-700 group-hover:scale-105"
-              unoptimized
             />
           </motion.div>
         </motion.div>

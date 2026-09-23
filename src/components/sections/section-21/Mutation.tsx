@@ -244,7 +244,6 @@ const MutationSection21 = ({ data, onChange }: Section21FormProps) => {
                             width={200}
                             height={200}
                             src={img.url}
-                            unoptimized
                             className="w-full h-full object-cover"
                           />
                         ) : (
@@ -295,7 +294,6 @@ const MutationSection21 = ({ data, onChange }: Section21FormProps) => {
                               className="h-full w-full object-cover"
                               src={activeImage.url}
                               height={320}
-                              unoptimized
                               width={560}
                             />
                           ) : (

@@ -64,7 +64,6 @@ const RenderItem = ({ item, settings, priority = false, loading }: RenderItemPro
           className="object-contain p-2.5 transition-transform duration-500 group-hover:scale-105"
           priority={priority}
           loading={priority ? "eager" : (loading ?? "lazy")}
-          unoptimized
         />
 
         {/* Hover overlay with preview icon */}

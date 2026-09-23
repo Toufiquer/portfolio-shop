@@ -858,7 +858,6 @@ const MutationContainer1 = ({ data, onChange }: ContainerFormProps) => {
                       className="object-contain p-2 transition duration-300 group-hover:scale-105"
                       priority={index === 0}
                       loading={index < 4 ? "eager" : "lazy"}
-                      unoptimized
                     />
 
                     {/* Drag Handle Tag */}
@@ -1064,7 +1063,6 @@ const MutationContainer1 = ({ data, onChange }: ContainerFormProps) => {
                               fill
                               className="object-contain p-1"
                               loading={index < 4 ? "eager" : "lazy"}
-                              unoptimized
                             />
                           </span>
                           <span className="min-w-0 flex-1">

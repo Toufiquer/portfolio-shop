@@ -32,7 +32,6 @@ export default function CroppedLogo({ data, heightClassName }: CroppedLogoProps)
         loading="eager"
         src={data.logoUrl}
         style={{ transform: `scale(${(data.logoZoom ?? 100) / 100})`, width: "auto" }}
-        unoptimized
         width={192}
       />
     );
@@ -49,7 +48,14 @@ export default function CroppedLogo({ data, heightClassName }: CroppedLogoProps)
 
   return (
     <span className={`relative block shrink-0 overflow-hidden ${heightClassName} ${aspectClass}`}>
-      <Image alt={data.logoAlt} className="absolute left-0 top-0 object-fill" height={100} src={data.logoUrl} style={imageStyle} unoptimized width={100} />
+      <Image
+        alt={data.logoAlt}
+        className="absolute left-0 top-0 object-fill"
+        height={100}
+        src={data.logoUrl}
+        style={imageStyle}
+        width={100}
+      />
     </span>
   );
 }

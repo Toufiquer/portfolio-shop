@@ -8,6 +8,7 @@
 
 "use client";
 
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 import { iconMap } from "@/components/all-icons/all-icons-jsx";
@@ -194,8 +195,13 @@ const MutationSection32 = ({ data, onChange }: SectionFormProps) => {
                     <div className="space-y-4 md:col-span-4">
                       <div className="aspect-square relative rounded-sm overflow-hidden bg-slate-100 border border-slate-200">
                         {story.image ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={story.image} alt="Preview" className="w-full h-full object-cover opacity-70" />
+                          <Image
+                            src={story.image}
+                            alt="Preview"
+                            className="object-cover opacity-70"
+                            fill
+                            sizes="256px"
+                          />
                         ) : (
                           <div className="flex items-center justify-center h-full text-slate-400">No Image</div>
                         )}

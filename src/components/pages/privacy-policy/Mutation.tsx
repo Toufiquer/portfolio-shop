@@ -45,7 +45,6 @@ const MediaPreview = ({ src }: { src: string }) => (
       loading="eager"
       sizes="(max-width: 640px) 90vw, 420px"
       src={src}
-      unoptimized
     />
   </div>
 );

@@ -273,7 +273,6 @@ const MutationSection12 = ({ data, onChange }: Section12FormProps) => {
                                 alt={partner.name}
                                 fill
                                 className="object-contain"
-                                unoptimized
                                 loading={index === 0 ? "eager" : "lazy"}
                               />
                             </div>

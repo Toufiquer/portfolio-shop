@@ -224,14 +224,7 @@ const MutationPage8 = ({ data, onSubmit }: Page8FormProps) => {
         <div className="flex flex-col gap-3 rounded-sm border border-stone-200 bg-white p-3 sm:flex-row sm:items-center">
           <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-sm bg-stone-100">
             {member.image ? (
-              <Image
-                alt={`${member.name} preview`}
-                className="object-cover"
-                fill
-                sizes="96px"
-                src={member.image}
-                unoptimized
-              />
+              <Image alt={`${member.name} preview`} className="object-cover" fill sizes="96px" src={member.image} />
             ) : (
               <span className="flex h-full w-full items-center justify-center text-xs text-stone-500">No image</span>
             )}

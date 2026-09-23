@@ -352,7 +352,6 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
                                     fill
                                     sizes="44px"
                                     src={item.primaryImage}
-                                    unoptimized
                                   />
                                 </div>
                               ) : null}

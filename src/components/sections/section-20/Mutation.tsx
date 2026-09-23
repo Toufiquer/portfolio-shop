@@ -351,7 +351,6 @@ const MutationSection20 = ({ data, onChange }: Section20FormProps) => {
                               className="object-contain p-4"
                               fill
                               src={activeLogo.image}
-                              unoptimized
                             />
                           ) : (
                             <Grid className="text-slate-400" size={28} />

@@ -361,7 +361,6 @@ const MutationSection13 = ({ data, onChange }: Section13FormProps) => {
                             src={evt.image}
                             alt={evt.title}
                             className="w-full h-full object-cover"
-                            unoptimized
                           />
                         ) : (
                           <CalendarDays size={24} className="text-slate-500" />
@@ -501,7 +500,6 @@ const MutationSection13 = ({ data, onChange }: Section13FormProps) => {
                                         className="object-cover"
                                         fill
                                         src={evt.image}
-                                        unoptimized
                                       />
                                     </div>
                                   ) : (

@@ -15,7 +15,11 @@ import { authClient } from "@/app/api/lib/auth-client";
 import { UploadButton } from "@/app/api/lib/uploadthing";
 import { iconMap } from "@/components/all-icons/all-icons";
 import { useCreateMediaMutation, useGetMediaQuery } from "@/redux/features/dashboard/media/mediaSlice";
-import { type Profile, useGetProfileQuery, useUpdateProfileMutation } from "@/redux/features/dashboard/profile/profileSlice";
+import {
+  type Profile,
+  useGetProfileQuery,
+  useUpdateProfileMutation,
+} from "@/redux/features/dashboard/profile/profileSlice";
 
 const PAGE_SIZES = [10, 25, 50, 100] as const;
 
@@ -124,7 +128,13 @@ function ProfileEditor({
             <div className="flex flex-col items-center">
               <div className="relative h-28 w-28 rounded-full border-4 border-white bg-amber-100 shadow-[0_12px_30px_rgba(120,53,15,.2)] sm:h-32 sm:w-32">
                 {profile.profilePicture ? (
-                  <Image alt="Profile" className="h-full w-full rounded-full object-cover" height={128} src={profile.profilePicture} unoptimized width={128} />
+                  <Image
+                    alt="Profile"
+                    className="h-full w-full rounded-full object-cover"
+                    height={128}
+                    src={profile.profilePicture}
+                    width={128}
+                  />
                 ) : (
                   <span className="grid h-full w-full place-items-center rounded-full text-3xl font-semibold text-amber-900">
                     {profile.name.trim().charAt(0).toUpperCase() || "?"}
@@ -383,7 +393,6 @@ function ProfilePictureModal({ close, onSelect }: { close: () => void; onSelect:
                     className="aspect-square w-full object-cover"
                     height={160}
                     src={item.url}
-                    unoptimized
                     width={160}
                   />
                   <span className="block truncate p-2 text-xs font-medium text-stone-700">{item.name}</span>

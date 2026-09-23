@@ -32,11 +32,7 @@ function cards(valueToParse: string | undefined): HomeCard[] {
   }
 }
 
-export default function Query({
-  data,
-}: {
-  data?: Partial<HomeData>;
-}) {
+export default function Query({ data }: { data?: Partial<HomeData> }) {
   const own = { ...defaultData, ...data };
   const title = value(own.title, undefined, defaultData.title);
   const intro = value(own.intro, undefined, defaultData.intro);
@@ -62,7 +58,6 @@ export default function Query({
           height={640}
           loading="eager"
           src={own.imageUrl || defaultData.imageUrl}
-          unoptimized={own.imageUrl.startsWith("http")}
           width={960}
         />
       </div>
