@@ -56,10 +56,10 @@ export const sidebarDefaults: ImportSidebarDefault[] = [
     icon: "Users",
     children: [
       { name: "Overview", url: "/dashboard/business-growth/overview", icon: "Users" },
-      { name: "Funnels", url: "/dashboard/business-growth/funnels", icon: "Workflow" },
+      { name: "Funnels", url: "/dashboard/business-growth/funnels", icon: "Filter" },
       { name: "Customer", url: "/dashboard/business-growth/customer", icon: "Users" },
       { name: "Councillor", url: "/dashboard/business-growth/councillor", icon: "Users" },
-      { name: "Task", url: "/dashboard/business-growth/task", icon: "Workflow" },
+      { name: "Task", url: "/dashboard/business-growth/task", icon: "Check" },
     ],
   },
   { name: "Media", url: "/dashboard/media", icon: "Image" },
@@ -67,7 +67,7 @@ export const sidebarDefaults: ImportSidebarDefault[] = [
   { name: "Products", url: "/dashboard/products", icon: "Package" },
   { name: "Category", url: "/dashboard/category", icon: "ShoppingCart" },
   { name: "Orders", url: "/dashboard/orders", icon: "FileText" },
-  { name: "Coupons", url: "/dashboard/coupon", icon: "Ticket" },
+  { name: "Coupons", url: "/dashboard/coupon", icon: "Tag" },
   { name: "Install", url: "/dashboard/install", icon: "Download" },
 ];
 export const pageDefaults: ImportPageDefault[] = [

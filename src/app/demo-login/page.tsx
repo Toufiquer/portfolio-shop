@@ -18,10 +18,11 @@ const fieldClassName =
   "w-full rounded-sm border border-stone-200 bg-white py-3 pl-11 pr-4 text-sm text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-amber-600 focus:ring-4 focus:ring-amber-500/10";
 
 const demoAccounts = [
-  { label: "Admin", email: "admin@gmail.com", password: "admin@ADMIN" },
-  { label: "Client", email: "client@gmail.com", password: "client@CLIENT" },
-  { label: "Councilor", email: "councilor@gmail.com", password: "councilor@COUNCILOR" },
   { label: "Developer", email: "developer@gmail.com", password: "developer@DEVELOPER" },
+  { label: "Admin", email: "admin@gmail.com", password: "admin@ADMIN" },
+  { label: "Councilor", email: "councilor@gmail.com", password: "councilor@COUNCILOR" },
+  { label: "Client", email: "client@gmail.com", password: "client@CLIENT" },
+  { label: "Blocked", email: "block@gmail.com", password: "block@BLOCK" },
 ];
 
 export default function DemoLoginPage() {
