@@ -45,6 +45,10 @@ type SitePage = {
 
 const defaults = sidebarDefaults;
 const defaultPages = pageDefaults;
+const defaultSidebarUrls = new Set(
+  defaults.flatMap((item) => [item.url, ...(item.children ?? []).map((child) => child.url)]),
+);
+const defaultPagePaths = new Set(defaultPages.map((page) => page.path));
 /*
   {
     name: "Developer",
@@ -101,21 +105,40 @@ export async function POST(request: Request) {
       return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
   }
 
-  const body = (await request.json().catch(() => null)) as { target?: "all" | "sidebar" | "pages" } | null;
-  const target = body?.target ?? "all";
+  const body = (await request.json().catch(() => null)) as {
+    pagePaths?: unknown;
+    sidebarUrls?: unknown;
+    target?: "all" | "sidebar" | "pages";
+  } | null;
+  const legacyTarget = body?.target ?? "all";
+  const selectedSidebarUrls = new Set(
+    Array.isArray(body?.sidebarUrls)
+      ? body.sidebarUrls.filter((url): url is string => typeof url === "string" && defaultSidebarUrls.has(url))
+      : legacyTarget === "pages"
+        ? []
+        : defaultSidebarUrls,
+  );
+  const selectedPagePaths = new Set(
+    Array.isArray(body?.pagePaths)
+      ? body.pagePaths.filter((path): path is string => typeof path === "string" && defaultPagePaths.has(path))
+      : legacyTarget === "sidebar"
+        ? []
+        : defaultPagePaths,
+  );
+  const importSidebars = selectedSidebarUrls.size > 0;
+  const importPages = selectedPagePaths.size > 0;
   const collection = client.db().collection<SidebarItem>("sidebar");
-  const existing: SavedSidebar[] =
-    target === "pages"
-      ? []
-      : await collection
-          .find({}, { projection: { id: 1, name: 1, url: 1, icon: 1, parentId: 1, position: 1 } })
-          .toArray();
+  const existing: SavedSidebar[] = !importSidebars
+    ? []
+    : await collection
+        .find({}, { projection: { id: 1, name: 1, url: 1, icon: 1, parentId: 1, position: 1 } })
+        .toArray();
   const itemsByUrl = new Map(existing.map((item) => [item.url, item]));
 
   // Older defaults used a capitalized Admin route. Reuse that record so a
   // one-click import does not leave a duplicate Admin group behind.
   const legacyAdmin = itemsByUrl.get("/dashboard/Admin");
-  if (target !== "pages" && legacyAdmin && !itemsByUrl.has("/dashboard/admin")) {
+  if (selectedSidebarUrls.has("/dashboard/admin") && legacyAdmin && !itemsByUrl.has("/dashboard/admin")) {
     await collection.updateOne({ id: legacyAdmin.id }, { $set: { url: "/dashboard/admin", updatedAt: new Date() } });
     legacyAdmin.url = "/dashboard/admin";
     itemsByUrl.delete("/dashboard/Admin");
@@ -134,10 +157,10 @@ export async function POST(request: Request) {
     ["/dashboard/admin/business-growth/task", "/dashboard/business-growth/task"],
     ["/dashboard/admin/customer", "/dashboard/business-growth"],
   ] as const;
-  if (target !== "pages")
+  if (importSidebars)
     for (const [oldUrl, newUrl] of businessGrowthPathMigrations) {
       const legacyItem = itemsByUrl.get(oldUrl);
-      if (!legacyItem || itemsByUrl.has(newUrl)) continue;
+      if (!selectedSidebarUrls.has(newUrl) || !legacyItem || itemsByUrl.has(newUrl)) continue;
       await collection.updateOne({ id: legacyItem.id }, { $set: { url: newUrl, updatedAt: new Date() } });
       legacyItem.url = newUrl;
       itemsByUrl.delete(oldUrl);
@@ -146,9 +169,10 @@ export async function POST(request: Request) {
   let inserted = 0;
   let updated = 0;
 
-  if (target !== "pages")
+  if (importSidebars)
     for (let parentPosition = 0; parentPosition < defaults.length; parentPosition += 1) {
       const parent = defaults[parentPosition];
+      if (!selectedSidebarUrls.has(parent.url)) continue;
       let savedParent = itemsByUrl.get(parent.url);
       if (!savedParent) {
         const item: SidebarItem = {
@@ -187,6 +211,7 @@ export async function POST(request: Request) {
 
       for (let childPosition = 0; childPosition < (parent.children?.length ?? 0); childPosition += 1) {
         const child = parent.children![childPosition];
+        if (!selectedSidebarUrls.has(child.url)) continue;
         const savedChild = itemsByUrl.get(child.url);
         if (!savedChild) {
           const item: SidebarItem = {
@@ -226,29 +251,36 @@ export async function POST(request: Request) {
 
   let pagesInserted = 0;
   let pagesUpdated = 0;
-  if (target !== "sidebar") {
+  if (importPages) {
     const pageCollection = client.db().collection<SitePage>("pages");
-    const faqMigration = await pageCollection.updateMany(
-      { "blocks.variant": "all-faq" },
-      { $set: { "blocks.$[block].variant": "all-frequently-ask-questions", updatedAt: new Date() } },
-      { arrayFilters: [{ "block.variant": "all-faq" }] },
-    );
-    pagesUpdated += faqMigration.modifiedCount;
-    const aboutMigration = await pageCollection.updateMany(
-      { "blocks.variant": "all-about" },
-      { $set: { "blocks.$[block].variant": "all-about-us", updatedAt: new Date() } },
-      { arrayFilters: [{ "block.variant": "all-about" }] },
-    );
-    const contactMigration = await pageCollection.updateMany(
-      { "blocks.variant": "all-contact" },
-      { $set: { "blocks.$[block].variant": "all-contact-us", updatedAt: new Date() } },
-      { arrayFilters: [{ "block.variant": "all-contact" }] },
-    );
-    pagesUpdated += aboutMigration.modifiedCount + contactMigration.modifiedCount;
+    if (selectedPagePaths.has("/frequently-ask-questions")) {
+      const faqMigration = await pageCollection.updateMany(
+        { "blocks.variant": "all-faq" },
+        { $set: { "blocks.$[block].variant": "all-frequently-ask-questions", updatedAt: new Date() } },
+        { arrayFilters: [{ "block.variant": "all-faq" }] },
+      );
+      pagesUpdated += faqMigration.modifiedCount;
+    }
+    if (selectedPagePaths.has("/about-us")) {
+      const aboutMigration = await pageCollection.updateMany(
+        { "blocks.variant": "all-about" },
+        { $set: { "blocks.$[block].variant": "all-about-us", updatedAt: new Date() } },
+        { arrayFilters: [{ "block.variant": "all-about" }] },
+      );
+      pagesUpdated += aboutMigration.modifiedCount;
+    }
+    if (selectedPagePaths.has("/contact-us")) {
+      const contactMigration = await pageCollection.updateMany(
+        { "blocks.variant": "all-contact" },
+        { $set: { "blocks.$[block].variant": "all-contact-us", updatedAt: new Date() } },
+        { arrayFilters: [{ "block.variant": "all-contact" }] },
+      );
+      pagesUpdated += contactMigration.modifiedCount;
+    }
     const existingPaths = new Set(
       (await pageCollection.find({}, { projection: { path: 1 } }).toArray()).map((page) => page.path),
     );
-    if (!existingPaths.has("/") && existingPaths.has("/home")) {
+    if (selectedPagePaths.has("/") && !existingPaths.has("/") && existingPaths.has("/home")) {
       await pageCollection.updateOne({ path: "/home" }, { $set: { path: "/", title: "Home", updatedAt: new Date() } });
       existingPaths.delete("/home");
       existingPaths.add("/");
@@ -256,6 +288,7 @@ export async function POST(request: Request) {
       revalidatePath("/");
     }
     for (const page of defaultPages) {
+      if (!selectedPagePaths.has(page.path)) continue;
       if (existingPaths.has(page.path)) continue;
       const now = new Date();
       await pageCollection.insertOne({

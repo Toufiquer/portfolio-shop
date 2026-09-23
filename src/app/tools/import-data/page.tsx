@@ -15,6 +15,7 @@ import { authClient } from "@/app/api/lib/auth-client";
 import { pageDefaults, sidebarDefaults } from "@/app/tools/import-data/defaults";
 import { iconMap } from "@/components/all-icons/all-icons";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toast } from "@/components/ui/toast";
 import { useImportDataMutation } from "@/redux/features/dashboard/import-data/importDataSlice";
@@ -38,15 +39,18 @@ export default function ImportDataPage() {
   const [importData, { isLoading: importing }] = useImportDataMutation();
   const [toast, setToast] = useState<{ error?: boolean; message: string } | null>(null);
   const [refreshRemaining, setRefreshRemaining] = useState(0);
+  const [selectedSidebarUrls, setSelectedSidebarUrls] = useState(() => new Set(defaultPaths));
+  const [selectedPagePaths, setSelectedPagePaths] = useState(() => new Set(pageDefaults.map((page) => page.path)));
 
   const savedSidebarPaths = useMemo(
     () => new Set(sidebarData?.items.map((item) => item.url) ?? []),
     [sidebarData?.items],
   );
   const savedPagePaths = useMemo(() => new Set(pageData?.items.map((item) => item.path) ?? []), [pageData?.items]);
-  const sidebarReady = defaultPaths.every((path) => savedSidebarPaths.has(path));
-  const pagesReady = pageDefaults.every((page) => savedPagePaths.has(page.path));
+  const sidebarReady = [...selectedSidebarUrls].every((path) => savedSidebarPaths.has(path));
+  const pagesReady = [...selectedPagePaths].every((path) => savedPagePaths.has(path));
   const ready = sidebarReady && pagesReady;
+  const hasSelection = selectedSidebarUrls.size > 0 || selectedPagePaths.size > 0;
 
   useEffect(() => {
     if (!refreshRemaining) return;
@@ -56,7 +60,10 @@ export default function ImportDataPage() {
 
   async function handleImport() {
     try {
-      const result = await importData("all").unwrap();
+      const result = await importData({
+        sidebarUrls: [...selectedSidebarUrls],
+        pagePaths: [...selectedPagePaths],
+      }).unwrap();
       setToast({
         message: `Import complete: ${result.inserted} added, ${result.updated} sidebar records aligned, ${result.pagesInserted} pages created.`,
       });
@@ -75,6 +82,22 @@ export default function ImportDataPage() {
             : "Could not import the default data.";
       setToast({ error: true, message });
     }
+  }
+
+  function toggleSidebar(url: string, checked: boolean) {
+    const group = sidebarDefaults.find((item) => item.url === url);
+    const parent = sidebarDefaults.find((item) => item.children?.some((child) => child.url === url));
+    setSelectedSidebarUrls((current) => {
+      const next = new Set(current);
+      if (checked) {
+        next.add(url);
+        if (parent) next.add(parent.url);
+      } else {
+        next.delete(url);
+        if (group) group.children?.forEach((child) => next.delete(child.url));
+      }
+      return next;
+    });
   }
 
   async function handleRefresh() {
@@ -129,12 +152,12 @@ export default function ImportDataPage() {
             </Button>
             <Button
               className="cursor-pointer bg-emerald-100 text-emerald-900 transition duration-700 hover:-translate-y-0.5 hover:bg-emerald-200"
-              disabled={importing}
+              disabled={importing || !hasSelection}
               onClick={() => void handleImport()}
               size="sm"
             >
               {iconMap.Database}
-              {importing ? "Importing…" : ready ? "Sync defaults" : "Import pages & sidebar"}
+              {importing ? "Importing…" : ready ? "Sync selected" : "Import selected"}
             </Button>
           </div>
         </div>
@@ -148,14 +171,22 @@ export default function ImportDataPage() {
           >
             {sidebarDefaults.map((group) => (
               <div className="rounded-sm border border-[#eadfca] bg-white p-3" key={group.url}>
-                <ImportRow complete={savedSidebarPaths.has(group.url)} icon={group.icon} label={group.name} />
+                <ImportRow
+                  checked={selectedSidebarUrls.has(group.url)}
+                  complete={savedSidebarPaths.has(group.url)}
+                  icon={group.icon}
+                  label={group.name}
+                  onCheckedChange={(checked) => toggleSidebar(group.url, checked)}
+                />
                 <div className="mt-2 grid gap-1 border-l border-[#eadfca] pl-3">
                   {(group.children ?? []).map((child) => (
                     <ImportRow
                       complete={savedSidebarPaths.has(child.url)}
+                      checked={selectedSidebarUrls.has(child.url)}
                       icon={child.icon}
                       key={child.url}
                       label={child.name}
+                      onCheckedChange={(checked) => toggleSidebar(child.url, checked)}
                     />
                   ))}
                 </div>
@@ -166,10 +197,19 @@ export default function ImportDataPage() {
             {pageDefaults.map((page) => (
               <ImportRow
                 complete={savedPagePaths.has(page.path)}
+                checked={selectedPagePaths.has(page.path)}
                 icon="FileText"
                 key={page.path}
                 label={page.title}
                 path={page.path}
+                onCheckedChange={(checked) =>
+                  setSelectedPagePaths((current) => {
+                    const next = new Set(current);
+                    if (checked) next.add(page.path);
+                    else next.delete(page.path);
+                    return next;
+                  })
+                }
               />
             ))}
           </ImportGroup>
@@ -208,9 +248,24 @@ function ImportGroup({
   );
 }
 
-function ImportRow({ complete, icon, label, path }: { complete: boolean; icon: string; label: string; path?: string }) {
+function ImportRow({
+  checked,
+  complete,
+  icon,
+  label,
+  onCheckedChange,
+  path,
+}: {
+  checked: boolean;
+  complete: boolean;
+  icon: string;
+  label: string;
+  onCheckedChange: (checked: boolean) => void;
+  path?: string;
+}) {
   return (
     <div className="flex min-w-0 items-center gap-2 rounded-sm px-2 py-1.5 text-sm">
+      <Checkbox aria-label={`Import ${label}`} checked={checked} onCheckedChange={onCheckedChange} />
       <span className="shrink-0 text-stone-500">{iconMap[icon] ?? iconMap.FileText}</span>
       <span className={`min-w-0 flex-1 truncate ${complete ? "text-stone-500" : "text-stone-800"}`} title={label}>
         {label}

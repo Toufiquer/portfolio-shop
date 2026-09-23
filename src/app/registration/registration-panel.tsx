@@ -117,7 +117,7 @@ export function RegistrationPanel() {
             <h1 className="text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">Create account</h1>
 
             <button
-              className="mt-7 flex w-full items-center justify-center gap-3 rounded-sm border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700 transition hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-7 cursor-pointer flex w-full items-center justify-center gap-3 rounded-sm border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700 transition hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
               disabled={submitting}
               onClick={signUpWithGoogle}
               type="button"
@@ -182,7 +182,7 @@ export function RegistrationPanel() {
               </Field>
 
               <button
-                className="group mt-2 flex w-full items-center justify-center gap-2 rounded-sm bg-stone-900 px-4 py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-amber-700 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+                className="group cursor-pointer mt-2 flex w-full items-center justify-center gap-2 rounded-sm bg-stone-900 px-4 py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-amber-700 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={submitting}
                 type="submit"
               >

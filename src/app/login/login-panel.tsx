@@ -132,7 +132,7 @@ export function LoginPanel() {
           <div className="mx-auto w-full max-w-md">
             <h1 className="text-3xl font-semibold tracking-tight text-stone-900 sm:text-4xl">Sign in</h1>
             <button
-              className="mt-7 flex w-full items-center justify-center gap-3 rounded-sm border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700 transition hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-7 cursor-pointer flex w-full items-center justify-center gap-3 rounded-sm border border-stone-200 bg-white px-4 py-3 text-sm font-semibold text-stone-700 transition hover:-translate-y-0.5 hover:border-stone-300 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
               disabled={submitting}
               onClick={signInWithGoogle}
               type="button"
@@ -162,7 +162,15 @@ export function LoginPanel() {
                 </span>
               </label>
               <label className="block text-sm font-medium text-stone-700">
-                <span className="mb-1.5 block">Password</span>
+                <span className="mb-1.5 flex items-center justify-between gap-3">
+                  <span>Password</span>
+                  <Link
+                    className="text-xs font-semibold text-amber-800 transition hover:text-amber-700 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-800"
+                    href="/forgot-password"
+                  >
+                    Forgot password?
+                  </Link>
+                </span>
                 <span className="relative block">
                   <input
                     autoComplete="current-password"
@@ -186,7 +194,7 @@ export function LoginPanel() {
                 </span>
               </label>
               <button
-                className="group mt-2 flex w-full items-center justify-center gap-2 rounded-sm bg-stone-900 px-4 py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-amber-700 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+                className="group mt-2 cursor-pointer flex w-full items-center justify-center gap-2 rounded-sm bg-stone-900 px-4 py-3.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-amber-700 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={submitting}
                 type="submit"
               >

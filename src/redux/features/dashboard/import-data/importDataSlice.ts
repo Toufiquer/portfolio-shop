@@ -8,13 +8,16 @@
 
 import { apiSlice } from "@/redux/api/apiSlice";
 
-export type ImportTarget = "all" | "sidebar" | "pages";
+export type ImportDataRequest = {
+  pagePaths: string[];
+  sidebarUrls: string[];
+};
 export type ImportDataResult = { inserted: number; updated: number; pagesInserted: number };
 
 const importDataApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
-    importData: build.mutation<ImportDataResult, ImportTarget>({
-      query: (target) => ({ url: "../tools/import-data/v1", method: "POST", body: { target } }),
+    importData: build.mutation<ImportDataResult, ImportDataRequest>({
+      query: (body) => ({ url: "../tools/import-data/v1", method: "POST", body }),
       invalidatesTags: ["Sidebar", "Page"],
     }),
   }),
