@@ -16,7 +16,6 @@ import {
   Settings,
   ShieldCheck,
   Users,
-  Wallet,
   Wrench,
   Workflow,
 } from "lucide-react";
@@ -129,7 +128,7 @@ const content = {
     accent: "bg-sky-100 text-sky-900",
     primary: { label: "View overview", href: "/dashboard/business-growth/overview" },
     secondary: { label: "Manage customers", href: "/dashboard/business-growth/customer" },
-    highlights: ["Customer journey visibility", "Funnel performance", "Marketing spend control"],
+    highlights: ["Customer journey visibility", "Funnel performance", "Customer support coordination"],
     links: [
       {
         title: "Overview",
@@ -148,12 +147,6 @@ const content = {
         description: "Manage contacts, statuses, and funnel progress.",
         href: "/dashboard/business-growth/customer",
         icon: Users,
-      },
-      {
-        title: "Spend",
-        description: "Track marketing costs by funnel.",
-        href: "/dashboard/business-growth/spend",
-        icon: Wallet,
       },
       {
         title: "Councillors",

@@ -152,7 +152,6 @@ export async function POST(request: Request) {
     ["/dashboard/admin/business-growth", "/dashboard/business-growth"],
     ["/dashboard/admin/business-growth/funnels", "/dashboard/business-growth/funnels"],
     ["/dashboard/admin/business-growth/customer", "/dashboard/business-growth/customer"],
-    ["/dashboard/admin/business-growth/spend", "/dashboard/business-growth/spend"],
     ["/dashboard/admin/business-growth/councillor", "/dashboard/business-growth/councillor"],
     ["/dashboard/admin/business-growth/task", "/dashboard/business-growth/task"],
     ["/dashboard/admin/customer", "/dashboard/business-growth"],
