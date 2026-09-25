@@ -90,6 +90,7 @@ const QuerySection5: React.FC<Section5Props> = ({ data }) => {
                     src={featuredPost.coverImage}
                     alt={featuredPost.title}
                     fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                     loading="eager"
                     className="object-cover transition-transform duration-1000 group-hover:scale-105"
                   />
@@ -125,6 +126,7 @@ const QuerySection5: React.FC<Section5Props> = ({ data }) => {
                             src={featuredPost.author.avatar}
                             alt="Author"
                             fill
+                            sizes="40px"
                             loading="eager"
                             className="object-cover"
                           />
@@ -214,6 +216,7 @@ const PostCard = ({ post }: { post: BlogPost }) => {
             src={post.coverImage}
             alt={post.title}
             fill
+            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             loading="eager"
             className="object-cover transition-transform duration-700 group-hover:scale-110"
           />
@@ -263,7 +266,14 @@ const PostCard = ({ post }: { post: BlogPost }) => {
         <div className="pt-4 border-t border-[#eadfca] flex items-center gap-3 mt-2">
           <div className="relative w-6 h-6 rounded-full overflow-hidden bg-amber-50 border border-[#eadfca]">
             {post.author.avatar ? (
-              <Image src={post.author.avatar} alt={post.author.name} fill loading="eager" className="object-cover" />
+              <Image
+                src={post.author.avatar}
+                alt={post.author.name}
+                fill
+                sizes="24px"
+                loading="eager"
+                className="object-cover"
+              />
             ) : (
               <User size={12} className="m-1 text-stone-500" />
             )}

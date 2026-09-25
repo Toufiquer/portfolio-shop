@@ -344,7 +344,13 @@ const MutationSection6 = ({ data, onChange }: Section6FormProps) => {
                   <Label className="text-xs font-semibold text-stone-700">Banner Image</Label>
                   <div className="relative aspect-video overflow-hidden rounded-sm border border-[#eadfca] bg-amber-50">
                     {formData.bannerImage ? (
-                      <Image alt="Banner preview" className="object-cover" fill src={formData.bannerImage} />
+                      <Image
+                        alt="Banner preview"
+                        className="object-cover"
+                        fill
+                        sizes="(max-width: 768px) 100vw, 66vw"
+                        src={formData.bannerImage}
+                      />
                     ) : (
                       <div className="grid h-full place-items-center text-xs text-stone-500">No banner selected</div>
                     )}
@@ -366,6 +372,7 @@ const MutationSection6 = ({ data, onChange }: Section6FormProps) => {
                           alt="University logo preview"
                           className="object-contain p-2"
                           fill
+                          sizes="80px"
                           src={formData.logoUrl}
                         />
                       ) : (

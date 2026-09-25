@@ -201,6 +201,7 @@ const ClientSection6: React.FC<Section6Props> = ({ data }) => {
                       src={sectionData.logoUrl || "/placeholder-logo.png"}
                       alt="Logo"
                       fill
+                      sizes="96px"
                       className="object-contain"
                     />
                   </div>

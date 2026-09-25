@@ -349,7 +349,7 @@ const MutationSection5 = ({ data, onChange }: Section5FormProps) => {
                       <div className="flex gap-3">
                         <div className="h-12 w-12 rounded-sm bg-amber-50 border border-[#eadfca] shrink-0 overflow-hidden relative">
                           {post.coverImage ? (
-                            <Image src={post.coverImage} alt="" fill className="object-cover" />
+                            <Image src={post.coverImage} alt="" fill sizes="48px" className="object-cover" />
                           ) : (
                             <div className="flex items-center justify-center h-full text-stone-400">
                               <ImageIcon size={16} />
@@ -458,6 +458,7 @@ const MutationSection5 = ({ data, onChange }: Section5FormProps) => {
                       alt={activePost.title || "Cover image preview"}
                       className="object-cover"
                       fill
+                      sizes="(max-width: 768px) 100vw, 66vw"
                       src={activePost.coverImage}
                     />
                   ) : (
@@ -558,6 +559,7 @@ const MutationSection5 = ({ data, onChange }: Section5FormProps) => {
                         alt={`${activePost.author.name} avatar preview`}
                         className="object-cover"
                         fill
+                        sizes="160px"
                         src={activePost.author.avatar}
                       />
                     ) : (
