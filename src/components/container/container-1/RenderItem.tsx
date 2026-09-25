@@ -50,24 +50,28 @@ const RenderItem = ({ item, settings, priority = false, loading }: RenderItemPro
   };
 
   return (
-    <article className="group relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-sm border border-[#eadfca] bg-white transition duration-500 hover:border-amber-300 hover:shadow-sm">
-      {/* Shimmer accent line */}
-      <span className="absolute inset-x-0 top-0 z-10 h-0.5 origin-left scale-x-0 bg-amber-300 transition duration-500 group-hover:scale-x-100" />
-
+    <article className="group relative flex h-full w-full min-w-0 flex-col overflow-hidden rounded-sm border border-stone-200 bg-white transition-colors duration-300 hover:border-amber-300 hover:shadow-md motion-reduce:transition-none">
       {/* Image block - fixed aspect ratio container with object-contain to render fully without cropping */}
-      <Link href={detailUrl} className="relative block aspect-[4/3] w-full shrink-0 overflow-hidden bg-[#faf8f5]">
+      <Link
+        href={detailUrl}
+        aria-label={`View ${item.title}`}
+        className="relative block aspect-[4/3] w-full shrink-0 overflow-hidden bg-[#fffaf0] sm:aspect-[5/4]"
+      >
         <Image
           src={item.image || templateImagePlaceholder}
           alt={item.title}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-          className="object-contain p-2.5 transition-transform duration-500 group-hover:scale-105"
+          className="object-contain p-3 transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transition-none"
           priority={priority}
           loading={priority ? "eager" : (loading ?? "lazy")}
         />
 
         {/* Hover overlay with preview icon */}
-        <div className="absolute inset-0 flex items-center justify-center bg-stone-900/15 opacity-0 backdrop-blur-[1px] transition-all duration-300 group-hover:opacity-100">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 flex items-center justify-center bg-stone-900/15 opacity-0 transition-opacity duration-300 group-hover:opacity-100 motion-reduce:transition-none"
+        >
           <span className="flex h-9 w-9 scale-75 items-center justify-center rounded-full bg-white/95 text-blue-600 shadow-md transition-transform duration-300 group-hover:scale-100">
             <Icon name="Eye" />
           </span>
@@ -75,11 +79,11 @@ const RenderItem = ({ item, settings, priority = false, loading }: RenderItemPro
       </Link>
 
       {/* Content - flex-1 with uniform row heights and pinned buttons */}
-      <div className="flex min-h-0 flex-1 flex-col p-3">
+      <div className="flex min-h-0 flex-1 flex-col p-3 sm:p-4">
         {/* Title - uniform fixed height for 1 or 2 lines */}
-        <div className="h-10 md:h-11">
+        <div className="min-h-11">
           <h3
-            className="line-clamp-2 text-xs font-medium text-gray-800 transition-colors duration-200 group-hover:text-blue-700 md:text-sm leading-snug"
+            className="line-clamp-2 text-sm font-semibold leading-snug text-stone-800 transition-colors duration-200 group-hover:text-blue-700 sm:text-base motion-reduce:transition-none"
             title={item.title}
           >
             {item.title}
@@ -87,30 +91,35 @@ const RenderItem = ({ item, settings, priority = false, loading }: RenderItemPro
         </div>
 
         {/* Rating row - uniform height */}
-        <div className="mt-1 flex h-4 items-center text-[11px] text-amber-400">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <span key={i}>{i < item.rating ? "★" : "☆"}</span>
-          ))}
+        <div
+          className="mt-2 flex min-h-5 items-center gap-1.5 text-xs text-amber-600"
+          aria-label={`Rated ${item.rating} out of 5`}
+        >
+          <span aria-hidden="true" className="tracking-wide">
+            {"★".repeat(Math.floor(item.rating))}
+            {"☆".repeat(5 - Math.floor(item.rating))}
+          </span>
+          <span className="font-medium text-stone-500">{item.rating.toFixed(1)}</span>
         </div>
 
         {/* Price row - uniform fixed height and baseline */}
-        <div className="mt-2 flex h-7 items-center justify-between md:h-8">
-          <span className="text-sm font-bold text-blue-600 transition-colors duration-200 group-hover:text-blue-700 md:text-lg leading-none">
+        <div className="mt-2 flex min-h-8 items-center justify-between gap-2">
+          <span className="text-base font-bold leading-none text-stone-900 transition-colors duration-200 group-hover:text-blue-700 sm:text-lg motion-reduce:transition-none">
             {item.price}
           </span>
-          <span className="flex items-center gap-1 text-[11px] font-medium text-gray-400">
+          <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-stone-500">
             <Icon name="Eye" /> {item.views}
           </span>
         </div>
 
         {/* Action Buttons - pinned to bottom with mt-auto and identical height */}
-        <div className="mt-auto flex items-center gap-1.5 pt-3">
+        <div className="mt-auto flex items-center gap-2 pt-4">
           <Button
             disabled={!item.sourceProductId}
             size="sm"
             type="button"
             onClick={handleBuyNow}
-            className="h-9 flex-1 cursor-pointer rounded-sm bg-amber-100 text-xs font-medium text-amber-950 transition duration-300 hover:bg-amber-200 md:text-sm"
+            className="h-11 min-w-0 flex-1 cursor-pointer rounded-sm bg-amber-500 px-2 text-sm font-semibold text-white transition-colors hover:bg-amber-600 disabled:bg-stone-200 disabled:text-stone-500 sm:px-3 motion-reduce:transition-none"
           >
             <Icon name="ShoppingCart" />
             {settings?.buyButtonText || "Buy Now"}
@@ -118,7 +127,7 @@ const RenderItem = ({ item, settings, priority = false, loading }: RenderItemPro
           <Link
             href={detailUrl}
             aria-label={`View details of ${item.title}`}
-            className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-[#eadfca] text-stone-600 transition duration-300 hover:bg-amber-100"
+            className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-stone-200 text-stone-700 transition-colors hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 motion-reduce:transition-none"
           >
             <Icon name="Eye" />
           </Link>

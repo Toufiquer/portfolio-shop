@@ -125,6 +125,7 @@ const QueryContainer2 = ({ data }: ContainerProps) => {
   const isDesktop = useIsDesktop();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   const paddingX = Math.max(0, Number(settings.paddingX) || 0);
   const paddingY = Math.max(0, Number(settings.paddingY) || 0);
@@ -164,107 +165,156 @@ const QueryContainer2 = ({ data }: ContainerProps) => {
   }, [maxIndex]);
 
   useEffect(() => {
-    if (!canSlide || isPaused) return;
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setPrefersReducedMotion(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
+  }, []);
+
+  useEffect(() => {
+    if (!canSlide || isPaused || prefersReducedMotion) return;
 
     const interval = window.setInterval(nextSlide, 3500);
     return () => window.clearInterval(interval);
-  }, [canSlide, isPaused, nextSlide]);
-
-  if (settings.templates.length === 0) return null;
+  }, [canSlide, isPaused, nextSlide, prefersReducedMotion]);
 
   return (
     <section
-      className="custom-parent-border max-w-106.25 md:max-w-7xl w-full bg-white"
+      className="custom-parent-border mx-auto w-full max-w-7xl bg-[#fffdf9]"
       style={{ paddingInline: `${paddingX}px`, paddingBlock: `${paddingY}px` }}
     >
-      <div className="mx-auto w-full px-3 py-4 sm:px-4 md:px-6 md:py-6">
-        <div className="mb-3 flex items-center justify-between gap-3 md:mb-4">
-          <h2 className="text-xl font-bold text-blue-600 md:text-3xl" style={titleStyle}>
+      <div className="mx-auto w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-stone-200 pb-4 sm:mb-6 sm:pb-5">
+          <h2
+            className="min-w-0 text-xl font-bold leading-tight text-stone-900 sm:text-2xl md:text-3xl"
+            style={titleStyle}
+          >
             {settings.title}
           </h2>
           {settings.showSeeMore && (
             <Link
               href={settings.seeMore.url || "#"}
-              className="cursor-pointer rounded-sm bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-950 transition duration-500 hover:bg-amber-200"
+              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-4 text-sm font-semibold text-amber-950 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 motion-reduce:transition-none"
             >
               {settings.seeMore.name}
             </Link>
           )}
         </div>
 
-        <div className="relative w-full" onMouseEnter={() => setIsPaused(true)} onMouseLeave={() => setIsPaused(false)}>
-          {canSlide && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={prevSlide}
-              className="absolute left-0 top-1/2 z-10 -translate-y-1/2 cursor-pointer rounded-sm border border-[#eadfca] bg-amber-100 text-amber-950 transition duration-700 hover:bg-amber-200"
-              aria-label="Previous template"
+        {settings.templates.length === 0 ? (
+          <div className="rounded-sm border border-dashed border-stone-300 bg-white px-5 py-10 text-center sm:py-14">
+            <span
+              aria-hidden="true"
+              className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-2xl text-amber-700"
             >
-              <Icon name="ArrowLeft" />
-            </Button>
-          )}
-
-          <div className="overflow-hidden">
-            <div
-              className="flex items-stretch transition-transform duration-500 ease-in-out will-change-transform"
-              style={{ transform: `translateX(-${safeCurrentIndex * (100 / visibleItems)}%)` }}
-            >
-              {settings.templates.map((template, index) => (
-                <div
-                  key={template.id}
-                  className={cn("flex min-w-0 shrink-0 px-2 py-1")}
-                  style={{ flexBasis: itemWidth, maxWidth: itemWidth }}
-                >
-                  <div className="flex h-full w-full min-w-0">
-                    <RenderItem
-                      item={template}
-                      priority={index === 0}
-                      loading={index < 4 ? "eager" : "lazy"}
-                      settings={settings}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
+              ⌕
+            </span>
+            <h3 className="mt-3 text-base font-semibold text-stone-900">No products to show yet</h3>
+            <p className="mx-auto mt-1 max-w-md text-sm leading-relaxed text-stone-600">
+              No visible products are assigned to this section yet.
+            </p>
+            {settings.showSeeMore && (
+              <Link
+                href={settings.seeMore.url || "#"}
+                className="mt-4 inline-flex min-h-11 items-center rounded-sm bg-amber-500 px-4 text-sm font-semibold text-white hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+              >
+                {settings.seeMore.name}
+              </Link>
+            )}
           </div>
+        ) : (
+          <div
+            className="relative w-full"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+            onFocusCapture={() => setIsPaused(true)}
+            onBlurCapture={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setIsPaused(false);
+            }}
+          >
+            {canSlide && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={prevSlide}
+                className="absolute left-1 top-1/2 z-10 h-11 w-11 -translate-y-1/2 cursor-pointer rounded-sm border border-stone-200 bg-white/95 text-stone-800 shadow-sm transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 motion-reduce:transition-none sm:left-2"
+                aria-label="Previous template"
+              >
+                <Icon name="ArrowLeft" />
+              </Button>
+            )}
 
-          {canSlide && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={nextSlide}
-              className="absolute right-0 top-1/2 z-10 -translate-y-1/2 cursor-pointer rounded-sm border border-[#eadfca] bg-amber-100 text-amber-950 transition duration-700 hover:bg-amber-200"
-              aria-label="Next template"
+            <div
+              className="overflow-hidden"
+              onTouchStart={() => setIsPaused(true)}
+              onTouchEnd={() => setIsPaused(false)}
             >
-              <Icon name="ArrowRight" />
-            </Button>
-          )}
-
-          {shouldShowBottomNavigation && (
-            <div className="flex items-center justify-center gap-2">
-              {Array.from({ length: maxIndex + 1 }).map((_, index) => {
-                const isActive = index === safeCurrentIndex;
-
-                return (
-                  <button
-                    key={index}
-                    type="button"
-                    onClick={() => setCurrentIndex(index)}
-                    className={cn(
-                      "h-2.5 cursor-pointer rounded-sm border border-[#eadfca] transition duration-700",
-                      isActive ? "w-8 bg-amber-200" : "w-2.5 bg-white hover:bg-amber-100",
-                    )}
-                    aria-label={`Go to slide ${index + 1}`}
-                    aria-current={isActive ? "true" : undefined}
-                  />
-                );
-              })}
+              <div
+                className="flex items-stretch transition-transform duration-500 ease-in-out motion-reduce:transition-none"
+                style={{ transform: `translateX(-${safeCurrentIndex * (100 / visibleItems)}%)` }}
+              >
+                {settings.templates.map((template, index) => (
+                  <div
+                    key={template.id}
+                    className={cn("flex min-w-0 shrink-0 px-1.5 py-1 sm:px-2")}
+                    style={{ flexBasis: itemWidth, maxWidth: itemWidth }}
+                  >
+                    <div className="flex h-full w-full min-w-0">
+                      <RenderItem
+                        item={template}
+                        priority={index === 0}
+                        loading={index < 4 ? "eager" : "lazy"}
+                        settings={settings}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-        </div>
+
+            {canSlide && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={nextSlide}
+                className="absolute right-1 top-1/2 z-10 h-11 w-11 -translate-y-1/2 cursor-pointer rounded-sm border border-stone-200 bg-white/95 text-stone-800 shadow-sm transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 motion-reduce:transition-none sm:right-2"
+                aria-label="Next template"
+              >
+                <Icon name="ArrowRight" />
+              </Button>
+            )}
+
+            {shouldShowBottomNavigation && (
+              <div className="flex items-center justify-center gap-2">
+                {Array.from({ length: maxIndex + 1 }).map((_, index) => {
+                  const isActive = index === safeCurrentIndex;
+
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => setCurrentIndex(index)}
+                      className="flex h-11 min-w-11 cursor-pointer items-center justify-center rounded-sm border border-transparent px-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 motion-reduce:transition-none"
+                      aria-label={`Show product group ${index + 1}`}
+                      aria-pressed={isActive}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={cn(
+                          "h-2.5 rounded-full border border-amber-300 transition-all motion-reduce:transition-none",
+                          isActive ? "w-8 bg-amber-500" : "w-2.5 bg-white hover:bg-amber-100",
+                        )}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

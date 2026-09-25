@@ -21,7 +21,7 @@ const mobileGridLayoutClasses: Record<IContainerData["mobileGridLayout"], string
 const gridLayoutClasses: Record<IContainerData["gridLayout"], string> = {
   "1x1": "md:grid-cols-1",
   "1x2": "md:grid-cols-2",
-  "1x3": "md:grid-cols-3 lg:grid-cols-4",
+  "1x3": "md:grid-cols-3",
 };
 
 const sortTemplates = (templates: TemplateItem[], sortMode: IContainerData["sortMode"]) => {
@@ -109,35 +109,60 @@ const QueryContainer1 = ({ data }: ContainerProps) => {
 
   return (
     <section
-      className="custom-parent-border md:max-w-7xl w-full bg-white"
+      className="custom-parent-border mx-auto w-full max-w-7xl bg-[#fffdf9]"
       style={{ paddingInline: `${paddingX}px`, paddingBlock: `${paddingY}px` }}
     >
-      <div className="mx-auto w-full px-3 py-4 sm:px-4 md:px-6 md:py-6">
-        <div className="mb-3 flex items-center justify-between gap-3 md:mb-4">
-          <h2 className="text-xl font-bold text-blue-600 md:text-3xl" style={titleStyle}>
+      <div className="mx-auto w-full px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3 border-b border-stone-200 pb-4 sm:mb-6 sm:pb-5">
+          <h2
+            className="min-w-0 text-xl font-bold leading-tight text-stone-900 sm:text-2xl md:text-3xl"
+            style={titleStyle}
+          >
             {settings.title}
           </h2>
           {settings.showSeeMore && (
             <Link
               href={settings.seeMore.url || "#"}
-              className="cursor-pointer rounded-sm bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-950 transition duration-500 hover:bg-amber-200"
+              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-4 text-sm font-semibold text-amber-950 transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 motion-reduce:transition-none"
             >
               {settings.seeMore.name}
             </Link>
           )}
         </div>
-        {/* Render Each card in a unified responsive grid */}
-        <div className={`grid items-stretch gap-3 sm:gap-4 ${mobileGridClassName} ${gridClassName}`}>
-          {settings.templates.map((template, index) => (
-            <RenderItem
-              key={template.id}
-              item={template}
-              priority={index === 0}
-              loading={index < 4 ? "eager" : "lazy"}
-              settings={settings}
-            />
-          ))}
-        </div>
+        {settings.templates.length === 0 ? (
+          <div className="rounded-sm border border-dashed border-stone-300 bg-white px-5 py-10 text-center sm:py-14">
+            <span
+              aria-hidden="true"
+              className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-2xl text-amber-700"
+            >
+              ⌕
+            </span>
+            <h3 className="mt-3 text-base font-semibold text-stone-900">No products to show yet</h3>
+            <p className="mx-auto mt-1 max-w-md text-sm leading-relaxed text-stone-600">
+              No visible products are assigned to this section yet.
+            </p>
+            {settings.showSeeMore && (
+              <Link
+                href={settings.seeMore.url || "#"}
+                className="mt-4 inline-flex min-h-11 items-center rounded-sm bg-amber-500 px-4 text-sm font-semibold text-white hover:bg-amber-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+              >
+                {settings.seeMore.name}
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className={`grid items-stretch gap-3 sm:gap-4 ${mobileGridClassName} ${gridClassName}`}>
+            {settings.templates.map((template, index) => (
+              <RenderItem
+                key={template.id}
+                item={template}
+                priority={index === 0}
+                loading={index < 4 ? "eager" : "lazy"}
+                settings={settings}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
