@@ -164,6 +164,7 @@ const QuerySection40 = ({ data }: Section40Props) => {
               src={sectionData.onlineAppointmentImage}
               alt="Online appointment"
               fill
+              unoptimized
               sizes="(max-width: 1024px) 58vw, 27vw"
               className="object-contain p-4 transition duration-700 group-hover:scale-105"
             />
@@ -181,6 +182,7 @@ const QuerySection40 = ({ data }: Section40Props) => {
               src={sectionData.physicalAppointmentImage}
               alt="Physical appointment"
               fill
+              unoptimized
               sizes="(max-width: 1024px) 67vw, 31vw"
               className="object-contain p-4 transition duration-700 group-hover:scale-105"
             />

@@ -68,6 +68,7 @@ const ImagePanel = ({ src, className, delay, sizes, loading, reduceMotion }: Ima
       src={src}
       alt="Study abroad collage"
       fill
+      unoptimized
       sizes={sizes}
       loading={loading}
       className="object-cover transition duration-700 ease-out group-hover:scale-110"

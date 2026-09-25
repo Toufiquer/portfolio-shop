@@ -102,6 +102,7 @@ const QuerySection41 = ({ data }: Section41Props) => {
             src={sectionData.imageUrl}
             alt={sectionData.imageAlt}
             fill
+            unoptimized
             loading="eager"
             sizes="(max-width: 1024px) 100vw, 45vw"
             className="object-cover"
