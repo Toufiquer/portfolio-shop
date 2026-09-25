@@ -11,7 +11,7 @@ import { randomUUID } from "crypto";
 import { revalidatePath, revalidateTag } from "next/cache";
 
 import { invalidateDashboardCache, redisKeys } from "@/app/api/lib/redis";
-import { pageDefaults, sidebarDefaults } from "@/app/tools/import-data/defaults";
+import { pageDefaults, sidebarDefaults } from "@/lib/defaults/import-data";
 
 import {
   createImportPage,

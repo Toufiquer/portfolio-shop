@@ -12,7 +12,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { authClient } from "@/app/api/lib/auth-client";
-import { pageDefaults, sidebarDefaults } from "@/app/tools/import-data/defaults";
+import { pageDefaults, sidebarDefaults } from "@/lib/defaults/import-data";
 import { useImportDataMutation } from "@/app/tools/import-data/importData";
 import { iconMap } from "@/components/all-icons/all-icons";
 import { Button } from "@/components/ui/button";

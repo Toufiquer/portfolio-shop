@@ -6,7 +6,7 @@
 
 import "server-only";
 
-import type { ImportPageVariant } from "@/app/tools/import-data/defaults";
+import type { ImportPageVariant } from "@/lib/defaults/import-data";
 import { database } from "@/lib/db";
 
 export type ImportSidebar = {
