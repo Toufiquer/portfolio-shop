@@ -13,10 +13,8 @@ import {
   serializeProduct,
   validateProductCategories,
 } from "@/app/api/dashboard/products/v1/route";
-import { client } from "@/app/api/lib/auth";
-import { type Product, parseProductInput } from "@/lib/dashboard/catalog";
-
-const products = () => client.db().collection<Product>("products");
+import { parseProductInput } from "@/lib/dashboard/catalog";
+import { removeProduct, updateProductForApi } from "@/lib/services/products";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const access = await authorizeProductRequest(request, "PATCH");
@@ -29,11 +27,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { id } = await params;
   try {
     await ensureProductIndexes();
-    const item = await products().findOneAndUpdate(
-      { id },
-      { $set: { ...data, updatedAt: new Date() } },
-      { returnDocument: "after" },
-    );
+    const item = await updateProductForApi(id, data);
     if (!item) return Response.json({ error: "Product not found." }, { status: 404 });
     return Response.json({ item: serializeProduct(item) });
   } catch (error) {
@@ -47,8 +41,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   const access = await authorizeProductRequest(request, "DELETE");
   if ("error" in access) return access.error;
   const { id } = await params;
-  const removed = await products().deleteOne({ id });
-  return removed.deletedCount
+  return (await removeProduct(id))
     ? Response.json({ ok: true })
     : Response.json({ error: "Product not found." }, { status: 404 });
 }

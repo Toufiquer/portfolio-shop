@@ -6,13 +6,9 @@
 |-----------------------------------------
 */
 
-import { MongoServerError } from "mongodb";
-
-import { authorizeCouponRequest, ensureCouponIndexes } from "@/app/api/dashboard/coupons/v1/route";
-import { client } from "@/app/api/lib/auth";
-import { parseCouponInput, serializeCoupon, type Coupon } from "@/lib/dashboard/coupons";
-
-const coupons = () => client.db().collection<Coupon>("coupons");
+import { authorizeCouponRequest } from "@/app/api/dashboard/coupons/v1/route";
+import { parseCouponInput, serializeCoupon } from "@/lib/dashboard/coupons";
+import { removeCoupon, updateCouponForApi } from "@/lib/services/coupons";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const access = await authorizeCouponRequest(request, "PATCH");
@@ -20,29 +16,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const data = parseCouponInput(await request.json().catch(() => null));
   if (!data) return Response.json({ error: "Enter a valid coupon code and discount." }, { status: 400 });
   const { id } = await params;
-  try {
-    await ensureCouponIndexes();
-    const item = await coupons().findOneAndUpdate(
-      { id },
-      { $set: { ...data, updatedAt: new Date() } },
-      { returnDocument: "after" },
-    );
-    return item
-      ? Response.json({ item: serializeCoupon(item) })
-      : Response.json({ error: "Coupon not found." }, { status: 404 });
-  } catch (error) {
-    if (error instanceof MongoServerError && error.code === 11000)
-      return Response.json({ error: "That coupon code already exists." }, { status: 409 });
-    throw error;
-  }
+  const result = await updateCouponForApi(id, data);
+  if (result.kind === "duplicate") return Response.json({ error: "That coupon code already exists." }, { status: 409 });
+  if (result.kind === "not-found") return Response.json({ error: "Coupon not found." }, { status: 404 });
+  return Response.json({ item: serializeCoupon(result.item) });
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const access = await authorizeCouponRequest(request, "DELETE");
   if ("error" in access) return access.error;
   const { id } = await params;
-  const removed = await coupons().deleteOne({ id });
-  return removed.deletedCount
+  return (await removeCoupon(id))
     ? Response.json({ ok: true })
     : Response.json({ error: "Coupon not found." }, { status: 404 });
 }

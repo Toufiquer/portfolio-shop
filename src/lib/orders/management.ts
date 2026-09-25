@@ -6,8 +6,9 @@
 |-----------------------------------------
 */
 
-import { client } from "@/app/api/lib/auth";
 import { type Order, type OrderStatus } from "@/lib/dashboard/orders";
+import { ordersCollection } from "@/lib/models/orders";
+import { restoreProductStock } from "@/lib/models/catalog";
 
 export const allowedOrderTransitions: Record<OrderStatus, OrderStatus[]> = {
   incomplete: ["placed", "cancelled"],
@@ -18,7 +19,8 @@ export const allowedOrderTransitions: Record<OrderStatus, OrderStatus[]> = {
   cancelled: [],
 };
 
-export const orders = () => client.db().collection<Order>("orders");
+/** @deprecated Route handlers must use order services; retained for existing server callers. */
+export const orders = ordersCollection;
 
 export function orderIds(body: unknown) {
   const ids = (body as { ids?: unknown } | null)?.ids;
@@ -35,10 +37,7 @@ export async function restoreOrderStock(order: Order, now = new Date()) {
   if (order.status === "cancelled") return;
   await Promise.all(
     order.items.map((item) =>
-      client
-        .db()
-        .collection("products")
-        .updateOne({ id: item.productId }, { $inc: { stock: item.quantity }, $set: { updatedAt: now } }),
+      restoreProductStock(item.productId, item.quantity, now),
     ),
   );
 }

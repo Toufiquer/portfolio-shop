@@ -10,14 +10,14 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 
-import { client } from "@/app/api/lib/auth";
 import type { Category, Product } from "@/lib/dashboard/catalog";
+import { categoriesCollection, productsCollection } from "@/lib/models/catalog";
 
 export const productCatalogCacheTag = "public-product-catalog";
 export const productCategoryCacheTag = "public-product-categories";
 
-const products = () => client.db().collection<Product>("products");
-const categories = () => client.db().collection<Category>("categories");
+const products = productsCollection;
+const categories = categoriesCollection;
 
 const activeCategories = () =>
   unstable_cache(

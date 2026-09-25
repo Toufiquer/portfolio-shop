@@ -10,7 +10,7 @@ import "server-only";
 
 import { unstable_cache } from "next/cache";
 
-import { client } from "@/app/api/lib/auth";
+import { pagesCollection } from "@/lib/models/pages";
 import type { SitePage } from "@/redux/features/dashboard/pages/pagesSlice";
 
 export function normalizePagePath(value: string) {
@@ -27,10 +27,7 @@ function getCachedPublishedPage(path: string) {
 
   return unstable_cache(
     async () =>
-      client
-        .db()
-        .collection<SitePage>("pages")
-        .findOne({ path: normalizedPath, published: true }, { projection: { _id: 0 } }),
+      pagesCollection().findOne({ path: normalizedPath, published: true }, { projection: { _id: 0 } }),
     ["published-page", normalizedPath],
     {
       revalidate: false,

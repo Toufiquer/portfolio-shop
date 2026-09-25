@@ -7,10 +7,9 @@
 */
 
 import { rateLimit } from "@/app/api/lib/api-rate-limit";
-import { auth, client } from "@/app/api/lib/auth";
+import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
-
-const genders = new Set(["", "Male", "Female", "Other"]);
+import { getProfile, saveProfile, validGender } from "@/lib/services/profile";
 
 export async function GET(request: Request) {
   const limited = rateLimit(request, "dashboard-profile-api", 30, 60_000);
@@ -20,23 +19,13 @@ export async function GET(request: Request) {
   const authorization = await authorizeDashboardRequest(activeSession, "/api/dashboard/profile/v1", "GET");
   if (!authorization.allowed)
     return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
-  const userFilter = { $or: [{ id: activeSession.user.id }, { email: activeSession.user.email }] };
-  const user = await client
-    .db()
-    .collection("user")
-    .findOne(userFilter, {
-      projection: { id: 1, name: 1, email: 1, mobileNumber: 1, address: 1, bio: 1, profilePicture: 1, gender: 1 },
-    });
   return Response.json({
-    profile: {
-      name: user?.name ?? activeSession.user.name ?? "",
-      email: user?.email ?? activeSession.user.email ?? "",
-      mobileNumber: user?.mobileNumber ?? "",
-      address: user?.address ?? "",
-      bio: user?.bio ?? "",
-      profilePicture: user?.profilePicture ?? activeSession.user.image ?? "",
-      gender: user && genders.has(user.gender) ? user.gender : "",
-    },
+    profile: await getProfile(
+      activeSession.user.id,
+      activeSession.user.email,
+      activeSession.user.name,
+      activeSession.user.image,
+    ),
   });
 }
 
@@ -48,7 +37,6 @@ export async function PATCH(request: Request) {
   const authorization = await authorizeDashboardRequest(activeSession, "/api/dashboard/profile/v1", "PATCH");
   if (!authorization.allowed)
     return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
-  const userFilter = { $or: [{ id: activeSession.user.id }, { email: activeSession.user.email }] };
   const body = (await request.json().catch(() => null)) as {
     name?: string;
     mobileNumber?: string;
@@ -60,7 +48,7 @@ export async function PATCH(request: Request) {
   const name = body?.name?.trim();
   if (!name) return Response.json({ error: "Name is required." }, { status: 400 });
   const gender = body?.gender ?? "";
-  if (!genders.has(gender)) return Response.json({ error: "Invalid gender." }, { status: 400 });
+  if (!validGender(gender)) return Response.json({ error: "Invalid gender." }, { status: 400 });
   const profilePicture = body?.profilePicture?.trim() ?? "";
   if (profilePicture && !/^https?:\/\//i.test(profilePicture))
     return Response.json({ error: "Invalid profile picture." }, { status: 400 });
@@ -73,16 +61,6 @@ export async function PATCH(request: Request) {
     profilePicture,
     gender,
   };
-  await client
-    .db()
-    .collection("user")
-    .updateOne(
-      userFilter,
-      {
-        $set: { ...profile, updatedAt: new Date() },
-        $setOnInsert: { id: activeSession.user.id, createdAt: new Date(), emailVerified: false },
-      },
-      { upsert: true },
-    );
+  await saveProfile(activeSession.user.id, activeSession.user.email, profile);
   return Response.json({ profile });
 }

@@ -6,15 +6,10 @@
 |-----------------------------------------
 */
 
-import { ObjectId } from "mongodb";
-
 import { rateLimit } from "@/app/api/lib/api-rate-limit";
-import { auth, client } from "@/app/api/lib/auth";
+import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
-
-function verificationFilter(id: string) {
-  return ObjectId.isValid(id) ? { $or: [{ id }, { _id: new ObjectId(id) }] } : { id };
-}
+import { removeVerification, updateVerification } from "@/lib/services/verifications";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const limited = rateLimit(request, "dashboard-verifications-api", 30, 60_000);
@@ -31,10 +26,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!expiresAt || Number.isNaN(expiresAt.getTime()))
     return Response.json({ error: "Enter a valid expiration date." }, { status: 400 });
 
-  const result = await client
-    .db()
-    .collection("verification")
-    .updateOne(verificationFilter(id), { $set: { expiresAt, updatedAt: new Date() } });
+  const result = await updateVerification(id, expiresAt);
   if (!result.matchedCount) return Response.json({ error: "Verification not found." }, { status: 404 });
   return Response.json({ success: true });
 }
@@ -49,7 +41,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
 
   const { id } = await params;
-  const result = await client.db().collection("verification").deleteOne(verificationFilter(id));
+  const result = await removeVerification(id);
   if (!result.deletedCount) return Response.json({ error: "Verification not found." }, { status: 404 });
   return Response.json({ success: true });
 }

@@ -6,12 +6,10 @@
 |-----------------------------------------
 */
 
-import { auth, client } from "@/app/api/lib/auth";
+import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
-import { type OrderSettings, serializeOrderSettings } from "@/lib/dashboard/orders";
-import { getOrderSettings } from "@/lib/orders/server";
-
-const settings = () => client.db().collection<OrderSettings>("order-settings");
+import { serializeOrderSettings } from "@/lib/dashboard/orders";
+import { getOrderSettings, updateOrderSettings } from "@/lib/orders/server";
 
 async function access(request: Request, method: "GET" | "PATCH") {
   const session = await auth.api.getSession({ headers: request.headers });
@@ -61,25 +59,17 @@ export async function PATCH(request: Request) {
       body.orderLimitMaxOrders < 1 ||
       body.orderLimitMaxOrders > 1000
     ) {
-      return Response.json({ error: "orderLimitMaxOrders must be a whole number between 1 and 1000." }, { status: 400 });
+      return Response.json(
+        { error: "orderLimitMaxOrders must be a whole number between 1 and 1000." },
+        { status: 400 },
+      );
     }
     orderLimitMaxOrders = body.orderLimitMaxOrders;
   }
 
-  const now = new Date();
-  const updated = await settings().findOneAndUpdate(
-    { key: "order-settings" },
-    {
-      $set: {
-        orderLimitEnabled: body.orderLimitEnabled,
-        orderLimitMinutes,
-        orderLimitMaxOrders,
-        updatedAt: now,
-        updatedBy: authorized.session.user.id,
-      },
-      $setOnInsert: { key: "order-settings" },
-    },
-    { returnDocument: "after", upsert: true },
+  const updated = await updateOrderSettings(
+    { orderLimitEnabled: body.orderLimitEnabled, orderLimitMinutes, orderLimitMaxOrders },
+    authorized.session.user.id,
   );
   return Response.json({ settings: serializeOrderSettings(updated!) });
 }

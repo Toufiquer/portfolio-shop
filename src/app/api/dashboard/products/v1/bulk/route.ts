@@ -6,12 +6,10 @@
 |-----------------------------------------
 */
 
-import { client } from "@/app/api/lib/auth";
-import { type Product, productStatuses, type ProductStatus } from "@/lib/dashboard/catalog";
+import { productStatuses, type ProductStatus } from "@/lib/dashboard/catalog";
+import { removeProducts, updateProductStatuses } from "@/lib/services/products";
 
 import { authorizeProductRequest } from "../route";
-
-const products = () => client.db().collection<Product>("products");
 
 function idsFrom(body: unknown) {
   const ids = (body as { ids?: unknown } | null)?.ids;
@@ -30,8 +28,7 @@ export async function DELETE(request: Request) {
   const ids = idsFrom(await request.json().catch(() => null));
   if (!ids.length || ids.length > 100)
     return Response.json({ error: "Select between 1 and 100 products." }, { status: 400 });
-  const result = await products().deleteMany({ id: { $in: ids } });
-  return Response.json({ deletedCount: result.deletedCount });
+  return Response.json({ deletedCount: await removeProducts(ids) });
 }
 
 export async function PATCH(request: Request) {
@@ -43,9 +40,5 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "Select between 1 and 100 products." }, { status: 400 });
   if (!productStatuses.includes(body?.status as ProductStatus))
     return Response.json({ error: "Choose a valid product status." }, { status: 400 });
-  const result = await products().updateMany(
-    { id: { $in: ids } },
-    { $set: { status: body?.status as ProductStatus, updatedAt: new Date() } },
-  );
-  return Response.json({ updatedCount: result.modifiedCount });
+  return Response.json({ updatedCount: await updateProductStatuses(ids, body?.status as ProductStatus) });
 }

@@ -64,7 +64,6 @@ export const defaultData: MenuData = {
         },
       ],
     },
-    { id: "tools", label: "Tools", url: "/tools/import-data", visible: true, position: 2 },
     { id: "dashboard", label: "Dashboard", url: "/dashboard", visible: true, position: 3 },
   ],
   button: {

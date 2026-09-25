@@ -6,15 +6,10 @@
 |-----------------------------------------
 */
 
-import { ObjectId } from "mongodb";
-
 import { rateLimit } from "@/app/api/lib/api-rate-limit";
-import { auth, client } from "@/app/api/lib/auth";
+import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
-
-function sessionFilter(id: string) {
-  return ObjectId.isValid(id) ? { $or: [{ id }, { _id: new ObjectId(id) }] } : { id };
-}
+import { removeSession, updateSession } from "@/lib/services/sessions";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const limited = rateLimit(request, "dashboard-sessions-api", 30, 60_000);
@@ -31,10 +26,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   if (!expiresAt || Number.isNaN(expiresAt.getTime()))
     return Response.json({ error: "Enter a valid expiration date." }, { status: 400 });
 
-  const result = await client
-    .db()
-    .collection("session")
-    .updateOne(sessionFilter(id), { $set: { expiresAt, updatedAt: new Date() } });
+  const result = await updateSession(id, expiresAt);
   if (!result.matchedCount) return Response.json({ error: "Session not found." }, { status: 404 });
   return Response.json({ success: true });
 }
@@ -49,7 +41,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
 
   const { id } = await params;
-  const result = await client.db().collection("session").deleteOne(sessionFilter(id));
+  const result = await removeSession(id);
   if (!result.deletedCount) return Response.json({ error: "Session not found." }, { status: 404 });
   return Response.json({ success: true });
 }

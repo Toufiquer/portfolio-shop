@@ -13,12 +13,12 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { authClient } from "@/app/api/lib/auth-client";
 import { pageDefaults, sidebarDefaults } from "@/app/tools/import-data/defaults";
+import { useImportDataMutation } from "@/app/tools/import-data/importData";
 import { iconMap } from "@/components/all-icons/all-icons";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toast } from "@/components/ui/toast";
-import { useImportDataMutation } from "@/redux/features/dashboard/import-data/importDataSlice";
 import { useGetPagesQuery } from "@/redux/features/dashboard/pages/pagesSlice";
 import { useGetSidebarsQuery } from "@/redux/features/dashboard/sidebars/sidebarSlice";
 

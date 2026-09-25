@@ -8,8 +8,8 @@
 
 import { randomUUID } from "crypto";
 
-import { client } from "@/app/api/lib/auth";
 import { invalidateDashboardCache, redisKeys } from "@/app/api/lib/redis";
+import { accessesCollection, rolesCollection, sidebarsCollection } from "@/lib/models/auth";
 
 export type DashboardOperation = "read" | "create" | "update" | "delete";
 
@@ -62,11 +62,10 @@ export function canAccessMaintenanceTools(session: SessionUser) {
 }
 
 async function ensureDefaultAccess(email: string) {
-  const database = client.db();
-  const existing = await database.collection<Access>("access").findOne({ email });
+  const existing = await accessesCollection<Access>().findOne({ email });
   if (existing) return existing;
 
-  const existingRole = await database.collection<Role>("role").findOne({ name: /^user$/i });
+  const existingRole = await rolesCollection<Role>().findOne({ name: /^user$/i });
   const role: Role =
     existingRole ??
     (() => {
@@ -74,9 +73,7 @@ async function ensureDefaultAccess(email: string) {
       return { id: randomUUID(), name: "user", permissions: {}, createdAt: now, updatedAt: now };
     })();
   if (!existingRole)
-    await database
-      .collection("role")
-      .insertOne({ ...role, responsible: "Default blocked role", icon: "ShieldOff", position: -1 });
+    await rolesCollection().insertOne({ ...role, responsible: "Default blocked role", icon: "ShieldOff", position: -1 });
 
   const now = new Date();
   const item: Access = {
@@ -88,7 +85,7 @@ async function ensureDefaultAccess(email: string) {
     createdAt: now,
     updatedAt: now,
   };
-  await database.collection<Access>("access").insertOne(item);
+  await accessesCollection<Access>().insertOne(item);
   await invalidateDashboardCache(redisKeys.roles, redisKeys.access);
   return item;
 }
@@ -106,10 +103,7 @@ async function enforceStandardUserPermissions(role: Role, sidebars: Sidebar[]) {
   ) as Record<string, Permission>;
   const unchanged = JSON.stringify(role.permissions ?? {}) === JSON.stringify(permissions);
   if (!unchanged) {
-    await client
-      .db()
-      .collection<Role>("role")
-      .updateOne({ id: role.id }, { $set: { permissions, updatedAt: new Date() } });
+    await rolesCollection<Role>().updateOne({ id: role.id }, { $set: { permissions, updatedAt: new Date() } });
     await invalidateDashboardCache(redisKeys.roles, redisKeys.access);
   }
   return { ...role, permissions };
@@ -141,11 +135,9 @@ export async function getDashboardAccessState(session: SessionUser): Promise<Das
       message: "Your account has been blocked.",
     };
 
-  const database = client.db();
   const [savedRole, savedSidebars] = await Promise.all([
-    database.collection<Role>("role").findOne({ id: access.roleId }),
-    database
-      .collection<Sidebar>("sidebar")
+    rolesCollection<Role>().findOne({ id: access.roleId }),
+    sidebarsCollection<Sidebar>()
       .find({}, { projection: { id: 1, url: 1, parentId: 1 } })
       .toArray(),
   ]);
@@ -273,10 +265,8 @@ export async function authorizeDashboardRequest(session: SessionUser, pathname: 
   if (!paths.length) return { allowed: true, state };
 
   if (!state.roleId) return { allowed: false, state: { ...state, message: "Your role is unavailable." } };
-  const role = await client.db().collection<Role>("role").findOne({ id: state.roleId });
-  const sidebars = await client
-    .db()
-    .collection<Sidebar>("sidebar")
+  const role = await rolesCollection<Role>().findOne({ id: state.roleId });
+  const sidebars = await sidebarsCollection<Sidebar>()
     .find({ url: { $in: paths } }, { projection: { id: 1, url: 1 } })
     .toArray();
   const operation = operationForMethod(method);

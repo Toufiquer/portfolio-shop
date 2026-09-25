@@ -6,11 +6,10 @@
 |-----------------------------------------
 */
 
-import { revalidatePath } from "next/cache";
-
 import { rateLimit } from "@/app/api/lib/api-rate-limit";
-import { auth, client } from "@/app/api/lib/auth";
+import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
+import { getNavigation, mergeNavigation, updateNavigation } from "@/lib/services/navigation";
 
 type NavigationItem = { id: string; name: string; url: string; icon: string; visible?: boolean };
 type NavigationStyle = {
@@ -33,7 +32,6 @@ export const defaults: NavigationData = {
     hiddenPaths: ["/dashboard", "/login", "/registration", "/forgot-password", "/tools"],
     items: [
       { id: "home", name: "Home", url: "/", icon: "Home", visible: true },
-      { id: "import", name: "Import", url: "/tools/import-data", icon: "Upload", visible: false },
       { id: "contact", name: "Contact", url: "/contact", icon: "Phone", visible: true },
       { id: "profile", name: "Profile", url: "/profile", icon: "User", visible: true },
     ],
@@ -60,16 +58,10 @@ export const defaults: NavigationData = {
     paddingY: 8,
   },
 };
-type Record = { key: "mobile"; data: NavigationData; updatedAt?: Date };
-const collection = () => client.db().collection<Record>("navigation");
 const access = async (request: Request) => {
   const limited = rateLimit(request, "dashboard-navigation-api", 30, 60_000);
   return { limited, session: limited ? null : await auth.api.getSession({ headers: request.headers }) };
 };
-const merge = (data?: Partial<NavigationData>): NavigationData => ({
-  user: { ...defaults.user, ...data?.user, items: data?.user?.items ?? defaults.user.items },
-  dashboard: { ...defaults.dashboard, ...data?.dashboard, items: data?.dashboard?.items ?? defaults.dashboard.items },
-});
 const isText = (value: unknown, max: number) =>
   typeof value === "string" && value.trim().length > 0 && value.length <= max;
 const isNumber = (value: unknown, min: number, max: number) =>
@@ -128,8 +120,10 @@ export async function GET(request: Request) {
     if (!authorization.allowed)
       return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
   }
-  const saved = await collection().findOne({ key: "mobile" });
-  return Response.json({ navigation: merge(saved?.data), authenticated: Boolean(session) }, { headers: noStore });
+  return Response.json(
+    { navigation: await getNavigation(defaults), authenticated: Boolean(session) },
+    { headers: noStore },
+  );
 }
 export async function POST(request: Request) {
   const { limited, session } = await access(request);
@@ -140,14 +134,7 @@ export async function POST(request: Request) {
     return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
   const body = await request.json().catch(() => null);
   if (!isValidData(body)) return Response.json({ error: "Navigation data is invalid." }, { status: 400 });
-  const data = merge(body);
-  await collection().updateOne(
-    { key: "mobile" },
-    { $set: { key: "mobile", data, updatedAt: new Date() } },
-    { upsert: true },
-  );
-  revalidatePath("/", "layout");
-  revalidatePath("/dashboard", "layout");
-  revalidatePath("/dashboard/developer/navigation");
+  const data = mergeNavigation(defaults, body);
+  await updateNavigation(data);
   return Response.json({ navigation: data }, { headers: noStore });
 }

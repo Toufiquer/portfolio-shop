@@ -1,6 +1,6 @@
 /*
 |-----------------------------------------
-| setting up importDataSlice.ts for the App
+| setting up importData.ts for the App
 | @author: Toufiquer Rahman<toufiquer.0@gmail.com>
 | @copyright: Toufiquer, 22 August 2026
 |-----------------------------------------

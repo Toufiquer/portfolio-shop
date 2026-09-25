@@ -14,9 +14,10 @@
 
 import { randomUUID } from "crypto";
 
-import { client } from "@/app/api/lib/auth";
 import { type CustomerStatus } from "@/lib/dashboard/customers";
 import { type Order } from "@/lib/dashboard/orders";
+import { councilorsCollection, customerSpendsCollection, customersCollection, funnelsCollection } from "@/lib/models/customers";
+import { ordersCollection } from "@/lib/models/orders";
 
 export type FunnelStage = { id: string; name: string };
 export type Funnel = {
@@ -65,12 +66,10 @@ export type CustomerFollowUpRecord = {
   authorName: string;
 };
 export type SpendRecord = { id: string; funnelId: string; amount: number; createdAt: Date };
-const db = () => client.db();
 const normalize = (v: unknown) => (typeof v === "string" ? v.trim().toLowerCase() : "");
 export const serialize = (v: Date | null) => v?.toISOString() ?? null;
 export function metricsFor(c: CustomerRecord) {
-  return db()
-    .collection<Order>("orders")
+  return ordersCollection()
     .find({
       status: { $nin: ["cancelled", "incomplete"] },
       $or: [
@@ -95,11 +94,11 @@ export function metricsFor(c: CustomerRecord) {
       };
     });
 }
-export const customerCollection = () => db().collection<CustomerRecord>("customers");
-export const funnelCollection = () => db().collection<Funnel>("customer-funnels");
-export const spendCollection = () => db().collection<SpendRecord>("customer-spends");
+export const customerCollection = customersCollection;
+export const funnelCollection = funnelsCollection;
+export const spendCollection = customerSpendsCollection;
 // Keep councilors in the existing application database, alongside customer growth data.
-export const councilorCollection = () => db().collection<CouncilorRecord>("business-growth-councilors");
+export const councilorCollection = councilorsCollection;
 export const now = () => new Date();
 export const id = () => randomUUID();
 export const customerFollowUps = (value: unknown): CustomerFollowUpRecord[] =>

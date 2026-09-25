@@ -10,12 +10,15 @@ import { randomUUID } from "crypto";
 
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
-import { MongoClient } from "mongodb";
 import nodemailer from "nodemailer";
 
 import { invalidateDashboardCache, redisKeys } from "@/app/api/lib/redis";
+import { mongoClient } from "@/lib/db";
+import { accessesCollection, rolesCollection } from "@/lib/models/auth";
 
-export const client = new MongoClient(process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017/demo-apps");
+// Compatibility export for framework configuration and legacy call sites.
+// New server code must import a resource model instead of this client.
+export const client = mongoClient;
 
 export const auth = betterAuth({
   basePath: "/api/auth/v1",
@@ -40,15 +43,12 @@ export const auth = betterAuth({
       create: {
         after: async (user) => {
           const email = user.email.trim().toLowerCase();
-          const database = client.db();
-          if (await database.collection("access").findOne({ email }, { projection: { id: 1 } })) return;
-          const existingRole = await database
-            .collection<{ id: string; name: string }>("role")
-            .findOne({ name: /^user$/i });
+          if (await accessesCollection().findOne({ email }, { projection: { id: 1 } })) return;
+          const existingRole = await rolesCollection<{ id: string; name: string }>().findOne({ name: /^user$/i });
           const role = existingRole ?? { id: randomUUID(), name: "user" };
           if (!existingRole) {
             const now = new Date();
-            await database.collection("role").insertOne({
+            await rolesCollection().insertOne({
               ...role,
               responsible: "Default blocked role",
               icon: "ShieldOff",
@@ -59,7 +59,7 @@ export const auth = betterAuth({
             });
           }
           const now = new Date();
-          await database.collection("access").insertOne({
+          await accessesCollection().insertOne({
             id: randomUUID(),
             email,
             roleId: role.id,

@@ -8,8 +8,8 @@
 
 import "server-only";
 
-import { client } from "@/app/api/lib/auth";
 import { allPageDefaults, type AllPageKind } from "@/components/pages/PageIndex";
+import { pagesCollection } from "@/lib/models/pages";
 import type { PageBlock, SitePage } from "@/redux/features/dashboard/pages/pagesSlice";
 import type { SearchResponse, SearchResult, SearchScope } from "@/types/search";
 
@@ -108,9 +108,7 @@ export async function searchPublishedPages(rawQuery: string, limit?: number): Pr
   const query = normalizeSearchQuery(rawQuery);
   if (!isSearchQueryValid(query)) return { items: [], query, total: 0 };
 
-  const pages = await client
-    .db()
-    .collection<SearchablePage>("pages")
+  const pages = await pagesCollection()
     .find({ published: true }, { projection: { _id: 0, id: 1, title: 1, path: 1, description: 1, blocks: 1 } })
     .toArray();
 
@@ -145,9 +143,7 @@ export async function getPublishedSearchTarget({
   blockId?: string;
   scope: SearchScope;
 }) {
-  const page = await client
-    .db()
-    .collection<SearchablePage>("pages")
+  const page = await pagesCollection()
     .findOne(
       { id: pageId, published: true },
       { projection: { _id: 0, id: 1, title: 1, path: 1, description: 1, blocks: 1 } },

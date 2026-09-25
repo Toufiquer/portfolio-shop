@@ -8,7 +8,6 @@
 
 import { randomInt, randomUUID } from "crypto";
 
-import { client } from "@/app/api/lib/auth";
 import { type Product } from "@/lib/dashboard/catalog";
 import { couponDiscount, type Coupon } from "@/lib/dashboard/coupons";
 import {
@@ -20,6 +19,9 @@ import {
   type OrderStatus,
   type ParsedCheckout,
 } from "@/lib/dashboard/orders";
+import { productsCollection } from "@/lib/models/catalog";
+import { couponsCollection } from "@/lib/models/coupons";
+import { checkoutLocksCollection, ordersCollection, orderSettingsCollection } from "@/lib/models/orders";
 
 type SessionUser = {
   id?: string;
@@ -32,12 +34,11 @@ export type CreateOrderResult =
   | { ok: true; order: Order }
   | { ok: false; status: number; code: OrderApiErrorCode; error: string; cooldownExpiresAt?: string };
 
-const products = () => client.db().collection<Product>("products");
-const orders = () => client.db().collection<Order>("orders");
-const orderSettings = () => client.db().collection<OrderSettings>("order-settings");
-const coupons = () => client.db().collection<Coupon>("coupons");
-const checkoutLocks = () =>
-  client.db().collection<{ userId: string; token: string; expiresAt: Date }>("order-checkout-locks");
+const products = productsCollection;
+const orders = ordersCollection;
+const orderSettings = orderSettingsCollection;
+const coupons = () => couponsCollection<Coupon>();
+const checkoutLocks = checkoutLocksCollection;
 const ORDER_ID_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 function createOrderId() {
@@ -91,6 +92,17 @@ export async function getOrderSettings() {
     updatedAt: existing.updatedAt ?? new Date(0),
     updatedBy: existing.updatedBy ?? "system",
   } satisfies OrderSettings;
+}
+
+export async function updateOrderSettings(
+  input: Pick<OrderSettings, "orderLimitEnabled" | "orderLimitMinutes" | "orderLimitMaxOrders">,
+  updatedBy: string,
+) {
+  return orderSettings().findOneAndUpdate(
+    { key: "order-settings" },
+    { $set: { ...input, updatedAt: new Date(), updatedBy }, $setOnInsert: { key: "order-settings" } },
+    { returnDocument: "after", upsert: true },
+  );
 }
 
 async function acquireCheckoutLock(userId: string) {

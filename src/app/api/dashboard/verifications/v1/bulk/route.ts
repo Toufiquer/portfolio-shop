@@ -6,11 +6,10 @@
 |-----------------------------------------
 */
 
-import { ObjectId } from "mongodb";
-
 import { rateLimit } from "@/app/api/lib/api-rate-limit";
-import { auth, client } from "@/app/api/lib/auth";
+import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
+import { removeVerifications } from "@/lib/services/verifications";
 
 export async function DELETE(request: Request) {
   const limited = rateLimit(request, "dashboard-verifications-api", 30, 60_000);
@@ -25,10 +24,6 @@ export async function DELETE(request: Request) {
   const ids = [...new Set(body?.ids?.filter((id): id is string => typeof id === "string" && id.length > 0) ?? [])];
   if (!ids.length) return Response.json({ error: "Select at least one verification." }, { status: 400 });
 
-  const objectIds = ids.filter((id) => ObjectId.isValid(id)).map((id) => new ObjectId(id));
-  const result = await client
-    .db()
-    .collection("verification")
-    .deleteMany({ $or: [{ id: { $in: ids } }, ...(objectIds.length ? [{ _id: { $in: objectIds } }] : [])] });
+  const result = await removeVerifications(ids);
   return Response.json({ deletedCount: result.deletedCount });
 }

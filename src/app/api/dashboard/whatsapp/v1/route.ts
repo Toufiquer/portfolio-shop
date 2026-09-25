@@ -6,54 +6,18 @@
 |-----------------------------------------
 */
 
-import { revalidatePath } from "next/cache";
-
 import { rateLimit } from "@/app/api/lib/api-rate-limit";
-import { auth, client } from "@/app/api/lib/auth";
+import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
+import type {
+  WhatsAppPadding as Padding,
+  WhatsAppPosition as Position,
+  WhatsAppSettings,
+} from "@/lib/models/site-settings";
+import { getWhatsAppSettings, updateWhatsAppSettings } from "@/lib/services/whatsapp";
 
 const paddings = ["0", "small", "medium", "large", "extra-large", "xxl"] as const;
 const positions = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
-type Padding = (typeof paddings)[number];
-type Position = (typeof positions)[number];
-type WhatsAppSettings = {
-  key: "site";
-  number: string;
-  padding?: Padding;
-  paddingX?: Padding;
-  paddingY?: Padding;
-  marginX?: Padding;
-  marginY?: Padding;
-  position: Position;
-  defaultMessage: string;
-  isVisible: boolean;
-  desktopTextVisible: boolean;
-  updatedAt: Date;
-};
-
-const defaults = {
-  number: "",
-  paddingX: "medium" as Padding,
-  paddingY: "medium" as Padding,
-  marginX: "0" as Padding,
-  marginY: "0" as Padding,
-  position: "bottom-right" as Position,
-  defaultMessage: "",
-  isVisible: true,
-  desktopTextVisible: true,
-};
-const collection = () => client.db().collection<WhatsAppSettings>("whatsappSettings");
-const serialize = (settings: Partial<WhatsAppSettings>) => ({
-  number: settings.number ?? defaults.number,
-  paddingX: settings.paddingX ?? settings.padding ?? defaults.paddingX,
-  paddingY: settings.paddingY ?? settings.padding ?? defaults.paddingY,
-  marginX: settings.marginX ?? defaults.marginX,
-  marginY: settings.marginY ?? defaults.marginY,
-  position: settings.position ?? defaults.position,
-  defaultMessage: settings.defaultMessage ?? defaults.defaultMessage,
-  isVisible: settings.isVisible ?? defaults.isVisible,
-  desktopTextVisible: settings.desktopTextVisible ?? defaults.desktopTextVisible,
-});
 
 async function access(request: Request, method: "GET" | "PATCH") {
   const limited = rateLimit(request, "dashboard-whatsapp-api", 30, 60_000);
@@ -72,7 +36,7 @@ async function access(request: Request, method: "GET" | "PATCH") {
 export async function GET(request: Request) {
   const result = await access(request, "GET");
   if ("error" in result) return result.error;
-  return Response.json({ settings: serialize((await collection().findOne({ key: "site" })) ?? {}) });
+  return Response.json({ settings: await getWhatsAppSettings() });
 }
 
 export async function PATCH(request: Request) {
@@ -108,7 +72,5 @@ export async function PATCH(request: Request) {
     desktopTextVisible: body.desktopTextVisible,
     updatedAt: new Date(),
   };
-  await collection().updateOne({ key: "site" }, { $set: settings }, { upsert: true });
-  revalidatePath("/", "layout");
-  return Response.json({ settings: serialize(settings) });
+  return Response.json({ settings: await updateWhatsAppSettings(settings) });
 }

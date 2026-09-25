@@ -6,29 +6,13 @@
 |-----------------------------------------
 */
 
-import { randomUUID } from "crypto";
-
 import { rateLimit } from "@/app/api/lib/api-rate-limit";
-import { auth, client } from "@/app/api/lib/auth";
+import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
+import { addTracking, listTracking, type TrackingItem, type TrackingProvider } from "@/lib/services/tracking";
 
 export const trackingProviders = ["facebook", "gtm", "ga4", "tiktok"] as const;
-export type TrackingProvider = (typeof trackingProviders)[number];
-export type TrackingItem = {
-  id: string;
-  provider: TrackingProvider;
-  pixelId: string;
-  enabled: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-type TrackingDocument = Omit<TrackingItem, "createdAt" | "updatedAt"> & { createdAt: Date; updatedAt: Date };
-const collection = () => client.db().collection<TrackingDocument>("tracking");
-const serialize = (item: TrackingDocument): TrackingItem => ({
-  ...item,
-  createdAt: item.createdAt.toISOString(),
-  updatedAt: item.updatedAt.toISOString(),
-});
+export type { TrackingItem, TrackingProvider };
 async function access(request: Request, method: "GET" | "POST") {
   const limited = rateLimit(request, "dashboard-tracking-api", 30, 60_000);
   if (limited) return { error: limited };
@@ -40,7 +24,7 @@ async function access(request: Request, method: "GET" | "POST") {
     : { error: Response.json({ error: allowed.state.message ?? "Unauthorized." }, { status: 403 }) };
 }
 function payload(body: unknown) {
-  const data = body as Partial<TrackingDocument> | null;
+  const data = body as Partial<TrackingItem> | null;
   const provider = data?.provider;
   const pixelId = data?.pixelId?.trim() ?? "";
   if (
@@ -55,18 +39,15 @@ function payload(body: unknown) {
 export async function GET(request: Request) {
   const result = await access(request, "GET");
   if ("error" in result) return result.error;
-  const items = await collection().find({}).sort({ provider: 1 }).toArray();
-  return Response.json({ items: items.map(serialize) });
+  return Response.json({ items: await listTracking() });
 }
 export async function POST(request: Request) {
   const result = await access(request, "POST");
   if ("error" in result) return result.error;
   const data = payload(await request.json().catch(() => null));
   if (!data) return Response.json({ error: "Enter a valid tracking ID." }, { status: 400 });
-  if (await collection().findOne({ provider: data.provider }))
+  const created = await addTracking(data);
+  if (created.kind === "duplicate")
     return Response.json({ error: "This provider already has a tracking ID." }, { status: 409 });
-  const now = new Date();
-  const item: TrackingDocument = { id: randomUUID(), ...data, createdAt: now, updatedAt: now };
-  await collection().insertOne(item);
-  return Response.json({ item: serialize(item) }, { status: 201 });
+  return Response.json({ item: created.item }, { status: 201 });
 }

@@ -7,11 +7,10 @@
 */
 
 import { rateLimit } from "@/app/api/lib/api-rate-limit";
-import { auth, client } from "@/app/api/lib/auth";
+import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
-import { invalidateDashboardCache, redisKeys } from "@/app/api/lib/redis";
+import { removeSidebars } from "@/lib/services/sidebars";
 
-type SidebarItem = { id: string; parentId: string | null };
 export async function DELETE(request: Request) {
   const limited = rateLimit(request, "sidebar-api");
   if (limited) return limited;
@@ -23,20 +22,6 @@ export async function DELETE(request: Request) {
   const body = (await request.json().catch(() => null)) as { ids?: string[] } | null;
   const roots = [...new Set(body?.ids?.filter((id): id is string => typeof id === "string" && id.length > 0) ?? [])];
   if (!roots.length) return Response.json({ error: "Select at least one sidebar item." }, { status: 400 });
-  const collection = client.db().collection<SidebarItem>("sidebar");
-  const ids = new Set(roots);
-  const queue = [...roots];
-  while (queue.length) {
-    const parentId = queue.shift()!;
-    const children = await collection.find({ parentId }, { projection: { id: 1 } }).toArray();
-    children.forEach((child) => {
-      if (!ids.has(child.id)) {
-        ids.add(child.id);
-        queue.push(child.id);
-      }
-    });
-  }
-  const result = await collection.deleteMany({ id: { $in: [...ids] } });
-  await invalidateDashboardCache(redisKeys.sidebars, redisKeys.roles);
+  const result = await removeSidebars(roots);
   return Response.json({ deletedCount: result.deletedCount });
 }
