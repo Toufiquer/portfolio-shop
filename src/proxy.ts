@@ -10,11 +10,17 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
-import { authorizeDashboardRequest, isPublicDashboardRead } from "@/app/api/lib/dashboard-authorization";
+import {
+  authorizeDashboardRequest,
+  isKnownDashboardApiResource,
+  isPublicDashboardRead,
+} from "@/app/api/lib/dashboard-authorization";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isApi = pathname.startsWith("/api/dashboard/");
+  if (isApi && !isKnownDashboardApiResource(pathname))
+    return Response.json({ error: "Unknown dashboard API resource." }, { status: 403 });
   if (isApi && isPublicDashboardRead(pathname, request.method)) return NextResponse.next();
 
   const limited = await rateLimitDistributed(request, "dashboard-authorization", 120, 60_000);
@@ -28,6 +34,11 @@ export async function proxy(request: NextRequest) {
     if (origin && host && new URL(origin).host !== host)
       return Response.json({ error: "Cross-site requests are not allowed." }, { status: 403 });
   }
+
+  // Every protected dashboard API handler performs its own session and
+  // permission check. Keep the proxy's shared rate limit and CSRF gate here,
+  // without repeating those database-backed checks for the same operation.
+  if (isApi) return NextResponse.next();
 
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) {

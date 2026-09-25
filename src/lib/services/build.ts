@@ -106,6 +106,7 @@ export async function revalidateBuild(target: BuildTarget, items: BuildItem[]) {
     count += 1;
   }
   revalidateTag("site-pages", "max");
+  if (target === "all" || target.startsWith("page:")) revalidateTag("public-page-search", { expire: 0 });
   const cooldownUntil = new Date(Date.now() + cooldownMs);
   const keys = target === "all" ? ["all", ...targets] : targets;
   await saveBuildCooldowns(keys, cooldownUntil, now);

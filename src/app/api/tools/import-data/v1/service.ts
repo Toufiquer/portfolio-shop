@@ -195,7 +195,10 @@ export async function importDefaultData(body: ImportRequest) {
     }
     if (pagesInserted) {
       revalidatePath("/", "layout");
+    }
+    if (pagesInserted || pagesUpdated) {
       revalidateTag("site-pages", "max");
+      revalidateTag("public-page-search", { expire: 0 });
     }
   }
   if (inserted || updated) await invalidateDashboardCache(redisKeys.sidebars, redisKeys.roles);

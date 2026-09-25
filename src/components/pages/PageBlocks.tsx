@@ -11,7 +11,7 @@ import { type PageBlock } from "@/redux/features/dashboard/pages/pagesSlice";
 
 import { ContainerQuery, type ContainerVariant } from "../container/ContainerIndex";
 import { FormQuery, type FormVariant } from "../form/FormIndex";
-import { SectionPreview, type SectionVariant } from "../sections/SectionIndex";
+import { SectionPreview, type SectionVariant } from "../sections/SectionPreviewRegistry";
 
 import { PagePreview, type AllPageKind } from "./PageIndex";
 

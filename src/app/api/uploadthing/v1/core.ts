@@ -9,7 +9,7 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth, client } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 
@@ -31,7 +31,7 @@ async function recordUpload(metadata: { email: string; userId: string }, file: {
 }
 
 const authorize = async (req: Request, files?: ReadonlyArray<{ name: string }>, extensions?: string[]) => {
-  if (rateLimit(req, "media-upload-api", 20, 60_000))
+  if (await rateLimitDistributed(req, "media-upload-api", 20, 60_000))
     throw new UploadThingError("Too many upload requests. Please try again shortly.");
   const session = await auth.api.getSession({ headers: req.headers });
   if (!session) throw new UploadThingError("Sign in required.");

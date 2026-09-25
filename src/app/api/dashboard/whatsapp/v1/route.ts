@@ -6,7 +6,7 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import type {
@@ -20,7 +20,7 @@ const paddings = ["0", "small", "medium", "large", "extra-large", "xxl"] as cons
 const positions = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
 
 async function access(request: Request, method: "GET" | "PATCH") {
-  const limited = rateLimit(request, "dashboard-whatsapp-api", 30, 60_000);
+  const limited = await rateLimitDistributed(request, "dashboard-whatsapp-api", 30, 60_000);
   if (limited) return { error: limited };
 
   const session = await auth.api.getSession({ headers: request.headers });

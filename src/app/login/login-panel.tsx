@@ -102,7 +102,7 @@ export function LoginPanel() {
       setStatusType(response.ok ? "success" : "error");
       setStatus(
         response.ok
-          ? "Verification email sent. Check your inbox."
+          ? "If this address can receive verification, an email will arrive shortly."
           : (result.error ?? "Verification email could not be sent."),
       );
     } catch {

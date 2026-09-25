@@ -11,7 +11,7 @@ import { randomUUID } from "crypto";
 import { ObjectId } from "mongodb";
 import { revalidatePath, revalidateTag } from "next/cache";
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth, client } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { pageCacheTag } from "@/lib/pages/server";
@@ -120,7 +120,7 @@ const normalizePath = (value: string) => {
 };
 const isReservedPublicPath = (path: string) => reservedPublicPaths.has(path);
 async function permitted(request: Request) {
-  const limited = rateLimit(request, "dashboard-pages-api", 60, 60_000);
+  const limited = await rateLimitDistributed(request, "dashboard-pages-api", 60, 60_000);
   if (limited) return { limited, session: null };
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return { limited: null, session: null, authorization: null };
@@ -132,6 +132,7 @@ function refresh(path: string) {
   revalidatePath("/", "layout");
   revalidateTag(pageCacheTag(path), "max");
   revalidateTag("site-pages", "max");
+  revalidateTag("public-page-search", { expire: 0 });
 }
 
 const pageBlockTypes = new Set<PageBlock["type"]>(["form", "section", "all-page", "rich-text", "container"]);

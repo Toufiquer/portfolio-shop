@@ -7,7 +7,14 @@
 */
 
 export type Permission = { read: boolean; create: boolean; update: boolean; delete: boolean };
-export type SidebarItem = { id: string; name: string; url: string; icon: string; parentId: string | null; position: number };
+export type SidebarItem = {
+  id: string;
+  name: string;
+  url: string;
+  icon: string;
+  parentId: string | null;
+  position: number;
+};
 export type RoleItem = {
   id: string;
   name: string;
@@ -32,7 +39,6 @@ export type MediaItem = {
   url: string;
   uploadPlane: "imageBB" | "Youtube" | "Uploadthings";
   type: "picture" | "video" | "audio" | "zip" | "doc" | "pdf" | "txt";
-  deleteUrl?: string;
   fileKey?: string;
   createdAt: string;
 };

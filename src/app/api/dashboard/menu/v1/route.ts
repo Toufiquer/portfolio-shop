@@ -6,13 +6,13 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { defaults, isMenuId, removeMenu, reorderMenus, savedMenus, saveMenu, serializeMenu } from "@/lib/services/menu";
 
 async function access(request: Request, method: "GET" | "POST" | "DELETE") {
-  const limited = rateLimit(request, "dashboard-menu-api", 30, 60_000);
+  const limited = await rateLimitDistributed(request, "dashboard-menu-api", 30, 60_000);
   if (limited) return { error: limited, session: null };
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session && method === "GET") return { session: null };

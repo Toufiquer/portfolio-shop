@@ -6,7 +6,7 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest, getDashboardAccessState } from "@/app/api/lib/dashboard-authorization";
 import {
@@ -17,6 +17,7 @@ import {
   funnelStages,
   id,
   metricsFor,
+  metricsForMany,
   normalize,
   now,
   spendCollection,
@@ -29,7 +30,7 @@ import {
 } from "@/lib/customers/server";
 import { customerStatuses } from "@/lib/dashboard/customers";
 const guard = async (r: Request, method: "GET" | "POST") => {
-  const limited = rateLimit(r, "customer-api");
+  const limited = await rateLimitDistributed(r, "customer-api");
   if (limited) return limited;
   const s = await auth.api.getSession({ headers: r.headers });
   if (!s) return Response.json({ error: "Sign in required." }, { status: 401 });
@@ -276,17 +277,16 @@ export async function GET(r: Request) {
     .skip((page - 1) * pageSize)
     .limit(pageSize)
     .toArray();
+  const customerMetrics = await metricsForMany(items);
   return Response.json({
-    items: await Promise.all(
-      items.map(async (x) => ({
-        ...x,
-        followUps: serializeFollowUps(x.followUps),
-        customerStatus: customerStatus(x.customerStatus),
-        createdAt: x.createdAt.toISOString(),
-        updatedAt: x.updatedAt.toISOString(),
-        metrics: await metricsFor(x),
-      })),
-    ),
+    items: items.map((x) => ({
+      ...x,
+      followUps: serializeFollowUps(x.followUps),
+      customerStatus: customerStatus(x.customerStatus),
+      createdAt: x.createdAt.toISOString(),
+      updatedAt: x.updatedAt.toISOString(),
+      metrics: customerMetrics.get(x.id),
+    })),
     total,
     page,
     pageSize,

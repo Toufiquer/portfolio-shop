@@ -23,7 +23,11 @@ import {
   type Media,
 } from "@/lib/models/media";
 export { type Media };
-export const serializeMedia = (item: Media) => ({ ...item, createdAt: new Date(item.createdAt).toISOString() });
+export const serializeMedia = (item: Media) => {
+  const safeItem = { ...item };
+  delete safeItem.deleteUrl;
+  return { ...safeItem, createdAt: new Date(item.createdAt).toISOString() };
+};
 export const mediaIsAdministrator = (roleName: string | null) => /^(admin|super admin)$/i.test(roleName?.trim() ?? "");
 export async function listMediaForApi(ownerOnly: boolean, email: string) {
   return (await listMedia(ownerOnly ? email.trim().toLowerCase() : undefined)).map(serializeMedia);
@@ -53,10 +57,7 @@ export async function removeMediaForApi(id: string, administrator: boolean, emai
   if (!item) return { kind: "not-found" as const };
   if (!ownedBy(item, administrator, email)) return { kind: "forbidden" as const };
   try {
-    if (item.uploadPlane === "imageBB" && item.deleteUrl) {
-      const response = await fetch(item.deleteUrl);
-      if (!response.ok) throw new Error("ImageBB could not delete the remote image.");
-    }
+    await deleteImageBB(item, false);
     if (item.uploadPlane === "Uploadthings" && !item.fileKey)
       throw new Error("This UploadThing media item has no file key, so it cannot be safely deleted.");
     if (
@@ -73,6 +74,36 @@ export async function removeMediaForApi(id: string, administrator: boolean, emai
   }
   await deleteMedia(id);
   return { kind: "deleted" as const };
+}
+function parseImageBBDeleteUrl(value: string) {
+  try {
+    const url = new URL(value);
+    if (
+      url.protocol !== "https:" ||
+      url.hostname !== "ibb.co" ||
+      url.port !== "" ||
+      url.username ||
+      url.password ||
+      url.search ||
+      url.hash ||
+      !/^\/[a-z\d-]+\/[a-f\d]{32}$/i.test(url.pathname)
+    )
+      return null;
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+export const isValidImageBBDeleteUrl = (value: string) => parseImageBBDeleteUrl(value) !== null;
+
+async function deleteImageBB(item: Media, bulk: boolean) {
+  if (item.uploadPlane !== "imageBB" || !item.deleteUrl) return;
+  const url = parseImageBBDeleteUrl(item.deleteUrl);
+  if (!url) throw new Error("ImageBB returned an invalid deletion URL.");
+  const response = await fetch(url, { redirect: "error", signal: AbortSignal.timeout(5_000) });
+  if (!response.ok)
+    throw new Error(bulk ? "ImageBB could not delete a remote image." : "ImageBB could not delete the remote image.");
 }
 const downloadableHost = (hostname: string, provider: Media["uploadPlane"]) => {
   const host = hostname.toLowerCase();
@@ -107,11 +138,7 @@ export async function downloadMediaForApi(id: string, administrator: boolean, em
   }
 }
 async function deleteRemote(item: Media, bulk = false) {
-  if (item.uploadPlane === "imageBB" && item.deleteUrl) {
-    const response = await fetch(item.deleteUrl);
-    if (!response.ok)
-      throw new Error(bulk ? "ImageBB could not delete a remote image." : "ImageBB could not delete the remote image.");
-  }
+  await deleteImageBB(item, bulk);
   if (item.uploadPlane === "Uploadthings" && !item.fileKey)
     throw new Error(
       bulk

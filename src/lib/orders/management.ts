@@ -7,8 +7,9 @@
 */
 
 import { type Order, type OrderStatus } from "@/lib/dashboard/orders";
-import { ordersCollection } from "@/lib/models/orders";
 import { restoreProductStock } from "@/lib/models/catalog";
+import { ordersCollection } from "@/lib/models/orders";
+import { invalidatePublicProductCatalogCache } from "@/lib/products/server";
 
 export const allowedOrderTransitions: Record<OrderStatus, OrderStatus[]> = {
   incomplete: ["placed", "cancelled"],
@@ -35,9 +36,6 @@ export function orderIds(body: unknown) {
 
 export async function restoreOrderStock(order: Order, now = new Date()) {
   if (order.status === "cancelled") return;
-  await Promise.all(
-    order.items.map((item) =>
-      restoreProductStock(item.productId, item.quantity, now),
-    ),
-  );
+  await Promise.all(order.items.map((item) => restoreProductStock(item.productId, item.quantity, now)));
+  if (order.items.length) invalidatePublicProductCatalogCache();
 }

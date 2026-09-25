@@ -6,7 +6,7 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { addTracking, listTracking, type TrackingItem, type TrackingProvider } from "@/lib/services/tracking";
@@ -14,7 +14,7 @@ import { addTracking, listTracking, type TrackingItem, type TrackingProvider } f
 export const trackingProviders = ["facebook", "gtm", "ga4", "tiktok"] as const;
 export type { TrackingItem, TrackingProvider };
 async function access(request: Request, method: "GET" | "POST") {
-  const limited = rateLimit(request, "dashboard-tracking-api", 30, 60_000);
+  const limited = await rateLimitDistributed(request, "dashboard-tracking-api", 30, 60_000);
   if (limited) return { error: limited };
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return { error: Response.json({ error: "Sign in required." }, { status: 401 }) };

@@ -6,13 +6,13 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { deleteAccesses } from "@/lib/services/access";
 
 export async function DELETE(request: Request) {
-  const limited = rateLimit(request, "access-api");
+  const limited = await rateLimitDistributed(request, "access-api");
   if (limited) return limited;
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });

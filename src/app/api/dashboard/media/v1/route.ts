@@ -6,7 +6,7 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest, getDashboardAccessState } from "@/app/api/lib/dashboard-authorization";
 import {
@@ -24,7 +24,7 @@ const youtubeUrl =
   /^(https?:\/\/)?(www\.)?(youtube\.com\/(watch\?v=|embed\/|shorts\/)|youtu\.be\/)[\w-]{11}(?:[?&/#].*)?$/i;
 
 export async function GET(request: Request) {
-  const limited = rateLimit(request, "media-api");
+  const limited = await rateLimitDistributed(request, "media-api");
   if (limited) return limited;
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
@@ -36,7 +36,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const limited = rateLimit(request, "media-api");
+  const limited = await rateLimitDistributed(request, "media-api");
   if (limited) return limited;
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
@@ -55,8 +55,11 @@ export async function POST(request: Request) {
     return Response.json({ error: "Valid media details are required." }, { status: 400 });
   if (body.uploadPlane === "Youtube" && !youtubeUrl.test(body.url.trim()))
     return Response.json({ error: "A valid YouTube URL is required." }, { status: 400 });
-  if (body.uploadPlane === "imageBB" && body.type !== "picture")
-    return Response.json({ error: "ImageBB media must be an image." }, { status: 400 });
+  if (body.uploadPlane === "imageBB")
+    return Response.json(
+      { error: "ImageBB media must be created through the provider upload endpoint." },
+      { status: 400 },
+    );
   if (body.uploadPlane === "Uploadthings") {
     const fileKey = body.fileKey?.trim();
     if (!fileKey) return Response.json({ error: "UploadThing file details are required." }, { status: 400 });
@@ -67,7 +70,6 @@ export async function POST(request: Request) {
       url: body.url.trim(),
       uploadPlane: body.uploadPlane,
       type: body.type,
-      ...(body.uploadPlane === "imageBB" && typeof body.deleteUrl === "string" ? { deleteUrl: body.deleteUrl } : {}),
       ...(body.uploadPlane === "Uploadthings" && typeof body.fileKey === "string" ? { fileKey: body.fileKey } : {}),
     },
     session.user.email,

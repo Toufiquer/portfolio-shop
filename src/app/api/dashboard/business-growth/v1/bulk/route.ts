@@ -6,7 +6,7 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth, client } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest, getDashboardAccessState } from "@/app/api/lib/dashboard-authorization";
 import {
@@ -23,9 +23,10 @@ import { type Product } from "@/lib/dashboard/catalog";
 import { customerStatuses, type CustomerStatus } from "@/lib/dashboard/customers";
 import { type Order, type OrderItemSnapshot } from "@/lib/dashboard/orders";
 import { orders } from "@/lib/orders/management";
+import { invalidatePublicProductCatalogCache } from "@/lib/products/server";
 
 async function guard(request: Request, method: "POST" | "PATCH" | "DELETE") {
-  const limited = rateLimit(request, "customer-api");
+  const limited = await rateLimitDistributed(request, "customer-api");
   if (limited) return limited;
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
@@ -223,6 +224,7 @@ export async function POST(request: Request) {
           .updateOne({ id: product.id }, { $set: { stock: stockById.get(product.id) ?? 0, updatedAt: now() } }),
       ),
     );
+    if (products.length) invalidatePublicProductCatalogCache();
   }
   return Response.json({ imported, skipped: rows.length - imported, ordersCreated: demoOrders.length });
 }

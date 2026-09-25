@@ -5,14 +5,14 @@
 | @copyright: Toufiquer, 16 August 2026
 |-----------------------------------------
 */
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { getFooter, removeFooter, updateFooter } from "@/lib/services/footer";
 const object = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 async function access(request: Request) {
-  const limited = rateLimit(request, "dashboard-footer-api", 30, 60_000);
+  const limited = await rateLimitDistributed(request, "dashboard-footer-api", 30, 60_000);
   return { limited, session: limited ? null : await auth.api.getSession({ headers: request.headers }) };
 }
 export async function GET(request: Request) {

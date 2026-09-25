@@ -19,16 +19,25 @@ export const metadata: Metadata = { title: "Products", description: "Explore our
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; collection?: string; sort?: string }>;
+  searchParams: Promise<{ category?: string; collection?: string; sort?: string; page?: string }>;
 }) {
-  const { category: requestedCategory, collection, sort } = await searchParams;
+  const { category: requestedCategory, collection, sort, page: requestedPage } = await searchParams;
   const categorySlug = requestedCategory?.trim().toLowerCase();
   const view =
     collection?.trim().toLowerCase() === "deals" ? "deals" : sort?.trim().toLowerCase() === "newest" ? "newest" : "all";
-  const [{ items, category }, categories] = await Promise.all([
-    getPublicProducts(categorySlug, view),
+  const pageNumber = Number.parseInt(requestedPage ?? "1", 10);
+  const [{ items, category, total, page, totalPages }, categories] = await Promise.all([
+    getPublicProducts(categorySlug, view, Number.isFinite(pageNumber) ? pageNumber : 1),
     getPublicCategories(),
   ]);
+  const pageHref = (nextPage: number) => {
+    const params = new URLSearchParams();
+    if (categorySlug) params.set("category", categorySlug);
+    if (view === "deals") params.set("collection", "deals");
+    if (view === "newest") params.set("sort", "newest");
+    params.set("page", String(nextPage));
+    return `/products?${params.toString()}`;
+  };
   const header =
     view === "deals"
       ? {
@@ -59,7 +68,7 @@ export default async function ProductsPage({
           <div className="mt-4">
             <p className="max-w-2xl text-sm text-stone-600">{header.description}</p>
             <p className="text-sm font-bold text-stone-500">
-              {items.length} {items.length === 1 ? "product" : "products"} Found
+              {total} {total === 1 ? "product" : "products"} Found
             </p>
           </div>
         </div>
@@ -131,6 +140,33 @@ export default async function ProductsPage({
                   </p>
                 </div>
               </div>
+            )}
+            {totalPages > 1 && (
+              <nav aria-label="Product pages" className="mt-8 flex items-center justify-between gap-4">
+                {page > 1 ? (
+                  <Link
+                    className="rounded-sm border border-stone-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-amber-50"
+                    href={pageHref(page - 1)}
+                  >
+                    Previous
+                  </Link>
+                ) : (
+                  <span className="rounded-sm border border-stone-100 px-4 py-2 text-sm text-stone-400">Previous</span>
+                )}
+                <span className="text-sm font-semibold text-stone-600">
+                  Page {page} of {totalPages}
+                </span>
+                {page < totalPages ? (
+                  <Link
+                    className="rounded-sm border border-stone-200 bg-white px-4 py-2 text-sm font-semibold hover:bg-amber-50"
+                    href={pageHref(page + 1)}
+                  >
+                    Next
+                  </Link>
+                ) : (
+                  <span className="rounded-sm border border-stone-100 px-4 py-2 text-sm text-stone-400">Next</span>
+                )}
+              </nav>
             )}
           </div>
         </div>

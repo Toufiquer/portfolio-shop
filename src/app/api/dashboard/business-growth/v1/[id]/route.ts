@@ -6,7 +6,7 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest, getDashboardAccessState } from "@/app/api/lib/dashboard-authorization";
 import {
@@ -21,7 +21,7 @@ import {
   spendCollection,
 } from "@/lib/customers/server";
 async function guard(r: Request, m: "PATCH" | "DELETE") {
-  const l = rateLimit(r, "customer-api");
+  const l = await rateLimitDistributed(r, "customer-api");
   if (l) return l;
   const s = await auth.api.getSession({ headers: r.headers });
   if (!s) return Response.json({ error: "Sign in required." }, { status: 401 });

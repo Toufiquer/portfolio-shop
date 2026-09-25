@@ -66,7 +66,7 @@ export function RegistrationPanel() {
         );
       setStatus(
         emailResponse.ok
-          ? "Account created. Check your email to verify it."
+          ? "Account created. If verification is required, an email will arrive shortly."
           : `Account created, but ${emailResult.error ?? "the verification email could not be sent."}`,
       );
     } catch {

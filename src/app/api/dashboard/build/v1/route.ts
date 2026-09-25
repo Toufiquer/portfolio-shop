@@ -6,7 +6,7 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { buildResponse, getBuildItems, getBuildStatus, revalidateBuild, type BuildTarget } from "@/lib/services/build";
@@ -14,7 +14,7 @@ import { buildResponse, getBuildItems, getBuildStatus, revalidateBuild, type Bui
 export type { BuildItem, BuildTarget } from "@/lib/services/build";
 
 const access = async (request: Request) => {
-  const limited = rateLimit(request, "dashboard-build-api", 10, 60_000);
+  const limited = await rateLimitDistributed(request, "dashboard-build-api", 10, 60_000);
   return { limited, session: limited ? null : await auth.api.getSession({ headers: request.headers }) };
 };
 async function authorized(request: Request, method: "GET" | "POST") {

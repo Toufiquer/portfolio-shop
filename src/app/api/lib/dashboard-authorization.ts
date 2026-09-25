@@ -44,6 +44,7 @@ export type DashboardAccessState = {
   roleId: string | null;
   roleName: string | null;
   allowedSidebarIds: string[];
+  sidebarPermissions?: { id: string; url: string; permissions: Partial<Permission> }[];
   message?: string;
 };
 
@@ -73,7 +74,12 @@ async function ensureDefaultAccess(email: string) {
       return { id: randomUUID(), name: "user", permissions: {}, createdAt: now, updatedAt: now };
     })();
   if (!existingRole)
-    await rolesCollection().insertOne({ ...role, responsible: "Default blocked role", icon: "ShieldOff", position: -1 });
+    await rolesCollection().insertOne({
+      ...role,
+      responsible: "Default blocked role",
+      icon: "ShieldOff",
+      position: -1,
+    });
 
   const now = new Date();
   const item: Access = {
@@ -159,7 +165,18 @@ export async function getDashboardAccessState(session: SessionUser): Promise<Das
   const allowed = sidebars
     .filter((sidebar) => Object.values(role.permissions[sidebar.id] ?? {}).some(Boolean))
     .map((sidebar) => sidebar.id);
-  return { bypassed: false, blocked: false, roleId: role.id, roleName: role.name, allowedSidebarIds: allowed };
+  return {
+    bypassed: false,
+    blocked: false,
+    roleId: role.id,
+    roleName: role.name,
+    allowedSidebarIds: allowed,
+    sidebarPermissions: sidebars.map((sidebar) => ({
+      id: sidebar.id,
+      url: sidebar.url,
+      permissions: role.permissions?.[sidebar.id] ?? {},
+    })),
+  };
 }
 
 function operationForMethod(method: string): DashboardOperation {
@@ -169,7 +186,7 @@ function operationForMethod(method: string): DashboardOperation {
   return "read";
 }
 
-function apiResourcePaths(pathname: string, method: string) {
+function apiResourcePaths(pathname: string, method: string): string[] | null {
   const resource = pathname.split("/")[3] ?? "";
   if (resource === "sidebars" && method === "GET") return [];
   const resources: Record<string, string[]> = {
@@ -211,7 +228,11 @@ function apiResourcePaths(pathname: string, method: string) {
     ],
     navigation: ["/dashboard/developer/navigation"],
   };
-  return resources[resource] ?? [];
+  return Object.prototype.hasOwnProperty.call(resources, resource) ? (resources[resource] ?? []) : null;
+}
+
+export function isKnownDashboardApiResource(pathname: string) {
+  return pathname.startsWith("/api/dashboard/") && apiResourcePaths(pathname, "GET") !== null;
 }
 
 function pageResourcePaths(pathname: string) {
@@ -259,18 +280,16 @@ export async function authorizeDashboardRequest(session: SessionUser, pathname: 
     };
   }
 
-  const paths = pathname.startsWith("/api/dashboard/")
-    ? apiResourcePaths(pathname, method)
-    : pageResourcePaths(pathname);
+  const apiPaths = pathname.startsWith("/api/dashboard/") ? apiResourcePaths(pathname, method) : undefined;
+  if (apiPaths === null) return { allowed: false, state: { ...state, message: "Unknown dashboard API resource." } };
+  const paths = apiPaths ?? pageResourcePaths(pathname);
   if (!paths.length) return { allowed: true, state };
 
   if (!state.roleId) return { allowed: false, state: { ...state, message: "Your role is unavailable." } };
-  const role = await rolesCollection<Role>().findOne({ id: state.roleId });
-  const sidebars = await sidebarsCollection<Sidebar>()
-    .find({ url: { $in: paths } }, { projection: { id: 1, url: 1 } })
-    .toArray();
   const operation = operationForMethod(method);
-  const allowed = sidebars.some((sidebar) => Boolean(role?.permissions[sidebar.id]?.[operation]));
+  const allowed = (state.sidebarPermissions ?? []).some(
+    (sidebar) => paths.includes(sidebar.url) && Boolean(sidebar.permissions[operation]),
+  );
   return {
     allowed,
     state: allowed ? state : { ...state, message: `You do not have ${operation} permission for this area.` },

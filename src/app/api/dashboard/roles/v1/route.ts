@@ -8,10 +8,11 @@
 
 import { randomUUID } from "crypto";
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth, client } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { getCache, invalidateDashboardCache, redisKeys, setCache } from "@/app/api/lib/redis";
+import { sanitizeRoleDescription } from "@/lib/security/role-description";
 
 type Permission = { read: boolean; create: boolean; update: boolean; delete: boolean };
 type Role = {
@@ -28,13 +29,13 @@ type Sidebar = { id: string; name: string; url: string; icon: string; parentId: 
 function serialize(role: Role) {
   return {
     ...role,
-    responsible: role.responsible ?? "",
+    responsible: sanitizeRoleDescription(role.responsible),
     createdAt: role.createdAt?.toISOString() ?? null,
     updatedAt: role.updatedAt?.toISOString() ?? null,
   };
 }
 async function access(request: Request) {
-  const limited = rateLimit(request, "role-api");
+  const limited = await rateLimitDistributed(request, "role-api");
   if (limited) return { limited };
   return { limited: null, session: await auth.api.getSession({ headers: request.headers }) };
 }
@@ -57,9 +58,14 @@ export async function GET(request: Request) {
   if (limited) return limited;
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
   const authorization = await authorizeDashboardRequest(session, "/api/dashboard/roles/v1", "GET");
-  if (!authorization.allowed) return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
+  if (!authorization.allowed)
+    return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
   const cached = await getCache<{ roles: ReturnType<typeof serialize>[]; sidebars: Sidebar[] }>(redisKeys.roles);
-  if (cached) return Response.json(cached);
+  if (cached)
+    return Response.json({
+      ...cached,
+      roles: cached.roles.map((role) => ({ ...role, responsible: sanitizeRoleDescription(role.responsible) })),
+    });
   const database = client.db();
   const [roles, sidebars] = await Promise.all([
     database.collection<Role>("role").find({}).sort({ position: 1, name: 1 }).toArray(),
@@ -78,7 +84,8 @@ export async function POST(request: Request) {
   if (limited) return limited;
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
   const authorization = await authorizeDashboardRequest(session, "/api/dashboard/roles/v1", "POST");
-  if (!authorization.allowed) return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
+  if (!authorization.allowed)
+    return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
   const body = (await request.json().catch(() => null)) as Partial<Role> | null;
   const name = body?.name?.trim();
   if (!name) return Response.json({ error: "Role name is required." }, { status: 400 });
@@ -91,7 +98,7 @@ export async function POST(request: Request) {
   const role: Role = {
     id: randomUUID(),
     name,
-    responsible: body?.responsible?.trim() || "",
+    responsible: sanitizeRoleDescription(body?.responsible),
     icon: body?.icon?.trim() || "ShieldCheck",
     position: typeof body?.position === "number" ? body.position : (last?.position ?? -1) + 1,
     permissions: cleanPermissions(body?.permissions, sidebars),

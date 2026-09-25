@@ -6,13 +6,13 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest, getDashboardAccessState } from "@/app/api/lib/dashboard-authorization";
 import type { SidebarItem } from "@/lib/models/auth";
 import { addSidebar, listSidebars } from "@/lib/services/sidebars";
 async function access(request: Request) {
-  const limited = rateLimit(request, "sidebar-api");
+  const limited = await rateLimitDistributed(request, "sidebar-api");
   if (limited) return { limited };
   const session = await auth.api.getSession({ headers: request.headers });
   return { limited: null, session };

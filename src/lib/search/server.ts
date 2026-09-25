@@ -8,6 +8,8 @@
 
 import "server-only";
 
+import { unstable_cache } from "next/cache";
+
 import { allPageDefaults, type AllPageKind } from "@/components/pages/PageIndex";
 import { pagesCollection } from "@/lib/models/pages";
 import type { PageBlock, SitePage } from "@/redux/features/dashboard/pages/pagesSlice";
@@ -108,30 +110,38 @@ export async function searchPublishedPages(rawQuery: string, limit?: number): Pr
   const query = normalizeSearchQuery(rawQuery);
   if (!isSearchQueryValid(query)) return { items: [], query, total: 0 };
 
-  const pages = await pagesCollection()
-    .find({ published: true }, { projection: { _id: 0, id: 1, title: 1, path: 1, description: 1, blocks: 1 } })
-    .toArray();
+  return unstable_cache(
+    async () => {
+      const pages = await pagesCollection()
+        .find({ published: true }, { projection: { _id: 0, id: 1, title: 1, path: 1, description: 1, blocks: 1 } })
+        .toArray();
 
-  const items = pages
-    .flatMap((page) => {
-      const pageResult = resultFor(
-        page,
-        "page",
-        valuesFrom({ title: page.title, path: page.path, description: page.description }, "page"),
-        query,
-      );
-      const blockResults = page.blocks
-        .map(hydratedBlock)
-        .flatMap((block) => resultFor(page, "block", valuesFrom(block.data, `blocks.${block.id}.data`), query, block))
-        .filter((result): result is SearchResult => Boolean(result));
-      return pageResult ? [pageResult, ...blockResults] : blockResults;
-    })
-    .sort((left, right) => {
-      const priority = resultPriority(left, query) - resultPriority(right, query);
-      return priority || left.pageTitle.localeCompare(right.pageTitle) || left.id.localeCompare(right.id);
-    });
+      const items = pages
+        .flatMap((page) => {
+          const pageResult = resultFor(
+            page,
+            "page",
+            valuesFrom({ title: page.title, path: page.path, description: page.description }, "page"),
+            query,
+          );
+          const blockResults = page.blocks
+            .map(hydratedBlock)
+            .flatMap((block) =>
+              resultFor(page, "block", valuesFrom(block.data, `blocks.${block.id}.data`), query, block),
+            )
+            .filter((result): result is SearchResult => Boolean(result));
+          return pageResult ? [pageResult, ...blockResults] : blockResults;
+        })
+        .sort((left, right) => {
+          const priority = resultPriority(left, query) - resultPriority(right, query);
+          return priority || left.pageTitle.localeCompare(right.pageTitle) || left.id.localeCompare(right.id);
+        });
 
-  return { items: typeof limit === "number" ? items.slice(0, limit) : items, query, total: items.length };
+      return { items: typeof limit === "number" ? items.slice(0, limit) : items, query, total: items.length };
+    },
+    ["public-page-search", query, String(limit ?? "all")],
+    { revalidate: 60, tags: ["public-page-search"] },
+  )();
 }
 
 export async function getPublishedSearchTarget({
@@ -143,11 +153,10 @@ export async function getPublishedSearchTarget({
   blockId?: string;
   scope: SearchScope;
 }) {
-  const page = await pagesCollection()
-    .findOne(
-      { id: pageId, published: true },
-      { projection: { _id: 0, id: 1, title: 1, path: 1, description: 1, blocks: 1 } },
-    );
+  const page = await pagesCollection().findOne(
+    { id: pageId, published: true },
+    { projection: { _id: 0, id: 1, title: 1, path: 1, description: 1, blocks: 1 } },
+  );
   if (!page) return null;
 
   const blocks = page.blocks.map(hydratedBlock);

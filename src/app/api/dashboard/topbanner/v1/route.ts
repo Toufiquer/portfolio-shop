@@ -6,7 +6,7 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { getTopBanner, removeTopBanner, updateTopBanner } from "@/lib/services/topbanner";
@@ -15,7 +15,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
 async function access(request: Request) {
-  const limited = rateLimit(request, "dashboard-topbanner-api", 30, 60_000);
+  const limited = await rateLimitDistributed(request, "dashboard-topbanner-api", 30, 60_000);
   if (limited) return { limited, session: null };
   return { limited: null, session: await auth.api.getSession({ headers: request.headers }) };
 }

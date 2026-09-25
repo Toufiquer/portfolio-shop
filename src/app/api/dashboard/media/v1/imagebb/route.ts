@@ -6,20 +6,22 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
+import { createMediaForApi, isValidImageBBDeleteUrl, serializeMedia } from "@/lib/services/media";
 
 const maxImageSize = 32 * 1024 * 1024;
 
 export async function POST(request: Request) {
-  const limited = rateLimit(request, "imagebb-upload");
+  const limited = await rateLimitDistributed(request, "imagebb-upload");
   if (limited) return limited;
 
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
   const authorization = await authorizeDashboardRequest(session, "/api/dashboard/media/v1/imagebb", "POST");
-  if (!authorization.allowed) return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
+  if (!authorization.allowed)
+    return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
 
   const apiKey = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
   if (!apiKey) return Response.json({ error: "ImageBB is not configured." }, { status: 503 });
@@ -42,21 +44,30 @@ export async function POST(request: Request) {
     error?: { message?: string };
     success?: boolean;
   } | null;
-  if (!response.ok || !result?.success || !result.data)
+  if (
+    !response.ok ||
+    !result?.success ||
+    !result.data ||
+    !result.data.delete_url ||
+    !isValidImageBBDeleteUrl(result.data.delete_url)
+  )
     return Response.json(
       { error: result?.error?.message ?? "ImageBB upload failed." },
-      { status: response.status || 502 },
+      { status: response.ok ? 502 : response.status },
     );
 
-  return Response.json(
+  const url = result.data.display_url ?? result.data.url;
+  if (!url) return Response.json({ error: "ImageBB upload failed." }, { status: 502 });
+  const created = await createMediaForApi(
     {
       name: file.name,
-      author: session.user.email,
-      url: result.data.display_url ?? result.data.url,
-      viewerUrl: result.data.url_viewer ?? null,
-      deleteUrl: result.data.delete_url ?? null,
+      url,
+      type: "picture",
       uploadPlane: "imageBB",
+      deleteUrl: result.data.delete_url,
     },
-    { status: 201 },
+    session.user.email,
   );
+  if (created.kind !== "created") return Response.json({ error: "ImageBB media could not be saved." }, { status: 500 });
+  return Response.json({ item: serializeMedia(created.item) }, { status: 201 });
 }

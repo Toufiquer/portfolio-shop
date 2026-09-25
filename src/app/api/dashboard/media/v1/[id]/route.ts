@@ -6,13 +6,13 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest, getDashboardAccessState } from "@/app/api/lib/dashboard-authorization";
 import { mediaIsAdministrator, removeMediaForApi, renameMediaForApi } from "@/lib/services/media";
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const limited = rateLimit(request, "media-api");
+  const limited = await rateLimitDistributed(request, "media-api");
   if (limited) return limited;
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
@@ -30,7 +30,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const limited = rateLimit(request, "media-api");
+  const limited = await rateLimitDistributed(request, "media-api");
   if (limited) return limited;
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });

@@ -6,13 +6,13 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { editTracking, removeTracking } from "@/lib/services/tracking";
 
 async function access(request: Request, method: "PATCH" | "DELETE") {
-  const limited = rateLimit(request, "dashboard-tracking-api", 30, 60_000);
+  const limited = await rateLimitDistributed(request, "dashboard-tracking-api", 30, 60_000);
   if (limited) return { error: limited };
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return { error: Response.json({ error: "Sign in required." }, { status: 401 }) };

@@ -16,7 +16,12 @@ import { randomUUID } from "crypto";
 
 import { type CustomerStatus } from "@/lib/dashboard/customers";
 import { type Order } from "@/lib/dashboard/orders";
-import { councilorsCollection, customerSpendsCollection, customersCollection, funnelsCollection } from "@/lib/models/customers";
+import {
+  councilorsCollection,
+  customerSpendsCollection,
+  customersCollection,
+  funnelsCollection,
+} from "@/lib/models/customers";
 import { ordersCollection } from "@/lib/models/orders";
 
 export type FunnelStage = { id: string; name: string };
@@ -68,31 +73,99 @@ export type CustomerFollowUpRecord = {
 export type SpendRecord = { id: string; funnelId: string; amount: number; createdAt: Date };
 const normalize = (v: unknown) => (typeof v === "string" ? v.trim().toLowerCase() : "");
 export const serialize = (v: Date | null) => v?.toISOString() ?? null;
-export function metricsFor(c: CustomerRecord) {
-  return ordersCollection()
-    .find({
-      status: { $nin: ["cancelled", "incomplete"] },
-      $or: [
-        { "customer.userId": c.id },
-        ...(c.email ? [{ "customer.email": normalize(c.email) }] : []),
-        ...(c.mobileNumber ? [{ "customer.phone": c.mobileNumber }] : []),
-      ],
-    })
-    .toArray()
-    .then((items) => {
-      const dates = items.map((x) => new Date(x.createdAt)).sort((a, b) => a.getTime() - b.getTime());
-      const first = dates[0] ?? null;
-      const last = dates.at(-1) ?? null;
-      const base = first ?? c.createdAt;
+export type CustomerMetrics = {
+  amountSpent: number;
+  purchaseCount: number;
+  firstOrderAt: string | null;
+  lastOrderAt: string | null;
+  haveWithUs: string;
+};
+
+type OrderMetricProjection = Pick<Order, "id" | "total" | "createdAt"> & {
+  customer: Pick<Order["customer"], "userId" | "email" | "phone">;
+};
+
+export async function metricsForMany(customers: CustomerRecord[]) {
+  const customerIds = customers.map((customer) => customer.id);
+  const emails = [...new Set(customers.map((customer) => normalize(customer.email)).filter(Boolean))];
+  const phones = [...new Set(customers.map((customer) => customer.mobileNumber).filter(Boolean))];
+  const selectors = [
+    ...(customerIds.length ? [{ "customer.userId": { $in: customerIds } }] : []),
+    ...(emails.length ? [{ "customer.email": { $in: emails } }] : []),
+    ...(phones.length ? [{ "customer.phone": { $in: phones } }] : []),
+  ];
+  const byId = new Map(customerIds.map((id) => [id, [] as OrderMetricProjection[]]));
+  if (!selectors.length) return new Map<string, CustomerMetrics>();
+  const customersByEmail = new Map<string, string[]>();
+  const customersByPhone = new Map<string, string[]>();
+  for (const customer of customers) {
+    const email = normalize(customer.email);
+    if (email) customersByEmail.set(email, [...(customersByEmail.get(email) ?? []), customer.id]);
+    if (customer.mobileNumber)
+      customersByPhone.set(customer.mobileNumber, [
+        ...(customersByPhone.get(customer.mobileNumber) ?? []),
+        customer.id,
+      ]);
+  }
+
+  const orders = await ordersCollection()
+    .find(
+      { status: { $nin: ["cancelled", "incomplete"] }, $or: selectors },
+      {
+        projection: {
+          _id: 0,
+          id: 1,
+          total: 1,
+          createdAt: 1,
+          "customer.userId": 1,
+          "customer.email": 1,
+          "customer.phone": 1,
+        },
+      },
+    )
+    .toArray();
+
+  for (const order of orders) {
+    const matches = new Set<string>();
+    const userId = order.customer?.userId;
+    const email = normalize(order.customer?.email);
+    const phone = order.customer?.phone;
+    if (userId && byId.has(userId)) matches.add(userId);
+    for (const id of customersByEmail.get(email) ?? []) matches.add(id);
+    for (const id of customersByPhone.get(phone) ?? []) matches.add(id);
+    for (const id of matches) byId.get(id)?.push(order);
+  }
+
+  return new Map(
+    customers.map((customer) => {
+      const matches = byId.get(customer.id) ?? [];
+      let first: Date | null = null;
+      let last: Date | null = null;
+      let amountSpent = 0;
+      for (const order of matches) {
+        const date = new Date(order.createdAt);
+        if (!first || date < first) first = date;
+        if (!last || date > last) last = date;
+        amountSpent += order.total;
+      }
+      const base = first ?? customer.createdAt;
       const days = Math.max(0, Math.floor((Date.now() - base.getTime()) / 86400000));
-      return {
-        amountSpent: items.reduce((s, x) => s + x.total, 0),
-        purchaseCount: items.length,
-        firstOrderAt: serialize(first),
-        lastOrderAt: serialize(last),
-        haveWithUs: `${Math.floor(days / 365)}y ${Math.floor((days % 365) / 30)}m ${days % 30}d`,
-      };
-    });
+      return [
+        customer.id,
+        {
+          amountSpent,
+          purchaseCount: matches.length,
+          firstOrderAt: serialize(first),
+          lastOrderAt: serialize(last),
+          haveWithUs: `${Math.floor(days / 365)}y ${Math.floor((days % 365) / 30)}m ${days % 30}d`,
+        },
+      ];
+    }),
+  );
+}
+
+export async function metricsFor(customer: CustomerRecord) {
+  return (await metricsForMany([customer])).get(customer.id)!;
 }
 export const customerCollection = customersCollection;
 export const funnelCollection = funnelsCollection;

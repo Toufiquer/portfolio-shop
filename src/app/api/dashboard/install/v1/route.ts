@@ -6,12 +6,12 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 
 export async function GET(request: Request) {
-  const limited = rateLimit(request, "dashboard-install-api", 30, 60_000);
+  const limited = await rateLimitDistributed(request, "dashboard-install-api", 30, 60_000);
   if (limited) return limited;
 
   const session = await auth.api.getSession({ headers: request.headers });

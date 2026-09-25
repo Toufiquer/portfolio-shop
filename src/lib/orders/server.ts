@@ -22,6 +22,7 @@ import {
 import { productsCollection } from "@/lib/models/catalog";
 import { couponsCollection } from "@/lib/models/coupons";
 import { checkoutLocksCollection, ordersCollection, orderSettingsCollection } from "@/lib/models/orders";
+import { invalidatePublicProductCatalogCache } from "@/lib/products/server";
 
 type SessionUser = {
   id?: string;
@@ -204,17 +205,19 @@ async function createOrderUnchecked(
     updatedAt: now,
     statusUpdatedAt: now,
   };
+  let savedOrder: Order | null = null;
   try {
     for (let attempt = 0; attempt < 10; attempt++) {
-      const savedOrder: Order = { ...order, id: createOrderId() };
+      const candidate: Order = { ...order, id: createOrderId() };
       try {
-        await orders().insertOne(savedOrder);
-        return { ok: true, order: savedOrder };
+        await orders().insertOne(candidate);
+        savedOrder = candidate;
+        break;
       } catch (error) {
         if ((error as { code?: number }).code !== 11000) throw error;
       }
     }
-    throw new Error("Could not generate a unique order ID.");
+    if (!savedOrder) throw new Error("Could not generate a unique order ID.");
   } catch (error) {
     await Promise.all(
       decremented.map(({ productId, quantity }) =>
@@ -223,6 +226,8 @@ async function createOrderUnchecked(
     );
     throw error;
   }
+  invalidatePublicProductCatalogCache();
+  return { ok: true, order: savedOrder };
 }
 
 export async function createOrder(

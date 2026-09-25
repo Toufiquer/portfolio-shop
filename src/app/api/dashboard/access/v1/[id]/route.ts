@@ -6,13 +6,13 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { deleteAccess, updateAccess } from "@/lib/services/access";
 
 async function access(request: Request) {
-  const limited = rateLimit(request, "access-api");
+  const limited = await rateLimitDistributed(request, "access-api");
   if (limited) return { limited };
   return { limited: null, session: await auth.api.getSession({ headers: request.headers }) };
 }

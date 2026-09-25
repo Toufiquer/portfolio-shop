@@ -12,13 +12,13 @@ import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth, client } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { normalizePagePath, pageCacheTag } from "@/lib/pages/server";
-import { productCatalogCacheTag, productCategoryCacheTag } from "@/lib/products/server";
+import { invalidatePublicProductCatalogCache, invalidatePublicProductCategoryCache } from "@/lib/products/server";
 
 function refreshPublicCatalog() {
   revalidatePath("/products");
   revalidatePath("/products/[slug]", "page");
-  revalidateTag(productCatalogCacheTag, "max");
-  revalidateTag(productCategoryCacheTag, "max");
+  invalidatePublicProductCatalogCache();
+  invalidatePublicProductCategoryCache();
 }
 export async function POST(request: Request) {
   const limited = await rateLimitDistributed(request, "dashboard-pages-revalidate", 10, 60_000);
@@ -40,6 +40,7 @@ export async function POST(request: Request) {
     revalidatePath(path);
     revalidateTag(pageCacheTag(path), "max");
     revalidateTag("site-pages", "max");
+    revalidateTag("public-page-search", { expire: 0 });
     refreshPublicCatalog();
     return Response.json({ count: 1, path });
   }
@@ -54,6 +55,7 @@ export async function POST(request: Request) {
   });
   revalidatePath("/", "page");
   revalidateTag("site-pages", "max");
+  revalidateTag("public-page-search", { expire: 0 });
   refreshPublicCatalog();
   return Response.json({ count: items.length });
 }

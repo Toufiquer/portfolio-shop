@@ -7,8 +7,24 @@ import "server-only";
 
 import type { ProductInput } from "@/lib/dashboard/catalog";
 import { deleteProduct, deleteProducts, updateProduct, updateProductsStatus } from "@/lib/models/catalog";
-export const updateProductForApi = (id: string, data: ProductInput) => updateProduct(id, data);
-export const removeProduct = async (id: string) => (await deleteProduct(id)).deletedCount > 0;
-export const removeProducts = async (ids: string[]) => (await deleteProducts(ids)).deletedCount;
-export const updateProductStatuses = async (ids: string[], status: import("@/lib/dashboard/catalog").ProductStatus) =>
-  (await updateProductsStatus(ids, status)).modifiedCount;
+import { invalidatePublicProductCatalogCache } from "@/lib/products/server";
+export async function updateProductForApi(id: string, data: ProductInput) {
+  const item = await updateProduct(id, data);
+  if (item) invalidatePublicProductCatalogCache();
+  return item;
+}
+export async function removeProduct(id: string) {
+  const deleted = (await deleteProduct(id)).deletedCount > 0;
+  if (deleted) invalidatePublicProductCatalogCache();
+  return deleted;
+}
+export async function removeProducts(ids: string[]) {
+  const deletedCount = (await deleteProducts(ids)).deletedCount;
+  if (deletedCount) invalidatePublicProductCatalogCache();
+  return deletedCount;
+}
+export async function updateProductStatuses(ids: string[], status: import("@/lib/dashboard/catalog").ProductStatus) {
+  const updatedCount = (await updateProductsStatus(ids, status)).modifiedCount;
+  if (updatedCount) invalidatePublicProductCatalogCache();
+  return updatedCount;
+}

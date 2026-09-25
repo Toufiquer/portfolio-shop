@@ -8,13 +8,15 @@
 
 import "server-only";
 
-import { unstable_cache } from "next/cache";
+import { revalidateTag, unstable_cache } from "next/cache";
 
-import type { Category, Product } from "@/lib/dashboard/catalog";
+import type { Product } from "@/lib/dashboard/catalog";
 import { categoriesCollection, productsCollection } from "@/lib/models/catalog";
 
 export const productCatalogCacheTag = "public-product-catalog";
 export const productCategoryCacheTag = "public-product-categories";
+export const invalidatePublicProductCatalogCache = () => revalidateTag(productCatalogCacheTag, { expire: 0 });
+export const invalidatePublicProductCategoryCache = () => revalidateTag(productCategoryCacheTag, { expire: 0 });
 
 const products = productsCollection;
 const categories = categoriesCollection;
@@ -34,29 +36,48 @@ export const getPublicCategories = activeCategories;
 
 export type PublicProductView = "all" | "newest" | "deals";
 
-export async function getPublicProducts(categorySlug?: string, view: PublicProductView = "all") {
+const publicProductPageSize = 24;
+
+export async function getPublicProducts(categorySlug?: string, view: PublicProductView = "all", requestedPage = 1) {
   const category = categorySlug
     ? (await activeCategories()).find((item) => item.slug === categorySlug.toLowerCase())
     : undefined;
-  if (categorySlug && !category) return { category: null, items: [] as Product[] };
+  if (categorySlug && !category)
+    return {
+      category: null,
+      items: [] as Product[],
+      total: 0,
+      page: 1,
+      pageSize: publicProductPageSize,
+      totalPages: 1,
+    };
   const categoryId = category?.id ?? "all";
-  const items = await unstable_cache(
-    () =>
-      products()
-        .find(
-          {
-            status: "active",
-            ...(category ? { categories: category.id } : {}),
-            ...(view === "deals" ? { discount: { $gt: 0 } } : {}),
-          },
-          { projection: { _id: 0 } },
-        )
-        .sort(view === "newest" ? { createdAt: -1, name: 1 } : { isFeatured: -1, updatedAt: -1, name: 1 })
-        .toArray(),
-    ["public-products", categoryId, view],
+  const filter = {
+    status: "active" as const,
+    ...(category ? { categories: category.id } : {}),
+    ...(view === "deals" ? { discount: { $gt: 0 } } : {}),
+  };
+  const safeRequestedPage = Number.isInteger(requestedPage) ? Math.max(1, requestedPage) : 1;
+  const total = await unstable_cache(
+    () => products().countDocuments(filter),
+    ["public-product-count", categoryId, view],
     { revalidate: false, tags: [productCatalogCacheTag, productCategoryCacheTag] },
   )();
-  return { category: category ?? null, items };
+  const totalPages = Math.max(1, Math.ceil(total / publicProductPageSize));
+  const page = Math.min(safeRequestedPage, totalPages);
+  return unstable_cache(
+    async () => {
+      const items = await products()
+        .find(filter, { projection: { _id: 0 } })
+        .sort(view === "newest" ? { createdAt: -1, name: 1 } : { isFeatured: -1, updatedAt: -1, name: 1 })
+        .skip((page - 1) * publicProductPageSize)
+        .limit(publicProductPageSize)
+        .toArray();
+      return { category: category ?? null, items, total, page, pageSize: publicProductPageSize, totalPages };
+    },
+    ["public-products", categoryId, view, String(page)],
+    { revalidate: false, tags: [productCatalogCacheTag, productCategoryCacheTag] },
+  )();
 }
 
 export function getPublicProduct(slug: string) {

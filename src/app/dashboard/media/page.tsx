@@ -471,7 +471,14 @@ export default function MediaPage() {
           </div>
         )}
       </section>
-      {uploadOpen && <MediaModal close={() => setUploadOpen(false)} create={create} toast={setToast} />}
+      {uploadOpen && (
+        <MediaModal
+          close={() => setUploadOpen(false)}
+          create={create}
+          refresh={() => void refetch()}
+          toast={setToast}
+        />
+      )}
       {viewing && <ViewModal item={viewing} close={() => setViewing(null)} />}
       {editing && <EditModal item={editing} close={() => setEditing(null)} save={saveEdit} />}
     </main>
@@ -651,10 +658,12 @@ function PageLoader({ label }: { label: string }) {
 function MediaModal({
   close,
   create,
+  refresh,
   toast,
 }: {
   close: () => void;
   create: ReturnType<typeof useCreateMediaMutation>[0];
+  refresh: () => void;
   toast: (message: string) => void;
 }) {
   const imageInput = useRef<HTMLInputElement>(null);
@@ -673,13 +682,7 @@ function MediaModal({
       const response = await fetch("/api/dashboard/media/v1/imagebb", { method: "POST", body: form });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error);
-      await create({
-        name: result.name,
-        url: result.url,
-        type: "picture",
-        uploadPlane: "imageBB",
-        deleteUrl: result.deleteUrl ?? undefined,
-      }).unwrap();
+      refresh();
       toast("Image uploaded successfully.");
       close();
     } catch (uploadError) {

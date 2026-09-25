@@ -21,6 +21,7 @@ import {
   parseProductInput,
   productStatuses,
 } from "@/lib/dashboard/catalog";
+import { invalidatePublicProductCatalogCache } from "@/lib/products/server";
 
 const products = () => client.db().collection<Product>("products");
 const categories = () => client.db().collection<Category>("categories");
@@ -145,6 +146,7 @@ export async function POST(request: Request) {
     if (message) return Response.json({ error: message }, { status: 409 });
     throw error;
   }
+  invalidatePublicProductCatalogCache();
   return Response.json({ item: serializeProduct(item) }, { status: 201 });
 }
 

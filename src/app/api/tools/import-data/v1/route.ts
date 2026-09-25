@@ -6,14 +6,14 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest, canAccessMaintenanceTools } from "@/app/api/lib/dashboard-authorization";
 
 import { importDefaultData } from "./service";
 
 export async function POST(request: Request) {
-  const limited = rateLimit(request, "import-sidebar-api", 10, 60_000);
+  const limited = await rateLimitDistributed(request, "import-sidebar-api", 10, 60_000);
   if (limited) return limited;
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });

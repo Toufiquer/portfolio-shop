@@ -24,6 +24,7 @@ import {
   deleteCategories,
   updateCategoriesStatus,
 } from "@/lib/models/catalog";
+import { invalidatePublicProductCategoryCache } from "@/lib/products/server";
 
 export const serializeCategory = (item: Category) => ({
   ...item,
@@ -62,30 +63,39 @@ export async function createCategoryForApi(data: CategoryInput) {
   try {
     await ensureCategoryIndexes();
     await createCategory(item);
-    return { kind: "created" as const, item };
   } catch (error) {
     if (error instanceof MongoServerError && error.code === 11000) return { kind: "duplicate" as const };
     throw error;
   }
+  invalidatePublicProductCategoryCache();
+  return { kind: "created" as const, item };
 }
 export async function updateCategoryForApi(id: string, data: CategoryInput) {
+  let item: Category | null;
   try {
     await ensureCategoryIndexes();
-    const item = await updateCategory(id, data);
-    return item ? { kind: "updated" as const, item } : { kind: "not-found" as const };
+    item = await updateCategory(id, data);
   } catch (error) {
     if (error instanceof MongoServerError && error.code === 11000) return { kind: "duplicate" as const };
     throw error;
   }
+  if (item) invalidatePublicProductCategoryCache();
+  return item ? { kind: "updated" as const, item } : { kind: "not-found" as const };
 }
 export async function removeCategoryForApi(id: string) {
   if (await categoryHasProducts(id)) return { kind: "referenced" as const };
-  return (await deleteCategory(id)).deletedCount ? { kind: "deleted" as const } : { kind: "not-found" as const };
+  const deleted = (await deleteCategory(id)).deletedCount > 0;
+  if (deleted) invalidatePublicProductCategoryCache();
+  return deleted ? { kind: "deleted" as const } : { kind: "not-found" as const };
 }
 export async function removeCategoriesForApi(ids: string[]) {
   if (await categoriesHaveProducts(ids)) return { kind: "referenced" as const };
-  return { kind: "deleted" as const, deletedCount: (await deleteCategories(ids)).deletedCount };
+  const deletedCount = (await deleteCategories(ids)).deletedCount;
+  if (deletedCount) invalidatePublicProductCategoryCache();
+  return { kind: "deleted" as const, deletedCount };
 }
 export async function updateCategoriesStatusForApi(ids: string[], status: Category["status"]) {
-  return (await updateCategoriesStatus(ids, status)).modifiedCount;
+  const updatedCount = (await updateCategoriesStatus(ids, status)).modifiedCount;
+  if (updatedCount) invalidatePublicProductCategoryCache();
+  return updatedCount;
 }

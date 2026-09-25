@@ -6,7 +6,7 @@
 |-----------------------------------------
 */
 
-import { rateLimit } from "@/app/api/lib/api-rate-limit";
+import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest, getDashboardAccessState } from "@/app/api/lib/dashboard-authorization";
 import { downloadMediaForApi, mediaIsAdministrator, type Media } from "@/lib/services/media";
@@ -23,7 +23,7 @@ const mimeTypeFor = (type: Media["type"]) =>
 const safeFileName = (name: string) => name.replace(/[\\/:*?"<>|\r\n]+/g, "_").trim() || "media";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const limited = rateLimit(request, "media-download-api");
+  const limited = await rateLimitDistributed(request, "media-download-api");
   if (limited) return limited;
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });

@@ -55,9 +55,11 @@ export async function incrementCounter(key: string, ttlSeconds: number) {
   try {
     const client = await getClient();
     if (!client) return null;
-    const count = await client.incr(key);
-    if (count === 1) await client.expire(key, ttlSeconds);
-    return count;
+    const count = await client.eval(
+      "local count = redis.call('INCR', KEYS[1]); if count == 1 or redis.call('TTL', KEYS[1]) < 0 then redis.call('EXPIRE', KEYS[1], ARGV[1]); end; return count",
+      { keys: [key], arguments: [String(Math.max(1, Math.ceil(ttlSeconds)))] },
+    );
+    return typeof count === "number" ? count : Number(count);
   } catch {
     return null;
   }
