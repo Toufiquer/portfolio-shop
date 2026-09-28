@@ -7,6 +7,7 @@
 
 "use client";
 
+import Link from "next/link";
 import {
   ChevronDown,
   ChevronUp,
@@ -15,10 +16,12 @@ import {
   Eye,
   FileUp,
   Loader2,
+  Menu as MenuIcon,
   Plus,
   Search,
   Trash2,
   Users,
+  X,
 } from "lucide-react";
 import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
 import * as XLSX from "xlsx";
@@ -76,6 +79,13 @@ const sectionHeadings: Record<BusinessGrowthSection, { title: string; descriptio
   councillor: { title: "Councillor Management", description: "Manage councillor assignments and customer support." },
   task: { title: "Customer Tasks", description: "Review assigned customers and record follow-up work." },
 };
+const sectionTabs: { section: BusinessGrowthSection; label: string; href: string }[] = [
+  { section: "overview", label: "Overview", href: "/dashboard/business-growth/overview" },
+  { section: "funnels", label: "Funnels", href: "/dashboard/business-growth/funnels" },
+  { section: "customer", label: "Customers", href: "/dashboard/business-growth/customer" },
+  { section: "councillor", label: "Councillors", href: "/dashboard/business-growth/councillor" },
+  { section: "task", label: "Tasks", href: "/dashboard/business-growth/task" },
+];
 const pageSizes = [10, 25, 50, 100] as const;
 const demoFunnels = [
   ["Follower", "", 0, 0, "#0ea5e9"],
@@ -111,6 +121,7 @@ export default function BusinessGrowthHomePage() {
 export function BusinessGrowthPage({ section = "overview" }: { section?: BusinessGrowthSection }) {
   const tab: Tab = section === "customer" ? "customers" : section === "councillor" ? "admin" : section;
   const heading = sectionHeadings[section];
+  const [mobileTabsOpen, setMobileTabsOpen] = useState(false);
   const [search, setSearch] = useState(""),
     [status, setStatus] = useState<CustomerStatus>(),
     [funnelFilter, setFunnelFilter] = useState(""),
@@ -505,6 +516,70 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
   return (
     <main className="min-h-[calc(100vh-65px)] flex-1 bg-[#fffaf0] px-4 py-6 sm:px-6 lg:px-10">
       <section className="mx-auto max-w-7xl rounded-sm border border-[#eadfca] bg-white p-4 shadow-sm sm:p-6">
+        <nav aria-label="Business Growth sections" className="mb-5">
+          <div className="md:hidden">
+            <button
+              aria-controls="business-growth-mobile-tabs"
+              aria-expanded={mobileTabsOpen}
+              aria-label={`${mobileTabsOpen ? "Close" : "Open"} Business Growth sections`}
+              className="flex min-h-12 w-full items-center justify-between gap-3 rounded-sm border border-amber-200 bg-amber-50 px-4 py-2 text-left text-stone-800"
+              onClick={() => setMobileTabsOpen((open) => !open)}
+              type="button"
+            >
+              <span className="min-w-0">
+                <span className="block text-xs font-medium uppercase tracking-wide text-stone-500">Business Growth</span>
+                <span className="block truncate text-sm font-semibold">
+                  {sectionTabs.find((item) => item.section === section)?.label}
+                </span>
+              </span>
+              {mobileTabsOpen ? (
+                <X aria-hidden="true" className="h-5 w-5 shrink-0" />
+              ) : (
+                <MenuIcon aria-hidden="true" className="h-5 w-5 shrink-0" />
+              )}
+            </button>
+            <div
+              className={`${mobileTabsOpen ? "grid" : "hidden"} mt-2 gap-1 rounded-sm border border-amber-200 bg-white p-2`}
+              id="business-growth-mobile-tabs"
+            >
+              {sectionTabs.map((item) => {
+                const isActive = item.section === section;
+                return (
+                  <Link
+                    aria-current={isActive ? "page" : undefined}
+                    className={`flex min-h-11 items-center rounded-sm px-3 text-sm font-medium transition-colors ${
+                      isActive ? "bg-amber-100 text-amber-950" : "text-stone-700 hover:bg-stone-50"
+                    }`}
+                    href={item.href}
+                    key={item.section}
+                    onClick={() => setMobileTabsOpen(false)}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+          <div className="hidden overflow-x-auto rounded-sm border border-amber-200 bg-amber-50 p-1 md:block">
+            <div className="flex min-w-max gap-1">
+              {sectionTabs.map((item) => {
+                const isActive = item.section === section;
+                return (
+                  <Link
+                    aria-current={isActive ? "page" : undefined}
+                    className={`flex min-h-10 items-center justify-center rounded-sm px-4 text-sm font-medium transition-colors ${
+                      isActive ? "bg-white text-amber-950 shadow-sm" : "text-stone-700 hover:bg-white/70"
+                    }`}
+                    href={item.href}
+                    key={item.section}
+                  >
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </nav>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-3">
