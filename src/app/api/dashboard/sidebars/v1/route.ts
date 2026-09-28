@@ -23,7 +23,8 @@ export async function GET(request: Request) {
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
   const authorization = await getDashboardAccessState(session);
   if (authorization.blocked) return Response.json({ error: authorization.message ?? "Unauthorized." }, { status: 403 });
-  return Response.json(await listSidebars(authorization.allowedSidebarIds, authorization.bypassed));
+  const sidebars = await listSidebars(authorization.allowedSidebarIds, authorization.bypassed);
+  return Response.json({ ...sidebars, roleName: authorization.roleName });
 }
 
 export async function POST(request: Request) {

@@ -9,7 +9,7 @@
 import { apiSlice } from "@/redux/api/apiSlice";
 import { type SidebarItem } from "@/redux/features/dashboard/types";
 
-type SidebarResponse = { items: SidebarItem[] };
+type SidebarResponse = { items: SidebarItem[]; roleName: string | null };
 
 export const sidebarsApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
