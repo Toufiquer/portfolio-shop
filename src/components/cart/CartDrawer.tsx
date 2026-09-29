@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { authClient } from "@/app/api/lib/auth-client";
 import { Icon } from "@/components/all-icons/all-icons";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,7 @@ import {
 } from "@/lib/order-history";
 
 export function CartDrawer() {
+  const { data: session, isPending: sessionPending } = authClient.useSession();
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const closeTimer = useRef<number | null>(null);
@@ -146,12 +148,14 @@ export function CartDrawer() {
   const phoneValidation = validatePhoneNumber(phone);
   const checkoutDisabled =
     checkoutStatus === "processing" ||
+    sessionPending ||
     creatingIncompleteOrder ||
     countdownSeconds > 0 ||
     !items.length ||
     !phoneValidation.isValid;
 
   const createIncompleteOrder = async (phoneNumber = phone): Promise<string | null> => {
+    if (!session) return null;
     if (incompleteOrderId) return incompleteOrderId;
     const validation = validatePhoneNumber(phoneNumber);
     if (!validation.isValid || !items.length || creatingIncompleteOrder) return null;
@@ -204,6 +208,43 @@ export function CartDrawer() {
     setConfirmedOrderId(null);
     setMessage("");
     try {
+      if (!session) {
+        const response = await fetch("/api/orders/v1", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+            customer: { phone: phone.trim(), address: address.trim() },
+            couponCode: couponCode.trim(),
+          }),
+        });
+        const payload = (await response.json().catch(() => null)) as {
+          ok?: boolean;
+          code?: string;
+          error?: string;
+          cooldownExpiresAt?: string;
+          order?: LocalOrderHistoryItem;
+          trackingToken?: string;
+        } | null;
+        if (!response.ok || !payload?.ok || !payload.order?.id || !payload.trackingToken) {
+          if (payload?.code === "ORDER_LIMITED" && payload.cooldownExpiresAt)
+            setCooldownExpiresAt(payload.cooldownExpiresAt);
+          setCheckoutStatus("error");
+          setMessage(payload?.error ?? "Could not place your order. Please try again.");
+          return;
+        }
+        saveOrderToHistory({ ...payload.order, trackingToken: payload.trackingToken });
+        clearCart();
+        setIncompleteOrderId(null);
+        setPhone("");
+        setPhoneTouched(false);
+        setAddress("");
+        setCouponCode("");
+        setConfirmedOrderId(payload.order.id);
+        setCheckoutStatus("success");
+        setMessage(`Order ${payload.order.id} was placed successfully.`);
+        return;
+      }
       const orderId = incompleteOrderId ?? (await createIncompleteOrder());
       if (!orderId) return;
       const response = await fetch("/api/orders/v1", {
@@ -482,7 +523,7 @@ export function CartDrawer() {
                     const nextPhone = event.target.value;
                     setPhone(nextPhone);
                     if (!phoneTouched) setPhoneTouched(true);
-                    if (validatePhoneNumber(nextPhone).isValid) void createIncompleteOrder(nextPhone);
+                    if (session && validatePhoneNumber(nextPhone).isValid) void createIncompleteOrder(nextPhone);
                   }}
                   placeholder="Phone number (required: 01... or +880...)"
                   required
@@ -507,6 +548,15 @@ export function CartDrawer() {
                 placeholder="Coupon code (optional)"
                 value={couponCode}
               />
+              {!session && !sessionPending ? (
+                <p className="text-xs leading-5 text-stone-500">
+                  No account is needed to order. You can also{" "}
+                  <Link className="font-semibold text-amber-800 underline" href="/registration">
+                    create an account (optional)
+                  </Link>
+                  .
+                </p>
+              ) : null}
             </div>
             {countdownSeconds > 0 ? (
               <p className="mt-3 text-center text-sm font-semibold text-red-700">

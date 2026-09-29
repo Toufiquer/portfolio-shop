@@ -19,6 +19,7 @@ export type LocalOrderHistoryItem = {
   itemCount: number;
   createdAt: string;
   updatedAt: string;
+  trackingToken?: string;
 };
 
 function isOrderHistoryItem(value: unknown): value is LocalOrderHistoryItem {
@@ -30,7 +31,8 @@ function isOrderHistoryItem(value: unknown): value is LocalOrderHistoryItem {
     typeof item.total === "number" &&
     typeof item.itemCount === "number" &&
     typeof item.createdAt === "string" &&
-    typeof item.updatedAt === "string"
+    typeof item.updatedAt === "string" &&
+    (item.trackingToken === undefined || typeof item.trackingToken === "string")
   );
 }
 
@@ -45,9 +47,19 @@ export function readOrderHistory(): LocalOrderHistoryItem[] {
 }
 
 export function saveOrderToHistory(order: LocalOrderHistoryItem) {
-  const history = [order, ...readOrderHistory().filter((item) => item.id !== order.id)].slice(0, 50);
+  const currentHistory = readOrderHistory();
+  const previousOrder = currentHistory.find((item) => item.id === order.id);
+  const savedOrder =
+    order.trackingToken || !previousOrder?.trackingToken
+      ? order
+      : { ...order, trackingToken: previousOrder.trackingToken };
+  const history = [savedOrder, ...currentHistory.filter((item) => item.id !== order.id)].slice(0, 50);
   window.localStorage.setItem(ORDER_HISTORY_STORAGE_KEY, JSON.stringify(history));
   window.dispatchEvent(new Event(ORDER_HISTORY_UPDATED_EVENT));
+}
+
+export function readOrderTrackingToken(orderId: string) {
+  return readOrderHistory().find((item) => item.id === orderId)?.trackingToken ?? null;
 }
 
 export function removeOrderFromHistory(orderId: string) {

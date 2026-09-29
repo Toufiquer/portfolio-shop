@@ -17,11 +17,11 @@ async function access(request: Request, method: "GET" | "POST" | "DELETE") {
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session && method === "GET") return { session: null };
   if (!session) return { error: Response.json({ error: "Sign in required." }, { status: 401 }), session: null };
-  // Every menu read is authenticated and rate-limited. Editing remains guarded
-  // by the assigned dashboard role below, but a signed-in editor can safely
-  // reload an existing menu without an outdated sidebar permission blocking it.
-  if (method === "GET") return { session };
-  const authorization = await authorizeDashboardRequest(session, "/dashboard/admin/menu", method);
+  const authorization = await authorizeDashboardRequest(
+    session,
+    method === "GET" ? "/api/dashboard/menu/v1" : "/dashboard/admin/menu",
+    method,
+  );
   if (!authorization.allowed)
     return {
       error: Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 }),

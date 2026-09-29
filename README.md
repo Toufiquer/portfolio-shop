@@ -21,11 +21,17 @@ NexaMart is a Next.js 16 PWA and dashboard platform using Better Auth, MongoDB, 
 
 ### API protections
 
-- Dashboard writes have a same-origin check to prevent cross-site cookie attacks.
-- Dashboard APIs and public abuse-prone endpoints are rate-limited. With Redis configured, limits are shared across Vercel function instances; the in-memory fallback is only for local development.
+- Dashboard and order API writes check the canonical origin to prevent cross-site cookie attacks. JSON APIs require JSON content type; ImageBB uploads require multipart form data.
+- Dashboard APIs and public abuse-prone endpoints are rate-limited. Direct Vercel uses its forwarded client-IP header. Other deployments must set `TRUSTED_CLIENT_IP_HEADER` only when trusted ingress overwrites it with one client IP; production requests fail closed if that identity is missing or invalid. With Redis configured, counters are shared across instances; the in-memory fallback is only for local development.
 - Public form submissions must reference a published page and an existing form block. Field count, names, and value size are bounded before storage.
 - Uploaded media requires both authentication and Media permission.
 - Responses use `nosniff`, frame denial, strict referrer policy, HTTPS transport protection, and a restrictive browser Permissions Policy.
+
+### Content Security Policy rollout
+
+- Production responses currently send the app-compatible policy as `Content-Security-Policy-Report-Only`. It allows the app's self-hosted Next.js assets, inline styles, configured image/media hosts, YouTube and Google Maps frames, and UploadThing connections.
+- `script-src` intentionally omits nonces and inline-script allowances during this report phase. Review CSP console violations on representative static pages, dashboard editors, auth flows, uploads, maps, and video embeds before deciding how to enforce the script policy.
+- No browser violation review or enforcement promotion was performed in this change. Keep the policy report-only until that review is complete; adding per-request nonces would affect static rendering and CDN caching.
 
 Never set `AuthorizationEnable=false` in production. It disables the role gate and is only for local role setup.
 

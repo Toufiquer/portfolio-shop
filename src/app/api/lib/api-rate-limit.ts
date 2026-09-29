@@ -15,16 +15,17 @@ const buckets = new Map<string, Bucket>();
 const maxInMemoryBuckets = 10_000;
 
 function trustedClientIpHeader() {
+  if (process.env.VERCEL === "1") return "x-vercel-forwarded-for";
   const configured = process.env.TRUSTED_CLIENT_IP_HEADER?.trim().toLowerCase();
-  if (configured) return configured;
-  return process.env.VERCEL === "1" ? "x-vercel-forwarded-for" : null;
+  return configured && /^[a-z0-9-]+$/.test(configured) ? configured : null;
 }
 
 function clientIdentity(request: Request) {
   const header = trustedClientIpHeader();
-  if (!header) return "unknown";
-  const value = request.headers.get(header)?.split(",")[0]?.trim();
-  return value && isIP(value) ? value.toLowerCase() : "unknown";
+  if (!header) return process.env.NODE_ENV === "production" ? null : "local-development";
+  const rawValue = request.headers.get(header);
+  const value = process.env.VERCEL === "1" ? rawValue?.split(",")[0]?.trim() : rawValue?.trim();
+  return value && isIP(value) ? value.toLowerCase() : null;
 }
 
 function identityKey(identity: string) {
@@ -38,6 +39,13 @@ function tooManyRequests(retryAfter: number) {
       status: 429,
       headers: { "Cache-Control": "no-store", "Retry-After": String(Math.max(1, retryAfter)) },
     },
+  );
+}
+
+function rateLimitIdentityUnavailable() {
+  return Response.json(
+    { error: "Rate limiting is unavailable because a trusted client IP could not be identified." },
+    { status: 503, headers: { "Cache-Control": "no-store" } },
   );
 }
 
@@ -66,7 +74,8 @@ function rateLimitIdentity(scope: string, identity: string, limit: number, windo
 
 /** Local fallback used when Redis is not configured or reachable. */
 export function rateLimit(request: Request, scope: string, limit = 60, windowMs = 60_000) {
-  return rateLimitIdentity(scope, clientIdentity(request), limit, windowMs);
+  const identity = clientIdentity(request);
+  return identity ? rateLimitIdentity(scope, identity, limit, windowMs) : rateLimitIdentityUnavailable();
 }
 
 /**
@@ -74,12 +83,17 @@ export function rateLimit(request: Request, scope: string, limit = 60, windowMs 
  * fallback. The supplied identity must already be normalized if it is not an IP.
  */
 export async function rateLimitDistributedIdentity(scope: string, identity: string, limit = 60, windowMs = 60_000) {
+  const normalizedIdentity = identity.trim();
+  if (!normalizedIdentity || normalizedIdentity.toLowerCase() === "unknown") return rateLimitIdentityUnavailable();
+
   const ttlSeconds = Math.max(1, Math.ceil(windowMs / 1000));
-  const count = await incrementCounter(`webapps:rate-limit:${scope}:${identityKey(identity)}`, ttlSeconds);
-  if (count === null) return rateLimitIdentity(scope, identity, limit, windowMs);
+  const count = await incrementCounter(`webapps:rate-limit:${scope}:${identityKey(normalizedIdentity)}`, ttlSeconds);
+  if (count === null) return rateLimitIdentity(scope, normalizedIdentity, limit, windowMs);
   return count > limit ? tooManyRequests(ttlSeconds) : null;
 }
 
 export async function rateLimitDistributed(request: Request, scope: string, limit = 60, windowMs = 60_000) {
-  return rateLimitDistributedIdentity(scope, clientIdentity(request), limit, windowMs);
+  const identity = clientIdentity(request);
+  if (!identity) return rateLimitIdentityUnavailable();
+  return rateLimitDistributedIdentity(scope, identity, limit, windowMs);
 }

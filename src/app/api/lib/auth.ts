@@ -12,6 +12,7 @@ import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "better-auth/adapters/mongodb";
 import nodemailer from "nodemailer";
 
+import { getCanonicalAppUrl } from "@/app/api/lib/canonical-app-url";
 import { invalidateDashboardCache, redisKeys } from "@/app/api/lib/redis";
 import { mongoClient } from "@/lib/db";
 import { accessesCollection, rolesCollection } from "@/lib/models/auth";
@@ -21,6 +22,7 @@ import { accessesCollection, rolesCollection } from "@/lib/models/auth";
 export const client = mongoClient;
 
 export const auth = betterAuth({
+  baseURL: getCanonicalAppUrl().origin,
   basePath: "/api/auth/v1",
   trustedOrigins: (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? process.env.BETTER_AUTH_URL ?? "")
     .split(",")

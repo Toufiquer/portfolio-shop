@@ -6,7 +6,7 @@
 |-----------------------------------------
 */
 
-import { randomInt, randomUUID } from "crypto";
+import { createHash, randomBytes, randomInt, randomUUID } from "crypto";
 
 import { type Product } from "@/lib/dashboard/catalog";
 import { couponDiscount, type Coupon } from "@/lib/dashboard/coupons";
@@ -126,6 +126,7 @@ async function createOrderUnchecked(
   customer: OrderCustomer,
   input: ParsedCheckout,
   initialStatus: Extract<OrderStatus, "incomplete" | "placed">,
+  guestAccessTokenHash?: string,
 ): Promise<CreateOrderResult> {
   await orders().createIndex({ id: 1 }, { name: "unique_order_id", unique: true });
   const loaded = await Promise.all(
@@ -193,6 +194,7 @@ async function createOrderUnchecked(
   const now = new Date();
   const order: Omit<Order, "id"> = {
     customer,
+    ...(guestAccessTokenHash ? { guestAccessTokenHash } : {}),
     items: snapshots,
     itemCount: snapshots.reduce((sum, item) => sum + item.quantity, 0),
     subtotal,
@@ -230,17 +232,28 @@ async function createOrderUnchecked(
   return { ok: true, order: savedOrder };
 }
 
-export async function createOrder(
-  sessionUser: SessionUser,
-  input: ParsedCheckout,
-  initialStatus: Extract<OrderStatus, "incomplete" | "placed"> = "placed",
-): Promise<CreateOrderResult> {
-  const customer = customerFrom(sessionUser, input.customer);
-  if (!customer) return { ok: false, status: 401, code: "AUTH_REQUIRED", error: "Sign in required." };
-  const settings = await getOrderSettings();
-  if (!settings.orderLimitEnabled) return createOrderUnchecked(customer, input, initialStatus);
+function hashValue(value: string) {
+  return createHash("sha256").update(value).digest("hex");
+}
 
-  const token = await acquireCheckoutLock(customer.userId);
+export function hashGuestOrderAccessToken(token: string) {
+  return hashValue(token);
+}
+
+async function createOrderWithLimit(
+  customer: OrderCustomer,
+  input: ParsedCheckout,
+  initialStatus: Extract<OrderStatus, "incomplete" | "placed">,
+  guestAccessTokenHash?: string,
+): Promise<CreateOrderResult> {
+  const settings = await getOrderSettings();
+  if (!settings.orderLimitEnabled) return createOrderUnchecked(customer, input, initialStatus, guestAccessTokenHash);
+
+  const identityFilter = customer.userId
+    ? { "customer.userId": customer.userId }
+    : { "customer.phone": customer.phone };
+  const lockIdentity = customer.userId || `guest:${hashValue(customer.phone)}`;
+  const token = await acquireCheckoutLock(lockIdentity);
   if (!token)
     return { ok: false, status: 409, code: "CHECKOUT_IN_PROGRESS", error: "An order checkout is already in progress." };
   try {
@@ -252,7 +265,7 @@ export async function createOrder(
     const recentOrders = await orders()
       .find(
         {
-          "customer.userId": customer.userId,
+          ...identityFilter,
           status: { $nin: ["cancelled", "incomplete"] },
           createdAt: { $gte: windowStart },
         },
@@ -276,8 +289,34 @@ export async function createOrder(
         };
       }
     }
-    return await createOrderUnchecked(customer, input, initialStatus);
+    return await createOrderUnchecked(customer, input, initialStatus, guestAccessTokenHash);
   } finally {
-    await checkoutLocks().deleteOne({ userId: customer.userId, token });
+    await checkoutLocks().deleteOne({ userId: lockIdentity, token });
   }
+}
+
+export async function createOrder(
+  sessionUser: SessionUser,
+  input: ParsedCheckout,
+  initialStatus: Extract<OrderStatus, "incomplete" | "placed"> = "placed",
+): Promise<CreateOrderResult> {
+  const customer = customerFrom(sessionUser, input.customer);
+  if (!customer) return { ok: false, status: 401, code: "AUTH_REQUIRED", error: "Sign in required." };
+  return createOrderWithLimit(customer, input, initialStatus);
+}
+
+export async function createGuestOrder(
+  input: ParsedCheckout,
+): Promise<CreateOrderResult | { ok: true; order: Order; trackingToken: string }> {
+  const phone = input.customer.phone.startsWith("+880") ? input.customer.phone : `+88${input.customer.phone}`;
+  const trackingToken = randomBytes(32).toString("base64url");
+  const customer: OrderCustomer = {
+    userId: "",
+    email: "",
+    name: "Guest",
+    phone,
+    address: input.customer.address,
+  };
+  const result = await createOrderWithLimit(customer, input, "placed", hashGuestOrderAccessToken(trackingToken));
+  return result.ok ? { ...result, trackingToken } : result;
 }

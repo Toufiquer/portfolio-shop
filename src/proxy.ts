@@ -10,44 +10,48 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
+import { getCanonicalAppUrl } from "@/app/api/lib/canonical-app-url";
 import {
   authorizeDashboardRequest,
   isKnownDashboardApiResource,
   isPublicDashboardRead,
 } from "@/app/api/lib/dashboard-authorization";
+import { validateCookieApiWrite } from "@/app/api/lib/request-security";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const isApi = pathname.startsWith("/api/dashboard/");
-  if (isApi && !isKnownDashboardApiResource(pathname))
+  const isDashboardApi = pathname.startsWith("/api/dashboard/");
+  const isOrdersApi = pathname === "/api/orders/v1";
+  const isDashboardRequest = pathname.startsWith("/dashboard/") || pathname === "/dashboard" || isDashboardApi;
+  if (isDashboardApi && !isKnownDashboardApiResource(pathname))
     return Response.json({ error: "Unknown dashboard API resource." }, { status: 403 });
-  if (isApi && isPublicDashboardRead(pathname, request.method)) return NextResponse.next();
+  if (isDashboardApi && isPublicDashboardRead(pathname, request.method)) return NextResponse.next();
 
-  const limited = await rateLimitDistributed(request, "dashboard-authorization", 120, 60_000);
-  if (limited) return limited;
+  if (isDashboardRequest) {
+    const limited = await rateLimitDistributed(request, "dashboard-authorization", 120, 60_000);
+    if (limited) return limited;
+  }
 
-  // Cookie-authenticated writes must originate from this site. This closes the
-  // CSRF path before a route handler can mutate dashboard data.
-  if (isApi && !["GET", "HEAD", "OPTIONS"].includes(request.method)) {
-    const origin = request.headers.get("origin");
-    const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-    if (origin && host && new URL(origin).host !== host)
-      return Response.json({ error: "Cross-site requests are not allowed." }, { status: 403 });
+  // Apply the same origin and JSON checks before dashboard and customer-order
+  // API handlers can perform cookie-authenticated writes. Auth callbacks and
+  // provider webhooks remain outside this matcher.
+  if (isDashboardApi || isOrdersApi) {
+    const rejected = validateCookieApiWrite(request);
+    if (rejected) return rejected;
   }
 
   // Every protected dashboard API handler performs its own session and
   // permission check. Keep the proxy's shared rate limit and CSRF gate here,
   // without repeating those database-backed checks for the same operation.
-  if (isApi) return NextResponse.next();
+  if (isDashboardApi || isOrdersApi) return NextResponse.next();
 
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) {
-    if (isApi) return Response.json({ error: "Sign in required." }, { status: 401 });
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/login", getCanonicalAppUrl()));
   }
 
   const authorization = await authorizeDashboardRequest(session, pathname, request.method);
-  if (isApi) {
+  if (isDashboardApi) {
     if (!authorization.allowed)
       return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
     return NextResponse.next();
@@ -61,4 +65,4 @@ export async function proxy(request: NextRequest) {
   return NextResponse.next({ request: { headers } });
 }
 
-export const config = { matcher: ["/dashboard/:path*", "/api/dashboard/:path*"] };
+export const config = { matcher: ["/dashboard/:path*", "/api/dashboard/:path*", "/api/orders/v1"] };

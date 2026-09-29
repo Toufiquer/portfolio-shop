@@ -1,4 +1,5 @@
 node_modules
 .next
+.note
 coverage
 package-lock.json

@@ -32,6 +32,7 @@ export type OrderItemSnapshot = {
 export type Order = {
   id: string;
   customer: OrderCustomer;
+  guestAccessTokenHash?: string;
   items: OrderItemSnapshot[];
   itemCount: number;
   subtotal: number;
@@ -156,8 +157,10 @@ export function parseCheckoutInput(body: unknown): ParsedCheckout | { code: Orde
 }
 
 export function serializeOrder(item: Order) {
+  const serialized = { ...item };
+  delete serialized.guestAccessTokenHash;
   return {
-    ...item,
+    ...serialized,
     createdAt: item.createdAt.toISOString(),
     statusUpdatedAt: item.statusUpdatedAt.toISOString(),
     updatedAt: item.updatedAt.toISOString(),

@@ -37,10 +37,9 @@ export async function POST(request: Request) {
   );
   if (emailLimited) return genericResponse();
 
-  const requestUrl = request.url;
   after(async () => {
     try {
-      await resendVerificationEmail(email, requestUrl);
+      await resendVerificationEmail(email);
     } catch {
       console.error("Verification email request could not be processed.");
     }

@@ -8,6 +8,7 @@
 
 import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
+import { getCanonicalAppUrl } from "@/app/api/lib/canonical-app-url";
 
 export async function POST(request: Request) {
   const limited = await rateLimitDistributed(request, "password-reset", 5, 15 * 60_000);
@@ -21,7 +22,7 @@ export async function POST(request: Request) {
 
   try {
     await auth.api.requestPasswordReset({
-      body: { email, redirectTo: `${new URL(request.url).origin}/forgot-password/reset` },
+      body: { email, redirectTo: new URL("/forgot-password/reset", getCanonicalAppUrl()).toString() },
       headers: request.headers,
     });
     // Do not disclose whether an account exists. It prevents email enumeration.

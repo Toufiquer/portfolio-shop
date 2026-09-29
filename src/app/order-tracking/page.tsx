@@ -16,7 +16,7 @@ import { useEffect, useState } from "react";
 import { Icon } from "@/components/all-icons/all-icons";
 import { formatBDT } from "@/lib/cart";
 import type { OrderStatus } from "@/lib/dashboard/orders";
-import { saveOrderToHistory } from "@/lib/order-history";
+import { readOrderTrackingToken, saveOrderToHistory } from "@/lib/order-history";
 
 type TrackingOrder = {
   id: string;
@@ -56,7 +56,10 @@ export default function OrderTrackingPage() {
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
-    fetch(`/api/orders/v1?id=${encodeURIComponent(id)}`)
+    const trackingToken = readOrderTrackingToken(id);
+    fetch(`/api/orders/v1?id=${encodeURIComponent(id)}`, {
+      headers: trackingToken ? { "x-order-access-token": trackingToken } : undefined,
+    })
       .then(async (response) => {
         const payload = (await response.json().catch(() => null)) as { order?: TrackingOrder; error?: string } | null;
         if (!response.ok || !payload?.order) throw new Error(payload?.error ?? "Could not load this order.");
@@ -65,7 +68,7 @@ export default function OrderTrackingPage() {
       .then((nextOrder) => {
         if (cancelled) return;
         setOrder(nextOrder);
-        saveOrderToHistory(nextOrder);
+        saveOrderToHistory({ ...nextOrder, ...(trackingToken ? { trackingToken } : {}) });
       })
       .catch(
         (reason: unknown) =>

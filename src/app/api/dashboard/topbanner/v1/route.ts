@@ -23,8 +23,14 @@ async function access(request: Request) {
 export async function GET(request: Request) {
   const { limited, session } = await access(request);
   if (limited) return limited;
+  if (session) {
+    const authorization = await authorizeDashboardRequest(session, "/api/dashboard/topbanner/v1", "GET");
+    if (!authorization.allowed)
+      return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
+  }
   const banner = await getTopBanner();
-  if (!session && banner?.data.isVisible === false) return Response.json({ banner: null });
+  if (!session && (banner?.data.isVisible === false || banner?.data.position === "hide"))
+    return Response.json({ banner: null });
   return Response.json({ banner });
 }
 

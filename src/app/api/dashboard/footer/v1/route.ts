@@ -19,7 +19,7 @@ export async function GET(request: Request) {
   const { limited, session } = await access(request);
   if (limited) return limited;
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
-  const authorization = await authorizeDashboardRequest(session, "/api/dashboard/footer/v1", "POST");
+  const authorization = await authorizeDashboardRequest(session, "/api/dashboard/footer/v1", "GET");
   if (!authorization.allowed)
     return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
   return Response.json({ footer: await getFooter() });
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
   const { limited, session } = await access(request);
   if (limited) return limited;
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
-  const authorization = await authorizeDashboardRequest(session, "/api/dashboard/footer/v1", "DELETE");
+  const authorization = await authorizeDashboardRequest(session, "/api/dashboard/footer/v1", "POST");
   if (!authorization.allowed)
     return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
   const body = (await request.json().catch(() => null)) as { variant?: unknown; data?: unknown } | null;
@@ -40,6 +40,9 @@ export async function DELETE(request: Request) {
   const { limited, session } = await access(request);
   if (limited) return limited;
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
+  const authorization = await authorizeDashboardRequest(session, "/api/dashboard/footer/v1", "DELETE");
+  if (!authorization.allowed)
+    return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
   await removeFooter();
   return Response.json({ footer: null });
 }
