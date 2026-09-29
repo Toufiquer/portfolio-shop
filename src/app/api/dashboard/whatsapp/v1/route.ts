@@ -16,7 +16,7 @@ import type {
 } from "@/lib/models/site-settings";
 import { getWhatsAppSettings, updateWhatsAppSettings } from "@/lib/services/whatsapp";
 
-const paddings = ["0", "small", "medium", "large", "extra-large", "xxl"] as const;
+const paddings = ["0", "small", "medium", "large", "extra-large", "xxl", "3xl", "4xl", "5xl"] as const;
 const positions = ["top-left", "top-right", "bottom-left", "bottom-right"] as const;
 
 async function access(request: Request, method: "GET" | "PATCH") {

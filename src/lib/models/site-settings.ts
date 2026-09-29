@@ -71,7 +71,7 @@ export const updateTracking = (id: string, pixelId: string, enabled: boolean) =>
 export const deleteTracking = (id: string) => trackingCollection().deleteOne({ id });
 export const deleteTrackingRecords = (ids: string[]) => trackingCollection().deleteMany({ id: { $in: ids } });
 
-export type WhatsAppPadding = "0" | "small" | "medium" | "large" | "extra-large" | "xxl";
+export type WhatsAppPadding = "0" | "small" | "medium" | "large" | "extra-large" | "xxl" | "3xl" | "4xl" | "5xl";
 export type WhatsAppPosition = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 export type WhatsAppSettings = {
   key: "site";

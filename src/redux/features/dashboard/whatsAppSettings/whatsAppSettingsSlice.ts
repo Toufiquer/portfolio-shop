@@ -8,7 +8,7 @@
 
 import { apiSlice } from "@/redux/api/apiSlice";
 
-export type WhatsAppSettings = { number: string; paddingX: "0" | "small" | "medium" | "large" | "extra-large" | "xxl"; paddingY: "0" | "small" | "medium" | "large" | "extra-large" | "xxl"; marginX: "0" | "small" | "medium" | "large" | "extra-large" | "xxl"; marginY: "0" | "small" | "medium" | "large" | "extra-large" | "xxl"; position: "top-left" | "top-right" | "bottom-left" | "bottom-right"; defaultMessage: string; isVisible: boolean; desktopTextVisible: boolean };
+export type WhatsAppSettings = { number: string; paddingX: "0" | "small" | "medium" | "large" | "extra-large" | "xxl" | "3xl" | "4xl" | "5xl"; paddingY: "0" | "small" | "medium" | "large" | "extra-large" | "xxl" | "3xl" | "4xl" | "5xl"; marginX: "0" | "small" | "medium" | "large" | "extra-large" | "xxl" | "3xl" | "4xl" | "5xl"; marginY: "0" | "small" | "medium" | "large" | "extra-large" | "xxl" | "3xl" | "4xl" | "5xl"; position: "top-left" | "top-right" | "bottom-left" | "bottom-right"; defaultMessage: string; isVisible: boolean; desktopTextVisible: boolean };
 
 export const whatsAppSettingsApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({

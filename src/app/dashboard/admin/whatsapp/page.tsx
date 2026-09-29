@@ -15,10 +15,10 @@ import { iconMap } from "@/components/all-icons/all-icons";
 
 type WhatsAppSettings = {
   number: string;
-  paddingX: "0" | "small" | "medium" | "large" | "extra-large" | "xxl";
-  paddingY: "0" | "small" | "medium" | "large" | "extra-large" | "xxl";
-  marginX: "0" | "small" | "medium" | "large" | "extra-large" | "xxl";
-  marginY: "0" | "small" | "medium" | "large" | "extra-large" | "xxl";
+  paddingX: "0" | "small" | "medium" | "large" | "extra-large" | "xxl" | "3xl" | "4xl" | "5xl";
+  paddingY: "0" | "small" | "medium" | "large" | "extra-large" | "xxl" | "3xl" | "4xl" | "5xl";
+  marginX: "0" | "small" | "medium" | "large" | "extra-large" | "xxl" | "3xl" | "4xl" | "5xl";
+  marginY: "0" | "small" | "medium" | "large" | "extra-large" | "xxl" | "3xl" | "4xl" | "5xl";
   position: "top-left" | "top-right" | "bottom-left" | "bottom-right";
   defaultMessage: string;
   isVisible: boolean;
@@ -32,6 +32,9 @@ const paddingOptions = [
   ["large", "Large"],
   ["extra-large", "Extra Large"],
   ["xxl", "XXL"],
+  ["3xl", "3XL"],
+  ["4xl", "4XL"],
+  ["5xl", "5XL"],
 ] as const;
 const positionOptions = [
   ["top-left", "Top + left"],
@@ -270,7 +273,7 @@ function VisibilityToggle({ checked, label, onChange }: { checked: boolean; labe
 }
 function Preview({ settings }: { settings: WhatsAppSettings }) {
   const location = settings.position.replace("-", " ");
-  const spacing = { "0": 0, small: 4, medium: 8, large: 12, "extra-large": 16, xxl: 20 };
+  const spacing = { "0": 0, small: 4, medium: 8, large: 12, "extra-large": 16, xxl: 20, "3xl": 24, "4xl": 32, "5xl": 40 };
   return (
     <aside className="overflow-hidden rounded-sm border border-[#eadfca] bg-[#fffaf0] p-4">
       <p className="text-xs font-semibold uppercase tracking-[.16em] text-stone-500">Preview</p>

@@ -10,7 +10,7 @@ import { client } from "@/app/api/lib/auth";
 
 import WhatsAppButtonVisibility from "./WhatsAppButtonVisibility";
 
-type Padding = "0" | "small" | "medium" | "large" | "extra-large" | "xxl";
+type Padding = "0" | "small" | "medium" | "large" | "extra-large" | "xxl" | "3xl" | "4xl" | "5xl";
 type Position = "top-left" | "top-right" | "bottom-left" | "bottom-right";
 type WhatsAppSettings = {
   key: "site";
@@ -32,6 +32,9 @@ const spacing: Record<Padding, string> = {
   large: "0.75rem",
   "extra-large": "1rem",
   xxl: "1.25rem",
+  "3xl": "1.5rem",
+  "4xl": "2rem",
+  "5xl": "2.5rem",
 };
 const positions: Record<Position, string> = {
   "top-left": "left-4 top-4",
