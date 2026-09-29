@@ -30,9 +30,11 @@ import { FormEvent, useMemo, useState } from "react";
 
 import { useConfirmDelete } from "@/components/confirm-delete-provider";
 import ImagePickerModal from "@/components/dashboard-ui/ImagePickerModal";
+import ProductStockTab from "@/components/dashboard-ui/ProductStockTab";
 import { RichTextEditor, RichTextPreview } from "@/components/sections/section-1/RichTextEditor";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/components/ui/global-toast";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createProductDefaults, defaultImportCategories, normalizeSlug } from "@/lib/dashboard/catalog";
 import {
   buildDemoProductPayload,
@@ -51,6 +53,8 @@ import {
   type ProductInput,
   type ProductItem,
   type ProductListParams,
+  type ProductListResponse,
+  type ProductUpdateInput,
   useBulkDeleteProductsMutation,
   useBulkUpdateProductStatusMutation,
   useCreateProductMutation,
@@ -84,6 +88,7 @@ export type DemoProgress = {
 };
 
 export default function ProductsPage() {
+  const [activeTab, setActiveTab] = useState<"products" | "stock">("products");
   const [query, setQuery] = useState<ProductListParams>(initialQuery);
   const { data, error, isFetching, isLoading, refetch } = useGetProductsQuery(query);
   const { data: categoriesData, refetch: refetchCategories } = useGetCategoriesQuery();
@@ -335,12 +340,25 @@ export default function ProductsPage() {
 
   async function save(form: ProductInput) {
     try {
-      if (editing) await update({ ...form, id: editing.id }).unwrap();
-      else await create(form).unwrap();
+      if (editing) {
+        const payload: ProductUpdateInput = { ...form, id: editing.id };
+        if (form.stock === editing.stock) delete payload.stock;
+        await update(payload).unwrap();
+      } else await create(form).unwrap();
       setOpen(false);
       toast.success(editing ? "Product updated successfully." : "Product created successfully.");
     } catch (cause) {
       toast.error(errorMessage(cause, "Could not save product."));
+    }
+  }
+
+  async function saveInventory(item: ProductItem, change: Pick<ProductItem, "status" | "stock">) {
+    try {
+      await update({ ...change, id: item.id }).unwrap();
+      toast.success(`Inventory updated for “${item.name}”.`);
+    } catch (cause) {
+      toast.error(errorMessage(cause, "Could not update product inventory."));
+      throw cause;
     }
   }
 
@@ -397,218 +415,271 @@ export default function ProductsPage() {
   return (
     <main className="min-h-[calc(100vh-65px)] flex-1 bg-[#fffaf0] px-4 py-6 sm:px-6 lg:px-10">
       <section className="mx-auto max-w-7xl rounded-sm border border-[#eadfca] bg-white p-4 shadow-[0_16px_40px_-30px_rgba(120,53,15,.35)] sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold text-stone-900">Products</h1>
-            <p className="mt-1 text-sm text-stone-600">
-              Manage catalog details, inventory, categories, rich descriptions, and images.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {data && data.total <= 1 ? (
-              <button className="secondary-button" disabled={busy} onClick={() => setDemoModalOpen(true)} type="button">
-                <Sparkles className="h-4 w-4 text-amber-600" /> Demo products
-              </button>
-            ) : null}
-            <button className="primary-button" onClick={openCreate} type="button">
-              <Plus className="h-4 w-4" /> Add product
-            </button>
-          </div>
-        </div>
-        <div className="mt-5 grid gap-3 rounded-sm bg-[#fffaf0] p-3 md:grid-cols-[minmax(0,1fr)_11rem_12rem]">
-          <label className="relative">
-            <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-stone-400" />
-            <input
-              aria-label="Search products"
-              className="input pl-9"
-              onChange={(event) => updateQuery({ ...query, page: 1, search: event.target.value })}
-              placeholder="Search name, slug, or SKU"
-              value={query.search}
-            />
-          </label>
-          <select
-            aria-label="Filter by status"
-            className="input"
-            onChange={(event) =>
-              updateQuery({ ...query, page: 1, status: event.target.value as ProductListParams["status"] })
-            }
-            value={query.status}
+        <Tabs onValueChange={(value) => setActiveTab(value === "stock" ? "stock" : "products")} value={activeTab}>
+          <TabsList
+            aria-label="Product management sections"
+            className="rounded-sm border border-[#eadfca] bg-[#fffaf0] p-1"
           >
-            <option value="">All statuses</option>
-            <option value="draft">Draft</option>
-            <option value="active">Active</option>
-            <option value="out_of_stock">Out of stock</option>
-            <option value="archived">Archived</option>
-          </select>
-          <select
-            aria-label="Filter by category"
-            className="input"
-            onChange={(event) => updateQuery({ ...query, category: event.target.value || undefined, page: 1 })}
-            value={query.category ?? ""}
+            <TabsTrigger
+              aria-controls="products-tab-panel"
+              className="rounded-sm px-4 py-2 text-sm font-semibold text-stone-600 transition data-[state=active]:bg-white data-[state=active]:text-stone-950 data-[state=active]:shadow-sm"
+              id="products-tab"
+              value="products"
+            >
+              Products
+            </TabsTrigger>
+            <TabsTrigger
+              aria-controls="stock-tab-panel"
+              className="rounded-sm px-4 py-2 text-sm font-semibold text-stone-600 transition data-[state=active]:bg-white data-[state=active]:text-stone-950 data-[state=active]:shadow-sm"
+              id="stock-tab"
+              value="stock"
+            >
+              Stock
+            </TabsTrigger>
+          </TabsList>
+          <TabsContent
+            aria-labelledby="products-tab"
+            className="mt-5"
+            id="products-tab-panel"
+            tabIndex={0}
+            value="products"
           >
-            <option value="">All categories</option>
-            {(categoriesData?.items ?? []).map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </div>
-        {selectedIds.length ? (
-          <div className="mt-4 flex flex-col gap-3 rounded-sm border border-amber-200 bg-amber-50 p-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm font-semibold text-amber-950">
-              {selectedIds.length} product{selectedIds.length === 1 ? "" : "s"} selected
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <select
-                aria-label="Bulk product status"
-                className="h-9 rounded-sm border border-amber-200 bg-white px-3 text-sm"
-                onChange={(event) => setBulkStatus(event.target.value as ProductItem["status"])}
-                value={bulkStatus}
-              >
-                <option value="draft">Set draft</option>
-                <option value="active">Set active</option>
-                <option value="out_of_stock">Set out of stock</option>
-                <option value="archived">Set archived</option>
-              </select>
-              <button
-                className="secondary-button"
-                disabled={busy}
-                onClick={() => void updateSelectedStatus()}
-                type="button"
-              >
-                Update status
-              </button>
-              <button
-                className="secondary-button border-red-200 text-red-700 hover:bg-red-50"
-                disabled={busy}
-                onClick={() => void deleteSelected()}
-                type="button"
-              >
-                Delete selected
-              </button>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h1 className="text-xl font-semibold text-stone-900">Products</h1>
+                <p className="mt-1 text-sm text-stone-600">
+                  Manage catalog details, inventory, categories, rich descriptions, and images.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {data && data.total <= 1 ? (
+                  <button
+                    className="secondary-button"
+                    disabled={busy}
+                    onClick={() => setDemoModalOpen(true)}
+                    type="button"
+                  >
+                    <Sparkles className="h-4 w-4 text-amber-600" /> Demo products
+                  </button>
+                ) : null}
+                <button className="primary-button" onClick={openCreate} type="button">
+                  <Plus className="h-4 w-4" /> Add product
+                </button>
+              </div>
             </div>
-          </div>
-        ) : null}
-        {error && (
-          <p className="mt-5 rounded-sm bg-red-50 p-3 text-sm text-red-700">
-            {errorMessage(error, "Could not load products.")}
-          </p>
-        )}
-        {demoProgress && (
-          <div className="mt-5 overflow-hidden rounded-sm border border-amber-300 bg-amber-50/90 p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                {demoProgress.isWaitingRateLimit ? (
-                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-200 text-amber-900 animate-pulse">
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  </div>
-                ) : demoProgress.percentage === 100 ? (
-                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-200 text-emerald-900">
-                    <CheckCircle2 className="h-4 w-4" />
-                  </div>
-                ) : (
-                  <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-800">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </div>
-                )}
-                <div>
-                  <h4 className="text-sm font-semibold text-stone-900">
-                    {demoProgress.isWaitingRateLimit
-                      ? `Rate limit reached. Retrying in ${demoProgress.waitCountdown}s...`
-                      : demoProgress.percentage === 100
-                        ? "Demo products creation completed!"
-                        : `Creating Demo Products (${demoProgress.current + 1} of ${demoProgress.total})`}
-                  </h4>
-                  <p className="text-xs text-stone-600">
-                    {demoProgress.currentName ? (
-                      <>
-                        Adding: <span className="font-medium text-stone-800">{demoProgress.currentName}</span>
-                        {demoProgress.currentPrice > 0 && ` (৳${demoProgress.currentPrice.toFixed(2)})`}
-                      </>
-                    ) : (
-                      demoProgress.statusMessage
-                    )}
-                  </p>
+            <div className="mt-5 grid gap-3 rounded-sm bg-[#fffaf0] p-3 md:grid-cols-[minmax(0,1fr)_11rem_12rem]">
+              <label className="relative">
+                <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-stone-400" />
+                <input
+                  aria-label="Search products"
+                  className="input pl-9"
+                  onChange={(event) => updateQuery({ ...query, page: 1, search: event.target.value })}
+                  placeholder="Search name, slug, or SKU"
+                  value={query.search}
+                />
+              </label>
+              <select
+                aria-label="Filter by status"
+                className="input"
+                onChange={(event) =>
+                  updateQuery({ ...query, page: 1, status: event.target.value as ProductListParams["status"] })
+                }
+                value={query.status}
+              >
+                <option value="">All statuses</option>
+                <option value="draft">Draft</option>
+                <option value="active">Active</option>
+                <option value="out_of_stock">Out of stock</option>
+                <option value="archived">Archived</option>
+              </select>
+              <select
+                aria-label="Filter by category"
+                className="input"
+                onChange={(event) => updateQuery({ ...query, category: event.target.value || undefined, page: 1 })}
+                value={query.category ?? ""}
+              >
+                <option value="">All categories</option>
+                {(categoriesData?.items ?? []).map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {selectedIds.length ? (
+              <div className="mt-4 flex flex-col gap-3 rounded-sm border border-amber-200 bg-amber-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-semibold text-amber-950">
+                  {selectedIds.length} product{selectedIds.length === 1 ? "" : "s"} selected
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <select
+                    aria-label="Bulk product status"
+                    className="h-9 rounded-sm border border-amber-200 bg-white px-3 text-sm"
+                    onChange={(event) => setBulkStatus(event.target.value as ProductItem["status"])}
+                    value={bulkStatus}
+                  >
+                    <option value="draft">Set draft</option>
+                    <option value="active">Set active</option>
+                    <option value="out_of_stock">Set out of stock</option>
+                    <option value="archived">Set archived</option>
+                  </select>
+                  <button
+                    className="secondary-button"
+                    disabled={busy}
+                    onClick={() => void updateSelectedStatus()}
+                    type="button"
+                  >
+                    Update status
+                  </button>
+                  <button
+                    className="secondary-button border-red-200 text-red-700 hover:bg-red-50"
+                    disabled={busy}
+                    onClick={() => void deleteSelected()}
+                    type="button"
+                  >
+                    Delete selected
+                  </button>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-sm border border-amber-200 bg-white px-2.5 py-1 text-xs font-bold text-amber-900 shadow-xs">
-                  {demoProgress.percentage}%
-                </span>
+            ) : null}
+            {error && (
+              <p className="mt-5 rounded-sm bg-red-50 p-3 text-sm text-red-700">
+                {errorMessage(error, "Could not load products.")}
+              </p>
+            )}
+            {demoProgress && (
+              <div className="mt-5 overflow-hidden rounded-sm border border-amber-300 bg-amber-50/90 p-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    {demoProgress.isWaitingRateLimit ? (
+                      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-amber-200 text-amber-900 animate-pulse">
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      </div>
+                    ) : demoProgress.percentage === 100 ? (
+                      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-200 text-emerald-900">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </div>
+                    ) : (
+                      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-800">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      </div>
+                    )}
+                    <div>
+                      <h4 className="text-sm font-semibold text-stone-900">
+                        {demoProgress.isWaitingRateLimit
+                          ? `Rate limit reached. Retrying in ${demoProgress.waitCountdown}s...`
+                          : demoProgress.percentage === 100
+                            ? "Demo products creation completed!"
+                            : `Creating Demo Products (${demoProgress.current + 1} of ${demoProgress.total})`}
+                      </h4>
+                      <p className="text-xs text-stone-600">
+                        {demoProgress.currentName ? (
+                          <>
+                            Adding: <span className="font-medium text-stone-800">{demoProgress.currentName}</span>
+                            {demoProgress.currentPrice > 0 && ` (৳${demoProgress.currentPrice.toFixed(2)})`}
+                          </>
+                        ) : (
+                          demoProgress.statusMessage
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-sm border border-amber-200 bg-white px-2.5 py-1 text-xs font-bold text-amber-900 shadow-xs">
+                      {demoProgress.percentage}%
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-amber-200/70">
+                  <div
+                    className={`h-full transition-all duration-300 ease-out ${
+                      demoProgress.isWaitingRateLimit ? "bg-amber-500 animate-pulse" : "bg-emerald-600"
+                    }`}
+                    style={{ width: `${demoProgress.percentage}%` }}
+                  />
+                </div>
               </div>
-            </div>
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-amber-200/70">
-              <div
-                className={`h-full transition-all duration-300 ease-out ${
-                  demoProgress.isWaitingRateLimit ? "bg-amber-500 animate-pulse" : "bg-emerald-600"
-                }`}
-                style={{ width: `${demoProgress.percentage}%` }}
-              />
-            </div>
-          </div>
-        )}
-        {isLoading ? (
-          <div className="mt-5 grid gap-3" role="status">
-            {Array.from({ length: 5 }).map((_, index) => (
-              <div className="h-24 animate-pulse rounded-sm bg-amber-50" key={index} />
-            ))}
-          </div>
-        ) : !items.length ? (
-          <div className="my-8 flex min-h-[380px] flex-col items-center justify-center rounded-sm border border-dashed border-[#d9c9aa] bg-[#fffaf0]/60 px-6 py-12 text-center shadow-inner">
-            <div className="grid h-16 w-16 place-items-center rounded-full bg-amber-100/90 text-amber-800 shadow-xs">
-              <PackageOpen className="h-8 w-8 stroke-[1.5]" />
-            </div>
-            <h3 className="mt-4 text-lg font-semibold text-stone-900">No products found</h3>
-            <p className="mt-1.5 max-w-md text-sm text-stone-600">
-              {query.search || query.status || query.category
-                ? "No products match your current search or filter criteria. You can clear filters or add demo products."
-                : "Your product catalog is empty. You can add demo products with unique names and prices to quickly populate your store, or add a product manually."}
-            </p>
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              <button
-                className="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-sm border border-amber-600 bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-amber-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={Boolean(demoProgress?.active)}
-                onClick={() => setDemoModalOpen(true)}
-                type="button"
-              >
-                <Sparkles className="h-4 w-4" />
-                Add Demo Products
-              </button>
-              <button
-                className="primary-button min-h-9 px-4 py-2"
-                disabled={busy || Boolean(demoProgress?.active)}
-                onClick={openCreate}
-                type="button"
-              >
-                <Plus className="h-4 w-4" /> Add product
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="mt-5 overflow-hidden rounded-sm border border-stone-200">
-            <div className="hidden overflow-x-auto lg:block">
-              <table className="w-full min-w-[920px] text-left text-sm">
-                <thead className="bg-[#f8f0df] text-xs uppercase text-stone-500">
-                  <tr>
-                    <th className="w-12 p-3">
-                      <Checkbox
-                        aria-label="Select all products on this page"
-                        checked={allOnPageSelected}
-                        onCheckedChange={togglePage}
-                      />
-                    </th>
-                    <th className="p-3">Product</th>
-                    <th className="p-3">SKU</th>
-                    <th className="p-3">Categories</th>
-                    <th className="p-3">Price / Stock</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
+            )}
+            {isLoading ? (
+              <div className="mt-5 grid gap-3" role="status">
+                {Array.from({ length: 5 }).map((_, index) => (
+                  <div className="h-24 animate-pulse rounded-sm bg-amber-50" key={index} />
+                ))}
+              </div>
+            ) : !items.length ? (
+              <div className="my-8 flex min-h-[380px] flex-col items-center justify-center rounded-sm border border-dashed border-[#d9c9aa] bg-[#fffaf0]/60 px-6 py-12 text-center shadow-inner">
+                <div className="grid h-16 w-16 place-items-center rounded-full bg-amber-100/90 text-amber-800 shadow-xs">
+                  <PackageOpen className="h-8 w-8 stroke-[1.5]" />
+                </div>
+                <h3 className="mt-4 text-lg font-semibold text-stone-900">No products found</h3>
+                <p className="mt-1.5 max-w-md text-sm text-stone-600">
+                  {query.search || query.status || query.category
+                    ? "No products match your current search or filter criteria. You can clear filters or add demo products."
+                    : "Your product catalog is empty. You can add demo products with unique names and prices to quickly populate your store, or add a product manually."}
+                </p>
+                <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    className="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-sm border border-amber-600 bg-amber-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-amber-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                    disabled={Boolean(demoProgress?.active)}
+                    onClick={() => setDemoModalOpen(true)}
+                    type="button"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Add Demo Products
+                  </button>
+                  <button
+                    className="primary-button min-h-9 px-4 py-2"
+                    disabled={busy || Boolean(demoProgress?.active)}
+                    onClick={openCreate}
+                    type="button"
+                  >
+                    <Plus className="h-4 w-4" /> Add product
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-5 overflow-hidden rounded-sm border border-stone-200">
+                <div className="hidden overflow-x-auto lg:block">
+                  <table className="w-full min-w-[920px] text-left text-sm">
+                    <thead className="bg-[#f8f0df] text-xs uppercase text-stone-500">
+                      <tr>
+                        <th className="w-12 p-3">
+                          <Checkbox
+                            aria-label="Select all products on this page"
+                            checked={allOnPageSelected}
+                            onCheckedChange={togglePage}
+                          />
+                        </th>
+                        <th className="p-3">Product</th>
+                        <th className="p-3">SKU</th>
+                        <th className="p-3">Categories</th>
+                        <th className="p-3">Price / Stock</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item) => (
+                        <ProductRow
+                          categories={categoryNames}
+                          edit={() => {
+                            setEditing(item);
+                            setOpen(true);
+                          }}
+                          item={item}
+                          key={item.id}
+                          remove={() => void destroy(item)}
+                          selected={selectedIds.includes(item.id)}
+                          toggle={(checked) => toggleItem(item.id, checked)}
+                          view={() => setViewing(item)}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="grid gap-3 p-3 lg:hidden">
                   {items.map((item) => (
-                    <ProductRow
+                    <ProductCard
                       categories={categoryNames}
                       edit={() => {
                         setEditing(item);
@@ -622,74 +693,25 @@ export default function ProductsPage() {
                       view={() => setViewing(item)}
                     />
                   ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="grid gap-3 p-3 lg:hidden">
-              {items.map((item) => (
-                <ProductCard
-                  categories={categoryNames}
-                  edit={() => {
-                    setEditing(item);
-                    setOpen(true);
-                  }}
-                  item={item}
-                  key={item.id}
-                  remove={() => void destroy(item)}
-                  selected={selectedIds.includes(item.id)}
-                  toggle={(checked) => toggleItem(item.id, checked)}
-                  view={() => setViewing(item)}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-        <div className="mt-5 flex flex-col gap-3 text-sm text-stone-600 sm:flex-row sm:items-center sm:justify-between">
-          <span>
-            {data
-              ? `Showing ${data.total ? ((data.page - 1) * data.limit + 1).toLocaleString() : 0}–${Math.min(data.page * data.limit, data.total).toLocaleString()} of ${data.total.toLocaleString()} products`
-              : ""}
-          </span>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="flex items-center gap-2">
-              <span>Per page</span>
-              <select
-                aria-label="Products per page"
-                className="h-9 rounded-sm border border-[#eadfca] bg-white px-2"
-                onChange={(event) => updateQuery({ ...query, limit: Number(event.target.value), page: 1 })}
-                value={query.limit ?? 10}
-              >
-                {pageSizes.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              aria-label="Previous page"
-              className="secondary-button"
-              disabled={!data || data.page <= 1}
-              onClick={() => updateQuery({ ...query, page: Math.max(1, (query.page ?? 1) - 1) })}
-              type="button"
-            >
-              Previous
-            </button>
-            <span className="min-w-20 text-center font-medium text-stone-800">
-              Page {data?.page ?? 1} of {data?.totalPages ?? 1}
-            </span>
-            <button
-              aria-label="Next page"
-              className="secondary-button"
-              disabled={!data || data.page >= data.totalPages}
-              onClick={() => updateQuery({ ...query, page: (query.page ?? 1) + 1 })}
-              type="button"
-            >
-              Next
-            </button>
-            {isFetching && <span className="text-xs text-stone-400">Updating…</span>}
-          </div>
-        </div>
+                </div>
+              </div>
+            )}
+            <ProductsPagination data={data} isFetching={isFetching} query={query} updateQuery={updateQuery} />
+          </TabsContent>
+          <TabsContent aria-labelledby="stock-tab" className="mt-5" id="stock-tab-panel" tabIndex={0} value="stock">
+            <ProductStockTab
+              data={data}
+              error={error}
+              isLoading={isLoading}
+              isSaving={updateState.isLoading}
+              items={items}
+              onSaveInventory={saveInventory}
+              pagination={
+                <ProductsPagination data={data} isFetching={isFetching} query={query} updateQuery={updateQuery} />
+              }
+            />
+          </TabsContent>
+        </Tabs>
       </section>
       {open && (
         <ProductForm
@@ -716,6 +738,67 @@ export default function ProductsPage() {
         />
       )}
     </main>
+  );
+}
+
+function ProductsPagination({
+  data,
+  isFetching,
+  query,
+  updateQuery,
+}: {
+  data?: ProductListResponse;
+  isFetching: boolean;
+  query: ProductListParams;
+  updateQuery: (next: ProductListParams) => void;
+}) {
+  return (
+    <div className="mt-5 flex flex-col gap-3 text-sm text-stone-600 sm:flex-row sm:items-center sm:justify-between">
+      <span>
+        {data
+          ? `Showing ${data.total ? ((data.page - 1) * data.limit + 1).toLocaleString() : 0}–${Math.min(data.page * data.limit, data.total).toLocaleString()} of ${data.total.toLocaleString()} products`
+          : ""}
+      </span>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-2">
+          <span>Per page</span>
+          <select
+            aria-label="Products per page"
+            className="h-9 rounded-sm border border-[#eadfca] bg-white px-2"
+            onChange={(event) => updateQuery({ ...query, limit: Number(event.target.value), page: 1 })}
+            value={query.limit ?? 10}
+          >
+            {pageSizes.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button
+          aria-label="Previous page"
+          className="secondary-button"
+          disabled={!data || data.page <= 1}
+          onClick={() => updateQuery({ ...query, page: Math.max(1, (query.page ?? 1) - 1) })}
+          type="button"
+        >
+          Previous
+        </button>
+        <span className="min-w-20 text-center font-medium text-stone-800">
+          Page {data?.page ?? 1} of {data?.totalPages ?? 1}
+        </span>
+        <button
+          aria-label="Next page"
+          className="secondary-button"
+          disabled={!data || data.page >= data.totalPages}
+          onClick={() => updateQuery({ ...query, page: (query.page ?? 1) + 1 })}
+          type="button"
+        >
+          Next
+        </button>
+        {isFetching && <span className="text-xs text-stone-400">Updating…</span>}
+      </div>
+    </div>
   );
 }
 

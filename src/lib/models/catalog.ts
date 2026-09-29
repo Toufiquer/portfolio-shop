@@ -45,7 +45,16 @@ export const categoriesHaveProducts = (ids: string[]) =>
 export const deleteCategories = (ids: string[]) => categoriesCollection().deleteMany({ id: { $in: ids } });
 export const updateCategoriesStatus = (ids: string[], status: Category["status"]) =>
   categoriesCollection().updateMany({ id: { $in: ids } }, { $set: { status, updatedAt: new Date() } });
-export const updateProduct = (id: string, data: Omit<Product, "id" | "createdAt" | "updatedAt">) =>
+export const updateProduct = (
+  id: string,
+  data: Omit<Product, "id" | "createdAt" | "updatedAt" | "stock"> & { stock?: number },
+) =>
+  productsCollection().findOneAndUpdate(
+    { id },
+    { $set: { ...data, updatedAt: new Date() } },
+    { returnDocument: "after" },
+  );
+export const updateProductInventory = (id: string, data: Partial<Pick<Product, "status" | "stock">>) =>
   productsCollection().findOneAndUpdate(
     { id },
     { $set: { ...data, updatedAt: new Date() } },

@@ -19,9 +19,36 @@ export const orderSettingsApi = apiSlice.injectEndpoints({
     }),
     updateOrderSettings: build.mutation<
       { settings: OrderSettingsItem },
-      { orderLimitEnabled: boolean; orderLimitMinutes?: number; orderLimitMaxOrders?: number }
+      {
+        allowOrdersWithoutStockCheck?: boolean;
+        orderLimitEnabled: boolean;
+        orderLimitMinutes?: number;
+        orderLimitMaxOrders?: number;
+      }
     >({
       query: (body) => ({ url: "orders/settings/v1", method: "PATCH", body }),
+      async onQueryStarted(body, { dispatch, queryFulfilled }) {
+        const patch = dispatch(
+          orderSettingsApi.util.updateQueryData("getOrderSettings", undefined, (draft) => {
+            draft.settings.allowOrdersWithoutStockCheck =
+              body.allowOrdersWithoutStockCheck ?? draft.settings.allowOrdersWithoutStockCheck;
+            draft.settings.orderLimitEnabled = body.orderLimitEnabled;
+            draft.settings.orderLimitMinutes = body.orderLimitMinutes ?? draft.settings.orderLimitMinutes;
+            draft.settings.orderLimitMaxOrders = body.orderLimitMaxOrders ?? draft.settings.orderLimitMaxOrders;
+          }),
+        );
+
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(
+            orderSettingsApi.util.updateQueryData("getOrderSettings", undefined, (draft) => {
+              draft.settings = data.settings;
+            }),
+          );
+        } catch {
+          patch.undo();
+        }
+      },
       invalidatesTags: ["OrderSettings"],
     }),
   }),

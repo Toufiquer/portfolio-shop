@@ -47,6 +47,11 @@ export type Product = {
   updatedAt: Date;
 };
 
+export type PublicContainerProduct = Pick<
+  Product,
+  "id" | "name" | "slug" | "realPrice" | "discountPrice" | "star" | "primaryImage" | "sku" | "status"
+>;
+
 export type CategoryInput = Pick<Category, "name" | "slug" | "description" | "status">;
 export type ProductInput = Omit<Product, "id" | "createdAt" | "updatedAt">;
 
@@ -294,5 +299,19 @@ export function parseProductInput(body: unknown): ProductInput | null {
     brand,
     status: data.status as ProductStatus,
     isFeatured: data.isFeatured,
+  };
+}
+
+export function parseProductInventoryInput(body: unknown): Partial<Pick<ProductInput, "status" | "stock">> | null {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
+  const data = body as { status?: unknown; stock?: unknown };
+  const hasStatus = Object.hasOwn(body, "status");
+  const hasStock = Object.hasOwn(body, "stock");
+  if (!hasStatus && !hasStock) return null;
+  if (hasStatus && !productStatuses.includes(data.status as ProductStatus)) return null;
+  if (hasStock && (typeof data.stock !== "number" || !Number.isInteger(data.stock) || data.stock < 0)) return null;
+  return {
+    ...(hasStatus ? { status: data.status as ProductStatus } : {}),
+    ...(hasStock ? { stock: data.stock as number } : {}),
   };
 }

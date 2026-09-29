@@ -40,6 +40,7 @@ const orders = ordersCollection;
 const orderSettings = orderSettingsCollection;
 const coupons = () => couponsCollection<Coupon>();
 const checkoutLocks = checkoutLocksCollection;
+const INVENTORY_CHECKOUT_LOCK_ID = "system:inventory-checkout";
 const ORDER_ID_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 function createOrderId() {
@@ -72,6 +73,7 @@ export async function getOrderSettings() {
   if (!existing) {
     return {
       key: "order-settings",
+      allowOrdersWithoutStockCheck: true,
       orderLimitEnabled: false,
       orderLimitMinutes: 5,
       orderLimitMaxOrders: 1,
@@ -81,6 +83,9 @@ export async function getOrderSettings() {
   }
   return {
     key: "order-settings",
+    // Existing settings records predate this field. They retain the approved permissive default.
+    allowOrdersWithoutStockCheck:
+      typeof existing.allowOrdersWithoutStockCheck === "boolean" ? existing.allowOrdersWithoutStockCheck : true,
     orderLimitEnabled: Boolean(existing.orderLimitEnabled),
     orderLimitMinutes:
       typeof existing.orderLimitMinutes === "number" && existing.orderLimitMinutes >= 1
@@ -96,7 +101,10 @@ export async function getOrderSettings() {
 }
 
 export async function updateOrderSettings(
-  input: Pick<OrderSettings, "orderLimitEnabled" | "orderLimitMinutes" | "orderLimitMaxOrders">,
+  input: Pick<
+    OrderSettings,
+    "allowOrdersWithoutStockCheck" | "orderLimitEnabled" | "orderLimitMinutes" | "orderLimitMaxOrders"
+  >,
   updatedBy: string,
 ) {
   return orderSettings().findOneAndUpdate(
@@ -122,10 +130,39 @@ async function acquireCheckoutLock(userId: string) {
   }
 }
 
+async function acquireInventoryCheckoutLock() {
+  const deadline = Date.now() + 10_000;
+  let retryDelay = 25;
+  while (Date.now() < deadline) {
+    const token = await acquireCheckoutLock(INVENTORY_CHECKOUT_LOCK_ID);
+    if (token) return token;
+    await new Promise((resolve) => setTimeout(resolve, retryDelay));
+    retryDelay = Math.min(retryDelay * 2, 250);
+  }
+  return null;
+}
+
+async function renewCheckoutLock(userId: string, token: string) {
+  const now = new Date();
+  const updated = await checkoutLocks().updateOne(
+    { userId, token, expiresAt: { $gt: now } },
+    { $set: { expiresAt: new Date(now.getTime() + 30_000) } },
+  );
+  return updated.matchedCount > 0;
+}
+
+async function restoreStockDeductions(decrements: { productId: string; quantity: number }[]) {
+  const pending = decrements.splice(0);
+  await Promise.all(
+    pending.map(({ productId, quantity }) => products().updateOne({ id: productId }, { $inc: { stock: quantity } })),
+  );
+}
+
 async function createOrderUnchecked(
   customer: OrderCustomer,
   input: ParsedCheckout,
   initialStatus: Extract<OrderStatus, "incomplete" | "placed">,
+  allowOrdersWithoutStockCheck: boolean,
   guestAccessTokenHash?: string,
 ): Promise<CreateOrderResult> {
   await orders().createIndex({ id: 1 }, { name: "unique_order_id", unique: true });
@@ -133,11 +170,12 @@ async function createOrderUnchecked(
     input.items.map(async ({ productId }) => [productId, await products().findOne({ id: productId })] as const),
   );
   const productById = new Map(loaded);
-  for (const { productId, quantity } of input.items) {
+  for (const { productId } of input.items) {
     const product = productById.get(productId);
     if (!product)
       return { ok: false, status: 404, code: "PRODUCT_NOT_FOUND", error: "One or more products no longer exist." };
-    if (product.status !== "active" || product.stock < quantity)
+    // Quantity is checked only by the atomic stock update below so this early product read cannot reject against stale stock.
+    if (product.status !== "active")
       return {
         ok: false,
         status: 409,
@@ -157,6 +195,7 @@ async function createOrderUnchecked(
       primaryImage: product.primaryImage,
       unitPrice,
       quantity,
+      stockDeducted: 0,
       lineTotal: unitPrice * quantity,
     };
   });
@@ -168,47 +207,94 @@ async function createOrderUnchecked(
     return { ok: false, status: 400, code: "INVALID_CHECKOUT", error: "This coupon is invalid or inactive." };
   const discount = coupon ? couponDiscount(coupon, subtotal) : 0;
 
-  const decremented: { productId: string; quantity: number }[] = [];
-  for (const item of snapshots) {
-    const updated = await products().findOneAndUpdate(
-      { id: item.productId, status: "active", stock: { $gte: item.quantity } },
-      { $inc: { stock: -item.quantity }, $set: { updatedAt: new Date() } },
-      { returnDocument: "after" },
-    );
-    if (!updated) {
-      await Promise.all(
-        decremented.map(({ productId, quantity }) =>
-          products().updateOne({ id: productId }, { $inc: { stock: quantity } }),
-        ),
-      );
-      return {
-        ok: false,
-        status: 409,
-        code: "PRODUCT_UNAVAILABLE",
-        error: `“${item.name}” is unavailable in the requested quantity.`,
-      };
-    }
-    decremented.push({ productId: item.productId, quantity: item.quantity });
-  }
+  // Serialize item updates and order persistence so rollback cannot race with another checkout.
+  const inventoryLockToken = await acquireInventoryCheckoutLock();
+  if (!inventoryLockToken)
+    return { ok: false, status: 409, code: "CHECKOUT_IN_PROGRESS", error: "An order checkout is already in progress." };
 
-  const now = new Date();
-  const order: Omit<Order, "id"> = {
-    customer,
-    ...(guestAccessTokenHash ? { guestAccessTokenHash } : {}),
-    items: snapshots,
-    itemCount: snapshots.reduce((sum, item) => sum + item.quantity, 0),
-    subtotal,
-    discount,
-    ...(coupon ? { couponCode: coupon.code } : {}),
-    total: subtotal - discount,
-    currency: "BDT",
-    status: initialStatus,
-    createdAt: now,
-    updatedAt: now,
-    statusUpdatedAt: now,
+  let inventoryLockLost = false;
+  const renewal = { current: null as Promise<boolean> | null };
+  const renewInventoryLock = () => {
+    if (!renewal.current) {
+      renewal.current = renewCheckoutLock(INVENTORY_CHECKOUT_LOCK_ID, inventoryLockToken).finally(() => {
+        renewal.current = null;
+      });
+    }
+    return renewal.current;
   };
+  const inventoryLockHeartbeat = setInterval(() => {
+    void renewInventoryLock()
+      .then((renewed) => {
+        if (!renewed) inventoryLockLost = true;
+      })
+      .catch(() => {
+        inventoryLockLost = true;
+      });
+  }, 10_000);
+
+  const decremented: { productId: string; quantity: number }[] = [];
   let savedOrder: Order | null = null;
   try {
+    for (const item of snapshots) {
+      if (inventoryLockLost || !(await renewInventoryLock())) {
+        inventoryLockLost = true;
+        throw new Error("Inventory checkout lock was lost.");
+      }
+      const previous = allowOrdersWithoutStockCheck
+        ? await products().findOneAndUpdate(
+            { id: item.productId, status: "active" },
+            [
+              {
+                $set: {
+                  stock: { $max: [0, { $subtract: [{ $ifNull: ["$stock", 0] }, item.quantity] }] },
+                  updatedAt: new Date(),
+                },
+              },
+            ],
+            { returnDocument: "before" },
+          )
+        : await products().findOneAndUpdate(
+            { id: item.productId, status: "active", stock: { $gte: item.quantity } },
+            { $inc: { stock: -item.quantity }, $set: { updatedAt: new Date() } },
+            { returnDocument: "before" },
+          );
+      if (!previous) {
+        await restoreStockDeductions(decremented);
+        return {
+          ok: false,
+          status: 409,
+          code: "PRODUCT_UNAVAILABLE",
+          error: `“${item.name}” is unavailable in the requested quantity.`,
+        };
+      }
+      const availableStock = Number.isFinite(previous.stock) ? Math.max(0, previous.stock) : 0;
+      const stockDeducted = allowOrdersWithoutStockCheck ? Math.min(availableStock, item.quantity) : item.quantity;
+      item.stockDeducted = stockDeducted;
+      if (stockDeducted) decremented.push({ productId: item.productId, quantity: stockDeducted });
+    }
+
+    if (inventoryLockLost || !(await renewInventoryLock())) {
+      inventoryLockLost = true;
+      throw new Error("Inventory checkout lock was lost.");
+    }
+
+    const now = new Date();
+    const order: Omit<Order, "id"> = {
+      customer,
+      ...(guestAccessTokenHash ? { guestAccessTokenHash } : {}),
+      items: snapshots,
+      itemCount: snapshots.reduce((sum, item) => sum + item.quantity, 0),
+      subtotal,
+      discount,
+      ...(coupon ? { couponCode: coupon.code } : {}),
+      total: subtotal - discount,
+      currency: "BDT",
+      status: initialStatus,
+      createdAt: now,
+      updatedAt: now,
+      statusUpdatedAt: now,
+    };
+
     for (let attempt = 0; attempt < 10; attempt++) {
       const candidate: Order = { ...order, id: createOrderId() };
       try {
@@ -221,12 +307,12 @@ async function createOrderUnchecked(
     }
     if (!savedOrder) throw new Error("Could not generate a unique order ID.");
   } catch (error) {
-    await Promise.all(
-      decremented.map(({ productId, quantity }) =>
-        products().updateOne({ id: productId }, { $inc: { stock: quantity } }),
-      ),
-    );
+    await restoreStockDeductions(decremented);
     throw error;
+  } finally {
+    clearInterval(inventoryLockHeartbeat);
+    if (renewal.current) await renewal.current.catch(() => false);
+    await checkoutLocks().deleteOne({ userId: INVENTORY_CHECKOUT_LOCK_ID, token: inventoryLockToken });
   }
   invalidatePublicProductCatalogCache();
   return { ok: true, order: savedOrder };
@@ -247,7 +333,14 @@ async function createOrderWithLimit(
   guestAccessTokenHash?: string,
 ): Promise<CreateOrderResult> {
   const settings = await getOrderSettings();
-  if (!settings.orderLimitEnabled) return createOrderUnchecked(customer, input, initialStatus, guestAccessTokenHash);
+  if (!settings.orderLimitEnabled)
+    return createOrderUnchecked(
+      customer,
+      input,
+      initialStatus,
+      settings.allowOrdersWithoutStockCheck,
+      guestAccessTokenHash,
+    );
 
   const identityFilter = customer.userId
     ? { "customer.userId": customer.userId }
@@ -289,7 +382,13 @@ async function createOrderWithLimit(
         };
       }
     }
-    return await createOrderUnchecked(customer, input, initialStatus, guestAccessTokenHash);
+    return await createOrderUnchecked(
+      customer,
+      input,
+      initialStatus,
+      settings.allowOrdersWithoutStockCheck,
+      guestAccessTokenHash,
+    );
   } finally {
     await checkoutLocks().deleteOne({ userId: lockIdentity, token });
   }

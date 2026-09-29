@@ -10,6 +10,7 @@ import { type Product, type ProductInput } from "@/lib/dashboard/catalog";
 import { apiSlice } from "@/redux/api/apiSlice";
 
 export type ProductItem = Omit<Product, "createdAt" | "updatedAt"> & { createdAt: string; updatedAt: string };
+export type ProductUpdateInput = Partial<ProductInput> & Pick<ProductItem, "id">;
 export type ProductListParams = {
   category?: string;
   limit?: number;
@@ -46,8 +47,47 @@ export const productsApi = apiSlice.injectEndpoints({
       query: (body) => ({ url: "products/v1", method: "POST", body }),
       invalidatesTags: ["Product"],
     }),
-    updateProduct: build.mutation<{ item: ProductItem }, ProductInput & Pick<ProductItem, "id">>({
+    updateProduct: build.mutation<{ item: ProductItem }, ProductUpdateInput>({
       query: ({ id, ...body }) => ({ url: `products/v1/${id}`, method: "PATCH", body }),
+      async onQueryStarted({ id, ...body }, { dispatch, getState, queryFulfilled }) {
+        const productQueries = productsApi.util
+          .selectInvalidatedBy(getState(), ["Product"])
+          .filter((query) => query.endpointName === "getProducts");
+        const patches = productQueries.map(({ originalArgs }) =>
+          dispatch(
+            productsApi.util.updateQueryData("getProducts", originalArgs, (draft) => {
+              const current = draft.items.find((item) => item.id === id);
+              if (!current) return;
+
+              const previousStock = current.stock;
+              Object.assign(current, body);
+              if (typeof body.stock === "number") {
+                draft.summary.totalStock += current.stock - previousStock;
+                draft.summary.inStock += Number(current.stock > 0) - Number(previousStock > 0);
+              }
+            }),
+          ),
+        );
+
+        try {
+          const { data } = await queryFulfilled;
+          for (const { originalArgs } of productQueries) {
+            dispatch(
+              productsApi.util.updateQueryData("getProducts", originalArgs, (draft) => {
+                const current = draft.items.find((item) => item.id === id);
+                if (!current) return;
+
+                const previousStock = current.stock;
+                Object.assign(current, data.item);
+                draft.summary.totalStock += current.stock - previousStock;
+                draft.summary.inStock += Number(current.stock > 0) - Number(previousStock > 0);
+              }),
+            );
+          }
+        } catch {
+          for (const patch of patches) patch.undo();
+        }
+      },
       invalidatesTags: ["Product"],
     }),
     deleteProduct: build.mutation<{ ok: boolean }, string>({

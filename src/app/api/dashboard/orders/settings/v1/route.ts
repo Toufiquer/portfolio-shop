@@ -30,6 +30,7 @@ export async function PATCH(request: Request) {
   const authorized = await access(request, "PATCH");
   if ("error" in authorized) return authorized.error;
   const body = (await request.json().catch(() => null)) as {
+    allowOrdersWithoutStockCheck?: unknown;
     orderLimitEnabled?: unknown;
     orderLimitMinutes?: unknown;
     orderLimitMaxOrders?: unknown;
@@ -38,6 +39,13 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "orderLimitEnabled must be true or false." }, { status: 400 });
 
   const current = await getOrderSettings();
+  let allowOrdersWithoutStockCheck = current.allowOrdersWithoutStockCheck;
+  if (body.allowOrdersWithoutStockCheck !== undefined) {
+    if (typeof body.allowOrdersWithoutStockCheck !== "boolean")
+      return Response.json({ error: "allowOrdersWithoutStockCheck must be true or false." }, { status: 400 });
+    allowOrdersWithoutStockCheck = body.allowOrdersWithoutStockCheck;
+  }
+
   let orderLimitMinutes = current.orderLimitMinutes;
   if (body.orderLimitMinutes !== undefined) {
     if (
@@ -68,7 +76,7 @@ export async function PATCH(request: Request) {
   }
 
   const updated = await updateOrderSettings(
-    { orderLimitEnabled: body.orderLimitEnabled, orderLimitMinutes, orderLimitMaxOrders },
+    { allowOrdersWithoutStockCheck, orderLimitEnabled: body.orderLimitEnabled, orderLimitMinutes, orderLimitMaxOrders },
     authorized.session.user.id,
   );
   return Response.json({ settings: serializeOrderSettings(updated!) });

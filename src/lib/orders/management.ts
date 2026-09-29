@@ -36,6 +36,14 @@ export function orderIds(body: unknown) {
 
 export async function restoreOrderStock(order: Order, now = new Date()) {
   if (order.status === "cancelled") return;
-  await Promise.all(order.items.map((item) => restoreProductStock(item.productId, item.quantity, now)));
+  await Promise.all(
+    order.items.map((item) => {
+      const quantity =
+        typeof item.stockDeducted === "number" && Number.isInteger(item.stockDeducted)
+          ? Math.min(item.quantity, Math.max(0, item.stockDeducted))
+          : item.quantity;
+      return restoreProductStock(item.productId, quantity, now);
+    }),
+  );
   if (order.items.length) invalidatePublicProductCatalogCache();
 }

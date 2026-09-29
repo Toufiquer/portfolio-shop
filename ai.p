@@ -84,3 +84,17 @@ Now pleas generate step by step of  prompt. and at the top please add a line 'Pl
 ============================================================================================================================
 ============================================================================================================================
 ============================================================================================================================
+Only create the plan; do not execute any task.
+
+Review the work involving folders and prepare a short, step-by-step plan in Bangla. Ensure the plan covers checking every folder, updating files where necessary, and verifying that everything works.
+
+For each step, provide:
+1. The task in Bangla
+2. A ready-to-use English prompt for that step
+
+I will execute each step later, one by one.
+
+Here is the problem That I want to solve:
+Look at the file '/dashboard/products' I want to implement two tabs, 
+1. products: the current tabs for editing and manageing Products. 
+2. Stock: manage stocks and available. also implement a new features with a switch so if it is on Then User can order without checking quantity. default it is on. and If I close it then bafore the order it will check the current stocks. and I will render products in the Home page throw container components form 'src/components/container/...' 

@@ -13,21 +13,47 @@ import {
   serializeProduct,
   validateProductCategories,
 } from "@/app/api/dashboard/products/v1/route";
-import { parseProductInput } from "@/lib/dashboard/catalog";
-import { removeProduct, updateProductForApi } from "@/lib/services/products";
+import { parseProductInput, parseProductInventoryInput } from "@/lib/dashboard/catalog";
+import { findProductById } from "@/lib/models/catalog";
+import { removeProduct, updateProductForApi, updateProductInventoryForApi } from "@/lib/services/products";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const access = await authorizeProductRequest(request, "PATCH");
   if ("error" in access) return access.error;
-  const data = parseProductInput(await request.json().catch(() => null));
+  const body = await request.json().catch(() => null);
+  const { id } = await params;
+  const isInventoryUpdate =
+    Boolean(body && typeof body === "object" && !Array.isArray(body)) &&
+    Object.keys(body as object).length > 0 &&
+    Object.keys(body as object).every((key) => key === "stock" || key === "status");
+  if (isInventoryUpdate) {
+    const inventory = parseProductInventoryInput(body);
+    if (!inventory)
+      return Response.json(
+        { error: "Stock must be a whole number of zero or more and status must be valid." },
+        { status: 400 },
+      );
+    await ensureProductIndexes();
+    const item = await updateProductInventoryForApi(id, inventory);
+    if (!item) return Response.json({ error: "Product not found." }, { status: 404 });
+    return Response.json({ item: serializeProduct(item) });
+  }
+
+  const existing = await findProductById(id);
+  if (!existing) return Response.json({ error: "Product not found." }, { status: 404 });
+  const updateStock = Boolean(body && typeof body === "object" && Object.hasOwn(body, "stock"));
+  const data = parseProductInput(
+    body && typeof body === "object" && !Array.isArray(body)
+      ? { ...body, stock: updateStock ? (body as { stock?: unknown }).stock : (existing.stock ?? 0) }
+      : body,
+  );
   if (!data)
     return Response.json({ error: "Enter valid product details, images, prices, stock, and status." }, { status: 400 });
   if (!(await validateProductCategories(data.categories)))
     return Response.json({ error: "Select only existing categories." }, { status: 400 });
-  const { id } = await params;
   try {
     await ensureProductIndexes();
-    const item = await updateProductForApi(id, data);
+    const item = await updateProductForApi(id, data, updateStock);
     if (!item) return Response.json({ error: "Product not found." }, { status: 404 });
     return Response.json({ item: serializeProduct(item) });
   } catch (error) {

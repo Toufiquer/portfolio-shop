@@ -6,10 +6,23 @@
 import "server-only";
 
 import type { ProductInput } from "@/lib/dashboard/catalog";
-import { deleteProduct, deleteProducts, updateProduct, updateProductsStatus } from "@/lib/models/catalog";
+import {
+  deleteProduct,
+  deleteProducts,
+  updateProduct,
+  updateProductInventory,
+  updateProductsStatus,
+} from "@/lib/models/catalog";
 import { invalidatePublicProductCatalogCache } from "@/lib/products/server";
-export async function updateProductForApi(id: string, data: ProductInput) {
-  const item = await updateProduct(id, data);
+export async function updateProductForApi(id: string, data: ProductInput, updateStock = true) {
+  const fields: Omit<ProductInput, "stock"> & { stock?: number } = { ...data };
+  if (!updateStock) delete fields.stock;
+  const item = await updateProduct(id, fields);
+  if (item) invalidatePublicProductCatalogCache();
+  return item;
+}
+export async function updateProductInventoryForApi(id: string, data: Partial<Pick<ProductInput, "status" | "stock">>) {
+  const item = await updateProductInventory(id, data);
   if (item) invalidatePublicProductCatalogCache();
   return item;
 }

@@ -10,7 +10,7 @@ import "server-only";
 
 import { revalidateTag, unstable_cache } from "next/cache";
 
-import type { Product } from "@/lib/dashboard/catalog";
+import type { Product, PublicContainerProduct } from "@/lib/dashboard/catalog";
 import { categoriesCollection, productsCollection } from "@/lib/models/catalog";
 
 export const productCatalogCacheTag = "public-product-catalog";
@@ -77,6 +77,42 @@ export async function getPublicProducts(categorySlug?: string, view: PublicProdu
     },
     ["public-products", categoryId, view, String(page)],
     { revalidate: false, tags: [productCatalogCacheTag, productCategoryCacheTag] },
+  )();
+}
+
+export type PublicProductReference = { id?: string; sku?: string };
+
+export async function getPublicProductsByReferences(references: readonly PublicProductReference[]) {
+  const ids = [
+    ...new Set(references.map((item) => item.id?.trim()).filter((item): item is string => Boolean(item))),
+  ].sort();
+  const skus = [
+    ...new Set(references.map((item) => item.sku?.trim()).filter((item): item is string => Boolean(item))),
+  ].sort();
+  if (!ids.length && !skus.length) return [];
+
+  const matches = [...(ids.length ? [{ id: { $in: ids } }] : []), ...(skus.length ? [{ sku: { $in: skus } }] : [])];
+  const filter = { status: "active" as const, $or: matches };
+  return unstable_cache(
+    () =>
+      products()
+        .find<PublicContainerProduct>(filter, {
+          projection: {
+            _id: 0,
+            id: 1,
+            name: 1,
+            slug: 1,
+            realPrice: 1,
+            discountPrice: 1,
+            star: 1,
+            primaryImage: 1,
+            sku: 1,
+            status: 1,
+          },
+        })
+        .toArray(),
+    ["public-container-products", JSON.stringify(ids), JSON.stringify(skus)],
+    { revalidate: false, tags: [productCatalogCacheTag] },
   )();
 }
 

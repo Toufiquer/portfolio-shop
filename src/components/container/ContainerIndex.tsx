@@ -8,6 +8,8 @@
 
 import type { ComponentType } from "react";
 
+import type { PublicContainerProduct } from "@/lib/dashboard/catalog";
+
 import { defaultDataContainer1, type IContainerData } from "./container-1/data";
 import MutationContainer1 from "./container-1/Mutation";
 import QueryContainer1 from "./container-1/Query";
@@ -26,7 +28,7 @@ type Definition = {
     onChange?: (values: ContainerData) => void;
     onSubmit: (values: ContainerData) => void;
   }>;
-  Query: ComponentType<{ data?: ContainerData | string }>;
+  Query: ComponentType<{ data?: ContainerData | string; products?: PublicContainerProduct[] }>;
   title: string;
 };
 
@@ -57,9 +59,17 @@ export const getContainerDefinition = (variant: string) => containerIndex[varian
 export const getContainerDefaults = (variant: ContainerVariant): ContainerData =>
   structuredClone(containerIndex[variant].defaultData);
 
-export function ContainerQuery({ variant, data }: { variant: ContainerVariant; data?: ContainerData | string }) {
+export function ContainerQuery({
+  variant,
+  data,
+  products,
+}: {
+  variant: ContainerVariant;
+  data?: ContainerData | string;
+  products?: PublicContainerProduct[];
+}) {
   const Query = getContainerDefinition(variant)?.Query;
-  return Query ? <Query data={data} /> : null;
+  return Query ? <Query data={data} products={products} /> : null;
 }
 
 export function ContainerMutation({

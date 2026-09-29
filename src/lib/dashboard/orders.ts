@@ -26,6 +26,8 @@ export type OrderItemSnapshot = {
   primaryImage: string;
   unitPrice: number;
   quantity: number;
+  /** Actual inventory removed for this line; absent on orders created before oversell support. */
+  stockDeducted?: number;
   lineTotal: number;
 };
 
@@ -48,6 +50,7 @@ export type Order = {
 
 export type OrderSettings = {
   key: "order-settings";
+  allowOrdersWithoutStockCheck: boolean;
   orderLimitEnabled: boolean;
   orderLimitMinutes: number;
   orderLimitMaxOrders: number;

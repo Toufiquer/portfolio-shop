@@ -10,6 +10,10 @@
 
 import Link from "next/link";
 
+import type { PublicContainerProduct } from "@/lib/dashboard/catalog";
+
+import { resolveContainerProducts } from "../product-data";
+
 import { ContainerProps, defaultDataContainer1, IContainerData, TemplateItem, templateImagePlaceholder } from "./data";
 import RenderItem from "./RenderItem";
 
@@ -22,14 +26,6 @@ const gridLayoutClasses: Record<IContainerData["gridLayout"], string> = {
   "1x1": "md:grid-cols-1",
   "1x2": "md:grid-cols-2",
   "1x3": "md:grid-cols-3",
-};
-
-const sortTemplates = (templates: TemplateItem[], sortMode: IContainerData["sortMode"]) => {
-  if (sortMode === "custom") return templates;
-  return [...templates].sort((a, b) => {
-    const result = a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: "base" });
-    return sortMode === "ascending" ? result : -result;
-  });
 };
 
 const legacyDemoProductUids = new Set(["THEME-001", "THEME-002", "THEME-003", "THEME-004"]);
@@ -82,15 +78,16 @@ const resolveData = (data?: IContainerData | string): IContainerData => {
 
     return {
       ...settings,
-      templates: sortTemplates(settings.templates, settings.sortMode).filter((template) => template.visible),
+      templates: settings.templates.filter((template) => template.visible),
     };
   } catch {
     return defaultDataContainer1;
   }
 };
 
-const QueryContainer1 = ({ data }: ContainerProps) => {
+const QueryContainer1 = ({ data, products }: ContainerProps & { products?: PublicContainerProduct[] }) => {
   const settings = resolveData(data);
+  const templates = resolveContainerProducts(settings.templates, products ?? [], settings.sortMode);
   const paddingX = Math.max(0, Number(settings.paddingX) || 0);
   const paddingY = Math.max(0, Number(settings.paddingY) || 0);
 
@@ -129,7 +126,7 @@ const QueryContainer1 = ({ data }: ContainerProps) => {
             </Link>
           )}
         </div>
-        {settings.templates.length === 0 ? (
+        {templates.length === 0 ? (
           <div className="rounded-sm border border-dashed border-stone-300 bg-white px-5 py-10 text-center sm:py-14">
             <span
               aria-hidden="true"
@@ -152,7 +149,7 @@ const QueryContainer1 = ({ data }: ContainerProps) => {
           </div>
         ) : (
           <div className={`grid items-stretch gap-3 sm:gap-4 ${mobileGridClassName} ${gridClassName}`}>
-            {settings.templates.map((template, index) => (
+            {templates.map((template, index) => (
               <RenderItem
                 key={template.id}
                 item={template}

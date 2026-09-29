@@ -13,6 +13,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Icon } from "@/components/all-icons/all-icons";
 import { Button } from "@/components/ui/button";
+import type { PublicContainerProduct } from "@/lib/dashboard/catalog";
+
+import { resolveContainerProducts } from "../product-data";
 
 import {
   containerGridItemWidth,
@@ -38,13 +41,7 @@ const desktopItemsPerSlide: Record<IContainerData["gridLayout"], number> = {
   "1x3": 3,
 };
 
-const sortTemplates = (templates: TemplateItem[], sortMode: IContainerData["sortMode"]) => {
-  if (sortMode === "custom") return templates;
-  return [...templates].sort((a, b) => {
-    const result = a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: "base" });
-    return sortMode === "ascending" ? result : -result;
-  });
-};
+const noProducts: PublicContainerProduct[] = [];
 
 const legacyDemoProductUids = new Set(["THEME-001", "THEME-002", "THEME-003", "THEME-004"]);
 
@@ -97,7 +94,7 @@ const resolveData = (data?: IContainerData | string): IContainerData => {
 
     return {
       ...settings,
-      templates: sortTemplates(settings.templates, settings.sortMode).filter((template) => template.visible),
+      templates: settings.templates.filter((template) => template.visible),
     };
   } catch {
     return defaultDataContainer2;
@@ -120,8 +117,12 @@ const useIsDesktop = () => {
   return isDesktop;
 };
 
-const QueryContainer2 = ({ data }: ContainerProps) => {
+const QueryContainer2 = ({ data, products }: ContainerProps & { products?: PublicContainerProduct[] }) => {
   const settings = useMemo(() => resolveData(data), [data]);
+  const templates = useMemo(
+    () => resolveContainerProducts(settings.templates, products ?? noProducts, settings.sortMode),
+    [products, settings],
+  );
   const isDesktop = useIsDesktop();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -141,9 +142,9 @@ const QueryContainer2 = ({ data }: ContainerProps) => {
   const visibleItems = isDesktop
     ? desktopItemsPerSlide[settings.gridLayout] || desktopItemsPerSlide[defaultDataContainer2.gridLayout]
     : mobileItemsPerSlide[settings.mobileGridLayout] || mobileItemsPerSlide[defaultDataContainer2.mobileGridLayout];
-  const maxIndex = Math.max(0, settings.templates.length - visibleItems);
+  const maxIndex = Math.max(0, templates.length - visibleItems);
   const safeCurrentIndex = Math.min(currentIndex, maxIndex);
-  const canSlide = settings.templates.length > visibleItems;
+  const canSlide = templates.length > visibleItems;
   const shouldShowBottomNavigation = settings.showBottomNavigation && canSlide;
   const itemWidth = isDesktop
     ? containerGridItemWidth[settings.gridLayout] || containerGridItemWidth[defaultDataContainer2.gridLayout]
@@ -202,7 +203,7 @@ const QueryContainer2 = ({ data }: ContainerProps) => {
           )}
         </div>
 
-        {settings.templates.length === 0 ? (
+        {templates.length === 0 ? (
           <div className="rounded-sm border border-dashed border-stone-300 bg-white px-5 py-10 text-center sm:py-14">
             <span
               aria-hidden="true"
@@ -255,7 +256,7 @@ const QueryContainer2 = ({ data }: ContainerProps) => {
                 className="flex items-stretch transition-transform duration-500 ease-in-out motion-reduce:transition-none"
                 style={{ transform: `translateX(-${safeCurrentIndex * (100 / visibleItems)}%)` }}
               >
-                {settings.templates.map((template, index) => (
+                {templates.map((template, index) => (
                   <div
                     key={template.id}
                     className={cn("flex min-w-0 shrink-0 px-1.5 py-1 sm:px-2")}
