@@ -8,7 +8,19 @@
 
 import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth, client } from "@/app/api/lib/auth";
-import { authorizeDashboardRequest, getDashboardAccessState } from "@/app/api/lib/dashboard-authorization";
+import {
+  guardBusinessGrowthApiRequest,
+  normalizeBusinessGrowthBulkDeleteKind,
+  normalizeBusinessGrowthBulkPatchKind,
+  normalizeBusinessGrowthBulkPostKind,
+} from "@/app/api/lib/business-growth-api-policy.mjs";
+import {
+  authorizeBusinessGrowthRequest,
+  getBusinessGrowthAccessState,
+  isBusinessGrowthAdministrator,
+  type BusinessGrowthAccessArea,
+} from "@/app/api/lib/dashboard-authorization";
+import { assignCustomerAtomically } from "@/lib/customers/assignment-core.mjs";
 import {
   councilorCollection,
   customerCollection,
@@ -25,13 +37,16 @@ import { type Order, type OrderItemSnapshot } from "@/lib/dashboard/orders";
 import { orders } from "@/lib/orders/management";
 import { invalidatePublicProductCatalogCache } from "@/lib/products/server";
 
-async function guard(request: Request, method: "POST" | "PATCH" | "DELETE") {
+async function guard(request: Request, method: "POST" | "PATCH" | "DELETE", area: BusinessGrowthAccessArea) {
   const limited = await rateLimitDistributed(request, "customer-api");
   if (limited) return limited;
-  const session = await auth.api.getSession({ headers: request.headers });
-  if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
-  const access = await authorizeDashboardRequest(session, "/api/dashboard/business-growth/v1", method);
-  return access.allowed ? null : Response.json({ error: access.state.message ?? "Unauthorized." }, { status: 403 });
+  return guardBusinessGrowthApiRequest(request, {
+    area,
+    method,
+    target: "bulk",
+    getSession: (headers) => auth.api.getSession({ headers }),
+    authorize: authorizeBusinessGrowthRequest,
+  });
 }
 const text = (value: unknown, max: number) =>
   typeof value === "string" && value.trim().length <= max ? value.trim() : "";
@@ -47,29 +62,83 @@ const ids = (body: { ids?: unknown } | null) =>
     : [];
 
 export async function PATCH(request: Request) {
-  const denied = await guard(request, "PATCH");
-  if (denied) return denied;
   const body = (await request.json().catch(() => null)) as {
     ids?: unknown;
+    kind?: unknown;
     status?: unknown;
     funnelId?: unknown;
     councilorId?: unknown;
+    reassign?: unknown;
   } | null;
+  const kind = normalizeBusinessGrowthBulkPatchKind(body && Object.hasOwn(body, "kind") ? body.kind : undefined);
+  if (!kind) return Response.json({ error: "Unknown Business Growth bulk update resource." }, { status: 400 });
+  const denied = await guard(request, "PATCH", kind);
+  if (denied) return denied;
   const selected = ids(body);
   if (!selected.length) return Response.json({ error: "Select up to 100 customers." }, { status: 400 });
   if (body?.councilorId !== undefined) {
     const session = await auth.api.getSession({ headers: request.headers });
-    const access = session ? await getDashboardAccessState(session) : null;
-    if (!access || (!access.bypassed && !/^(admin|super admin)$/i.test(access.roleName?.trim() ?? "")))
+    const access = session ? await getBusinessGrowthAccessState(session) : null;
+    if (!access || (!access.bypassed && !isBusinessGrowthAdministrator(access.roleName)))
       return Response.json({ error: "Administrator access required." }, { status: 403 });
-    const councilorId = typeof body.councilorId === "string" ? body.councilorId.trim() : "";
+    if (body.councilorId !== null && typeof body.councilorId !== "string")
+      return Response.json({ error: "Choose a valid counselor." }, { status: 400 });
+    if (body.reassign !== undefined && typeof body.reassign !== "boolean")
+      return Response.json({ error: "Invalid reassignment option." }, { status: 400 });
+    const councilorId = typeof body.councilorId === "string" ? body.councilorId.trim() || null : null;
     const councilor = councilorId ? await councilorCollection().findOne({ id: councilorId }) : null;
-    if (councilorId && !councilor) return Response.json({ error: "Choose a valid councilor." }, { status: 400 });
-    const result = await customerCollection().updateMany(
-      { id: { $in: selected } },
-      { $set: { councilorId: councilorId || null, councilorEmail: councilor?.email ?? null, updatedAt: now() } },
+    if (councilorId && !councilor) return Response.json({ error: "Choose a valid counselor." }, { status: 400 });
+    const results = await Promise.all(
+      selected.map((customerId) =>
+        assignCustomerAtomically(customerCollection(), {
+          customerId,
+          councilorId,
+          councilorEmail: councilor?.email ?? null,
+          reassign: body.reassign === true,
+          updatedAt: now(),
+        }),
+      ),
     );
-    return Response.json({ updatedCount: result.modifiedCount });
+    const updatedCount = results.filter(
+      (result) => result.status === "assigned" || result.status === "reassigned",
+    ).length;
+    const assignedCount = results.filter((result) => result.status === "assigned").length;
+    const reassignedCount = results.filter((result) => result.status === "reassigned").length;
+    const notFound = selected.filter((_, index) => results[index].status === "not_found");
+    if (notFound.length)
+      return Response.json(
+        {
+          error: "One or more customers were not found.",
+          code: "CUSTOMER_NOT_FOUND",
+          customerIds: notFound,
+          updatedCount,
+        },
+        { status: 404 },
+      );
+    const conflicts = results.flatMap((result, index) =>
+      result.status === "conflict"
+        ? [
+            {
+              customerId: selected[index],
+              reason: result.reason,
+              currentCouncilorId: result.currentCouncilorId,
+              currentCouncilorEmail: result.currentCouncilorEmail,
+            },
+          ]
+        : [],
+    );
+    if (conflicts.length)
+      return Response.json(
+        {
+          error:
+            "One or more selected customers already have a counselor or changed during this request. Refresh; use Reassign to change an existing owner.",
+          code: "CUSTOMER_ASSIGNMENT_CONFLICT",
+          conflicts,
+          updatedCount,
+        },
+        { status: 409 },
+      );
+    return Response.json({ updatedCount, assignedCount, reassignedCount });
   }
   if (!customerStatuses.includes(body?.status as CustomerStatus))
     return Response.json({ error: "Select a valid status." }, { status: 400 });
@@ -90,12 +159,15 @@ export async function PATCH(request: Request) {
   return Response.json({ updatedCount: result.modifiedCount });
 }
 export async function DELETE(request: Request) {
-  const denied = await guard(request, "DELETE");
-  if (denied) return denied;
   const body = (await request.json().catch(() => null)) as { ids?: unknown; kind?: unknown } | null;
+  const kind = normalizeBusinessGrowthBulkDeleteKind(body && Object.hasOwn(body, "kind") ? body.kind : undefined);
+  if (!kind) return Response.json({ error: "Unknown Business Growth bulk delete resource." }, { status: 400 });
+  const area: BusinessGrowthAccessArea = kind;
+  const denied = await guard(request, "DELETE", area);
+  if (denied) return denied;
   const selected = ids(body);
   if (!selected.length) return Response.json({ error: "Select up to 100 items." }, { status: 400 });
-  if (body?.kind === "funnels") {
+  if (kind === "funnels") {
     const result = await funnelCollection().deleteMany({ id: { $in: selected } });
     await customerCollection().updateMany(
       { funnelId: { $in: selected } },
@@ -103,7 +175,7 @@ export async function DELETE(request: Request) {
     );
     return Response.json({ deletedCount: result.deletedCount });
   }
-  if (body?.kind === "spends") {
+  if (kind === "spends") {
     const result = await spendCollection().deleteMany({ id: { $in: selected } });
     return Response.json({ deletedCount: result.deletedCount });
   }
@@ -111,9 +183,11 @@ export async function DELETE(request: Request) {
   return Response.json({ deletedCount: result.deletedCount });
 }
 export async function POST(request: Request) {
-  const denied = await guard(request, "POST");
-  if (denied) return denied;
   const body = (await request.json().catch(() => null)) as { kind?: unknown; rows?: unknown } | null;
+  const kind = normalizeBusinessGrowthBulkPostKind(body && Object.hasOwn(body, "kind") ? body.kind : undefined);
+  if (!kind) return Response.json({ error: "Unknown Business Growth bulk import resource." }, { status: 400 });
+  const denied = await guard(request, "POST", "customers");
+  if (denied) return denied;
   const rows = Array.isArray(body?.rows) ? body.rows.slice(0, 500) : [];
   if (!rows.length) return Response.json({ error: "No import rows supplied." }, { status: 400 });
   const valid: CustomerRecord[] = [];
@@ -151,8 +225,7 @@ export async function POST(request: Request) {
         .catch(() => null)
     : null;
   const imported = result?.insertedCount ?? 0;
-  if (body?.kind !== "demo-with-orders" || !imported)
-    return Response.json({ imported, skipped: rows.length - imported });
+  if (kind !== "demo-with-orders" || !imported) return Response.json({ imported, skipped: rows.length - imported });
 
   const products = await client
     .db()

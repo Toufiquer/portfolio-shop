@@ -25,6 +25,7 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "i.ibb.co" },
       { protocol: "https", hostname: "images.unsplash.com" },
       { protocol: "https", hostname: "i.pravatar.cc" },
+      { protocol: "https", hostname: "lh3.googleusercontent.com", pathname: "/a/**" },
       { protocol: "https", hostname: "placehold.co" },
       { protocol: "https", hostname: "upload.wikimedia.org" },
       { protocol: "https", hostname: "flagcdn.com" },

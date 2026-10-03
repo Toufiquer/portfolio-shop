@@ -20,8 +20,10 @@ const fieldClassName =
 const demoAccounts = [
   { label: "Developer", email: "developer@gmail.com", password: "developer@DEVELOPER" },
   { label: "Admin", email: "admin@gmail.com", password: "admin@ADMIN" },
-  { label: "Councilor", email: "councilor@gmail.com", password: "councilor@COUNCILOR" },
-  { label: "Client", email: "client@gmail.com", password: "client@CLIENT" },
+  { label: "Counselor 1", email: "councilor1@gmail.com", password: "councilor1@COUNCILOR1" },
+  { label: "Counselor 2", email: "councilor2@gmail.com", password: "councilor2@COUNCILOR2" },
+  { label: "Client 1", email: "client1@gmail.com", password: "client1@CLIENT1" },
+  { label: "Client 2", email: "client2@gmail.com", password: "client2@CLIENT2" },
   { label: "Blocked", email: "block@gmail.com", password: "block@BLOCK" },
 ];
 

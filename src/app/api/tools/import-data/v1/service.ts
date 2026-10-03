@@ -34,6 +34,7 @@ const defaultPagePaths = new Set(pageDefaults.map((page) => page.path));
 const businessGrowthPathMigrations = [
   ["/dashboard/admin/business-growth/", "/dashboard/business-growth/"],
   ["/dashboard/admin/business-growth", "/dashboard/business-growth"],
+  ["/dashboard/admin/business-growth/overview", "/dashboard/business-growth/overview"],
   ["/dashboard/admin/business-growth/funnels", "/dashboard/business-growth/funnels"],
   ["/dashboard/admin/business-growth/customer", "/dashboard/business-growth/customer"],
   ["/dashboard/admin/business-growth/councillor", "/dashboard/business-growth/councillor"],

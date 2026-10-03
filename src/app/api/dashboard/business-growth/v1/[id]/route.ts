@@ -8,9 +8,22 @@
 
 import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
-import { authorizeDashboardRequest, getDashboardAccessState } from "@/app/api/lib/dashboard-authorization";
+import {
+  authorizeCouncilorCustomerPatch,
+  guardBusinessGrowthApiRequest,
+  normalizeBusinessGrowthItemKind,
+} from "@/app/api/lib/business-growth-api-policy.mjs";
+import {
+  authorizeBusinessGrowthRequest,
+  getBusinessGrowthAccessState,
+  isBusinessGrowthAdministrator,
+  isBusinessGrowthCouncilor,
+  type BusinessGrowthAccessArea,
+} from "@/app/api/lib/dashboard-authorization";
+import { assignCustomerAtomically, assignedCustomerFilterFor } from "@/lib/customers/assignment-core.mjs";
 import {
   customerCollection,
+  councilorForSession,
   councilorCollection,
   customerFollowUps,
   funnelCollection,
@@ -20,54 +33,79 @@ import {
   serializeFollowUps,
   spendCollection,
 } from "@/lib/customers/server";
-async function guard(r: Request, m: "PATCH" | "DELETE") {
+const areaForItemKind = (
+  kind: NonNullable<ReturnType<typeof normalizeBusinessGrowthItemKind>>,
+): BusinessGrowthAccessArea => {
+  if (kind === "councilor") return "councilors";
+  if (kind === "spend") return "spends";
+  if (kind === "funnel") return "funnels";
+  if (kind === "task") return "tasks";
+  return "customers";
+};
+async function guard(r: Request, m: "PATCH" | "DELETE", area: BusinessGrowthAccessArea) {
   const l = await rateLimitDistributed(r, "customer-api");
   if (l) return l;
-  const s = await auth.api.getSession({ headers: r.headers });
-  if (!s) return Response.json({ error: "Sign in required." }, { status: 401 });
-  const a = await authorizeDashboardRequest(s, "/api/dashboard/business-growth/v1", m);
-  return a.allowed ? null : Response.json({ error: a.state.message ?? "Unauthorized." }, { status: 403 });
+  return guardBusinessGrowthApiRequest(r, {
+    area,
+    method: m,
+    target: "item",
+    getSession: (headers) => auth.api.getSession({ headers }),
+    authorize: authorizeBusinessGrowthRequest,
+  });
 }
 const followUpAuthor = (session: { user?: { email?: unknown; name?: unknown } } | null) => ({
   authorEmail: typeof session?.user?.email === "string" ? session.user.email.trim().toLowerCase() : "",
   authorName: typeof session?.user?.name === "string" ? session.user.name.trim() : "",
 });
-async function canManageCustomer(session: Awaited<ReturnType<typeof auth.api.getSession>>, id: string) {
-  if (!session) return false;
-  const access = await getDashboardAccessState(session);
-  if (access.bypassed || /^(admin|super admin)$/i.test(access.roleName?.trim() ?? "")) return true;
-  return Boolean(
-    await customerCollection().findOne(
-      { id, councilorEmail: session.user.email?.trim().toLowerCase() },
-      { projection: { id: 1 } },
-    ),
-  );
+async function customerMutationFilter(session: Awaited<ReturnType<typeof auth.api.getSession>>, id: string) {
+  if (!session) return null;
+  const access = await getBusinessGrowthAccessState(session);
+  if (isBusinessGrowthCouncilor(access.roleName)) {
+    const councilor = await councilorForSession(session);
+    return councilor ? assignedCustomerFilterFor(id, councilor) : null;
+  }
+  if (access.bypassed || isBusinessGrowthAdministrator(access.roleName)) return { id };
+  return null;
 }
 export async function PATCH(r: Request, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(r, "PATCH");
-  if (g) return g;
-  const session = await auth.api.getSession({ headers: r.headers });
   const id = (await params).id,
     b = await r.json().catch(() => null);
-  if (b?.kind === "councilor") {
-    const access = session ? await getDashboardAccessState(session) : null;
-    if (!access || (!access.bypassed && !/^(admin|super admin)$/i.test(access.roleName?.trim() ?? "")))
+  const rawKind = b && typeof b === "object" && Object.hasOwn(b, "kind") ? b.kind : undefined;
+  const kind = normalizeBusinessGrowthItemKind(rawKind);
+  if (!kind) return Response.json({ error: "Unknown Business Growth item resource." }, { status: 400 });
+  if (!b || typeof b !== "object" || Array.isArray(b))
+    return Response.json({ error: "Invalid customer update." }, { status: 400 });
+  const area = areaForItemKind(kind);
+  const g = await guard(r, "PATCH", area);
+  if (g) return g;
+  const session = await auth.api.getSession({ headers: r.headers });
+  if (kind === "councilor") {
+    const access = session ? await getBusinessGrowthAccessState(session) : null;
+    if (!access || (!access.bypassed && !isBusinessGrowthAdministrator(access.roleName)))
       return Response.json({ error: "Administrator access required." }, { status: 403 });
     const email = typeof b.email === "string" ? b.email.trim().toLowerCase() : "";
     if (!email || !/^\S+@\S+\.\S+$/.test(email))
       return Response.json({ error: "Enter a valid email." }, { status: 400 });
     const duplicate = await councilorCollection().findOne({ email, id: { $ne: id } });
-    if (duplicate) return Response.json({ error: "This email is already a councilor." }, { status: 409 });
+    if (duplicate) return Response.json({ error: "This email is already a counselor." }, { status: 409 });
+    const previous = await councilorCollection().findOne({ id }, { projection: { email: 1 } });
     const item = await councilorCollection().findOneAndUpdate(
       { id },
       { $set: { email, name: email } },
       { returnDocument: "after" },
     );
+    if (item)
+      await customerCollection().updateMany(
+        {
+          $or: [{ councilorId: id }, { councilorId: null, councilorEmail: previous?.email ?? "" }],
+        },
+        { $set: { councilorId: id, councilorEmail: email, updatedAt: new Date() } },
+      );
     return item
       ? Response.json({ item: { ...item, assignedCount: 0, createdAt: item.createdAt.toISOString() } })
-      : Response.json({ error: "Councilor not found." }, { status: 404 });
+      : Response.json({ error: "Counselor not found." }, { status: 404 });
   }
-  if (b?.kind === "spend") {
+  if (kind === "spend") {
     const funnelId = typeof b.funnelId === "string" ? b.funnelId.trim() : "";
     const amount = Number(b.amount);
     if (!funnelId || !Number.isFinite(amount) || amount <= 0)
@@ -83,7 +121,7 @@ export async function PATCH(r: Request, { params }: { params: Promise<{ id: stri
       ? Response.json({ item: { ...item, createdAt: item.createdAt.toISOString() } })
       : Response.json({ error: "Spend entry not found." }, { status: 404 });
   }
-  if (b?.kind === "funnel") {
+  if (kind === "funnel") {
     const name = typeof b.name === "string" ? b.name.trim() : "";
     const description = typeof b.description === "string" ? b.description.trim() : "";
     const minimumAmount = Number(b.minimumAmount);
@@ -120,12 +158,69 @@ export async function PATCH(r: Request, { params }: { params: Promise<{ id: stri
       ? Response.json({ item: serializeFunnel(x) })
       : Response.json({ error: "Funnel not found." }, { status: 404 });
   }
-  if (!(await canManageCustomer(session, id)))
-    return Response.json({ error: "This customer is not assigned to you." }, { status: 403 });
+  const access = session ? await getBusinessGrowthAccessState(session) : null;
+  const councilorRole = Boolean(access && isBusinessGrowthCouncilor(access.roleName));
+  let councilorPatch: ReturnType<typeof authorizeCouncilorCustomerPatch> | null = null;
+  if (councilorRole) {
+    councilorPatch = authorizeCouncilorCustomerPatch(b);
+    if (!councilorPatch.allowed)
+      return Response.json({ error: councilorPatch.error }, { status: councilorPatch.status });
+  }
+  const hasCouncilorId = Object.hasOwn(b ?? {}, "councilorId");
+  const hasCouncilorEmail = Object.hasOwn(b ?? {}, "councilorEmail");
+  if (hasCouncilorId || hasCouncilorEmail) {
+    if (councilorRole)
+      return Response.json({ error: "Counselors cannot assign or reassign customers." }, { status: 403 });
+    if (!access || (!access.bypassed && !isBusinessGrowthAdministrator(access.roleName)))
+      return Response.json({ error: "Administrator access required for customer assignment." }, { status: 403 });
+    if (!hasCouncilorId || hasCouncilorEmail)
+      return Response.json(
+        { error: "Supply councilorId only; councilorEmail is resolved by the server." },
+        { status: 400 },
+      );
+    if (Object.keys(b ?? {}).some((key) => !["id", "kind", "councilorId", "reassign"].includes(key)))
+      return Response.json(
+        { error: "Assignment changes must be sent separately from customer updates." },
+        { status: 400 },
+      );
+    if (b.reassign !== undefined && typeof b.reassign !== "boolean")
+      return Response.json({ error: "Invalid reassignment option." }, { status: 400 });
+    if (b.councilorId !== null && typeof b.councilorId !== "string")
+      return Response.json({ error: "Choose a valid counselor." }, { status: 400 });
+    const councilorId = typeof b.councilorId === "string" ? b.councilorId.trim() || null : null;
+    const councilor = councilorId ? await councilorCollection().findOne({ id: councilorId }) : null;
+    if (councilorId && !councilor) return Response.json({ error: "Choose a valid counselor." }, { status: 400 });
+    const result = await assignCustomerAtomically(customerCollection(), {
+      customerId: id,
+      councilorId,
+      councilorEmail: councilor?.email ?? null,
+      reassign: b.reassign === true,
+      updatedAt: new Date(),
+    });
+    if (result.status === "not_found") return Response.json({ error: "Customer not found." }, { status: 404 });
+    if (result.status === "conflict")
+      return Response.json(
+        {
+          error:
+            "Customer already has a counselor or its assignment changed. Refresh; use Reassign to change the owner.",
+          code: "CUSTOMER_ASSIGNMENT_CONFLICT",
+          conflict: { customerId: id, reason: result.reason },
+        },
+        { status: 409 },
+      );
+    return Response.json({ item: await customerCollection().findOne({ id }), assignmentStatus: result.status });
+  }
+  const customerFilter = await customerMutationFilter(session, id);
+  if (!customerFilter) return Response.json({ error: "This customer is not assigned to you." }, { status: 403 });
   const allowed = ["active", "inactive"];
-  const update = { ...b, updatedAt: new Date() };
+  const update = {
+    ...(councilorRole && councilorPatch?.allowed ? councilorPatch.patch : b),
+    updatedAt: new Date(),
+  };
   delete update.id;
+  delete update.kind;
   delete update.metrics;
+  delete update.reassign;
   if ("followUps" in update) {
     const current = await customerCollection().findOne({ id }, { projection: { followUps: 1 } });
     const existing = new Map(customerFollowUps(current?.followUps).map((followUp) => [followUp.id, followUp]));
@@ -141,8 +236,11 @@ export async function PATCH(r: Request, { params }: { params: Promise<{ id: stri
   }
   if (update.customerStatus && !allowed.includes(update.customerStatus))
     return Response.json({ error: "Invalid status." }, { status: 400 });
-  const x = await customerCollection().findOneAndUpdate({ id }, { $set: update }, { returnDocument: "after" });
-  if (!x) return Response.json({ error: "Customer not found." }, { status: 404 });
+  const x = await customerCollection().findOneAndUpdate(customerFilter, { $set: update }, { returnDocument: "after" });
+  if (!x)
+    return councilorRole
+      ? Response.json({ error: "Customer is no longer assigned to you." }, { status: 403 })
+      : Response.json({ error: "Customer not found." }, { status: 404 });
   return Response.json({
     item: {
       ...x,
@@ -154,17 +252,18 @@ export async function PATCH(r: Request, { params }: { params: Promise<{ id: stri
   });
 }
 export async function DELETE(r: Request, { params }: { params: Promise<{ id: string }> }) {
-  const g = await guard(r, "DELETE");
-  if (g) return g;
   const id = (await params).id;
-  const kind = new URL(r.url).searchParams.get("kind");
+  const kind = normalizeBusinessGrowthItemKind(new URL(r.url).searchParams.get("kind") ?? undefined);
+  if (!kind) return Response.json({ error: "Unknown Business Growth item resource." }, { status: 400 });
+  const g = await guard(r, "DELETE", areaForItemKind(kind));
+  if (g) return g;
   if (kind === "councilor") {
     const session = await auth.api.getSession({ headers: r.headers });
-    const access = session ? await getDashboardAccessState(session) : null;
-    if (!access || (!access.bypassed && !/^(admin|super admin)$/i.test(access.roleName?.trim() ?? "")))
+    const access = session ? await getBusinessGrowthAccessState(session) : null;
+    if (!access || (!access.bypassed && !isBusinessGrowthAdministrator(access.roleName)))
       return Response.json({ error: "Administrator access required." }, { status: 403 });
     const result = await councilorCollection().deleteOne({ id });
-    if (!result.deletedCount) return Response.json({ error: "Councilor not found." }, { status: 404 });
+    if (!result.deletedCount) return Response.json({ error: "Counselor not found." }, { status: 404 });
     await customerCollection().updateMany(
       { councilorId: id },
       { $set: { councilorId: null, councilorEmail: null, updatedAt: new Date() } },
@@ -184,10 +283,10 @@ export async function DELETE(r: Request, { params }: { params: Promise<{ id: str
     return Response.json({ deleted: true });
   }
   const session = await auth.api.getSession({ headers: r.headers });
-  if (!(await canManageCustomer(session, id)))
-    return Response.json({ error: "This customer is not assigned to you." }, { status: 403 });
+  const customerFilter = await customerMutationFilter(session, id);
+  if (!customerFilter) return Response.json({ error: "This customer is not assigned to you." }, { status: 403 });
   const x = await customerCollection().findOneAndUpdate(
-    { id },
+    customerFilter,
     { $set: { customerStatus: "inactive", updatedAt: new Date() } },
     { returnDocument: "after" },
   );

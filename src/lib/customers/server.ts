@@ -14,6 +14,12 @@
 
 import { randomUUID } from "crypto";
 
+import { assignedCustomersFilterFor } from "@/lib/customers/assignment-core.mjs";
+import {
+  buildCouncilorProgressPipeline,
+  getCouncilorProgressWindows,
+  mapCouncilorProgress,
+} from "@/lib/customers/councilor-progress.mjs";
 import { type CustomerStatus } from "@/lib/dashboard/customers";
 import { type Order } from "@/lib/dashboard/orders";
 import {
@@ -72,6 +78,17 @@ export type CustomerFollowUpRecord = {
 };
 export type SpendRecord = { id: string; funnelId: string; amount: number; createdAt: Date };
 const normalize = (v: unknown) => (typeof v === "string" ? v.trim().toLowerCase() : "");
+export async function councilorForSession(session: { user: { id?: string | null; email?: string | null } }) {
+  if (session.user.id) {
+    const linked = await councilorCollection().findOne({ userId: session.user.id });
+    if (linked) return linked;
+  }
+  const email = normalize(session.user.email);
+  return email ? councilorCollection().findOne({ email }) : null;
+}
+export function assignedCustomersFilter(councilor: CouncilorRecord) {
+  return assignedCustomersFilterFor(councilor);
+}
 export const serialize = (v: Date | null) => v?.toISOString() ?? null;
 export type CustomerMetrics = {
   amountSpent: number;
@@ -170,10 +187,18 @@ export async function metricsFor(customer: CustomerRecord) {
 export const customerCollection = customersCollection;
 export const funnelCollection = funnelsCollection;
 export const spendCollection = customerSpendsCollection;
-// Keep councilors in the existing application database, alongside customer growth data.
+// Keep counselors in the existing application database, alongside customer growth data.
 export const councilorCollection = councilorsCollection;
 export const now = () => new Date();
 export const id = () => randomUUID();
+export async function councilorProgressFor(councilors: CouncilorRecord[], asOf = now()) {
+  const windows = getCouncilorProgressWindows(asOf);
+  const pipeline = buildCouncilorProgressPipeline(councilors, windows);
+  const rows = pipeline.length
+    ? await customerCollection().aggregate<{ _id: string; [key: string]: unknown }>(pipeline).toArray()
+    : [];
+  return mapCouncilorProgress(councilors, rows, windows);
+}
 export const customerFollowUps = (value: unknown): CustomerFollowUpRecord[] =>
   Array.isArray(value)
     ? value

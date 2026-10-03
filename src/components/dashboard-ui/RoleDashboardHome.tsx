@@ -149,7 +149,7 @@ const content = {
         icon: Users,
       },
       {
-        title: "Councillors",
+        title: "Counselors",
         description: "Manage customer support assignments.",
         href: "/dashboard/business-growth/councillor",
         icon: ShieldCheck,

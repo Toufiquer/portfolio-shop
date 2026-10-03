@@ -57,9 +57,9 @@ export const sidebarDefaults: ImportSidebarDefault[] = [
     children: [
       { name: "Overview", url: "/dashboard/business-growth/overview", icon: "Users" },
       { name: "Funnels", url: "/dashboard/business-growth/funnels", icon: "Filter" },
-      { name: "Customer", url: "/dashboard/business-growth/customer", icon: "Users" },
-      { name: "Councillor", url: "/dashboard/business-growth/councillor", icon: "Users" },
-      { name: "Task", url: "/dashboard/business-growth/task", icon: "Check" },
+      { name: "Customers", url: "/dashboard/business-growth/customer", icon: "Users" },
+      { name: "Counselors", url: "/dashboard/business-growth/councillor", icon: "Users" },
+      { name: "Tasks", url: "/dashboard/business-growth/task", icon: "Check" },
     ],
   },
   { name: "Media", url: "/dashboard/media", icon: "Image" },

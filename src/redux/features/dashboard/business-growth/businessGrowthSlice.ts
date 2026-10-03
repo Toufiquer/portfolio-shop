@@ -14,6 +14,7 @@
 
 import {
   type Councilor,
+  type CouncilorProgressSummary,
   type Customer,
   type CustomerFunnel,
   type CustomerSpend,
@@ -56,6 +57,9 @@ export const businessGrowthApi = apiSlice.injectEndpoints({
     getCustomerOverview: b.query<
       {
         total: number;
+        funnelCount: number;
+        councilorCount: number;
+        customersInFunnels: number;
         statuses: { _id: CustomerStatus; count: number }[];
         funnels: {
           id: string;
@@ -70,13 +74,24 @@ export const businessGrowthApi = apiSlice.injectEndpoints({
         monthly: { label: string; count: number }[];
         newLast30: number;
         newPrevious30: number;
+        councilorProgress: CouncilorProgressSummary;
       },
       void
     >({
       query: () => "business-growth/v1?kind=overview",
       providesTags: ["Customer", "CustomerFunnel"],
     }),
-    getGrowthWorkspace: b.query<{ isAdmin: boolean; isCouncilor: boolean }, void>({
+    getGrowthWorkspace: b.query<
+      {
+        canManageWorkspace: boolean;
+        isCouncilor: boolean;
+        permissions: Record<
+          "overview" | "funnels" | "customers" | "councilors" | "tasks",
+          Record<"read" | "create" | "update" | "delete", boolean>
+        >;
+      },
+      void
+    >({
       query: () => "business-growth/v1?kind=workspace",
     }),
     getCouncilors: b.query<{ items: Councilor[] }, void>({
@@ -165,12 +180,19 @@ export const businessGrowthApi = apiSlice.injectEndpoints({
       query: (id) => ({ url: `business-growth/v1/${id}?kind=funnel`, method: "DELETE" }),
       invalidatesTags: ["CustomerFunnel", "Customer"],
     }),
-    updateCustomer: b.mutation<{ item: Customer }, { id: string } & Partial<Customer>>({
-      query: ({ id, ...body }) => ({ url: `business-growth/v1/${id}`, method: "PATCH", body }),
+    updateCustomer: b.mutation<{ item: Customer }, { id: string; kind?: "task" } & Partial<Customer>>({
+      query: ({ id, kind, ...body }) => ({
+        url: `business-growth/v1/${id}`,
+        method: "PATCH",
+        body: { ...body, ...(kind ? { kind } : {}) },
+      }),
       invalidatesTags: ["Customer"],
     }),
-    archiveCustomer: b.mutation<{ item: Customer }, string>({
-      query: (id) => ({ url: `business-growth/v1/${id}`, method: "DELETE" }),
+    archiveCustomer: b.mutation<{ item: Customer }, string | { id: string; kind?: "task" }>({
+      query: (arg) => {
+        const { id, kind } = typeof arg === "string" ? { id: arg, kind: undefined } : arg;
+        return { url: `business-growth/v1/${id}${kind ? `?kind=${kind}` : ""}`, method: "DELETE" };
+      },
       invalidatesTags: ["Customer"],
     }),
     bulkUpdateCustomers: b.mutation<
@@ -180,7 +202,10 @@ export const businessGrowthApi = apiSlice.injectEndpoints({
       query: (body) => ({ url: "business-growth/v1/bulk", method: "PATCH", body }),
       invalidatesTags: ["Customer"],
     }),
-    assignCustomersToCouncilor: b.mutation<{ updatedCount: number }, { ids: string[]; councilorId: string | null }>({
+    assignCustomersToCouncilor: b.mutation<
+      { updatedCount: number; assignedCount?: number; reassignedCount?: number },
+      { ids: string[]; councilorId: string | null; reassign?: boolean }
+    >({
       query: (body) => ({ url: "business-growth/v1/bulk", method: "PATCH", body }),
       invalidatesTags: ["Customer"],
     }),

@@ -7,6 +7,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test:business-growth-assignment": "node --test src/lib/customers/assignment-core.test.mjs",
+    "test:business-growth-api": "node --test src/app/api/lib/business-growth-api-policy.test.mjs",
+    "test:business-growth-progress": "node --test src/lib/customers/councilor-progress.test.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

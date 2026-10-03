@@ -60,6 +60,23 @@ export type Customer = {
   updatedAt: string;
   metrics: CustomerMetrics;
 };
+export type CouncilorProgressPeriod = {
+  from: string;
+  to: string;
+  followUps: number;
+  customersTouched: number;
+};
+export type CouncilorProgressSummary = {
+  timeZone: string;
+  asOf: string;
+  assignedCustomers: number;
+  workingCustomers: number;
+  periods: {
+    daily: CouncilorProgressPeriod;
+    weekly: CouncilorProgressPeriod;
+    monthly: CouncilorProgressPeriod;
+  };
+};
 export type Councilor = {
   id: string;
   userId?: string;
@@ -69,6 +86,7 @@ export type Councilor = {
   activeCount: number;
   inactiveCount: number;
   counsellingLast24Hours: number;
+  progress?: CouncilorProgressSummary;
   createdAt: string;
 };
 /*

@@ -8,10 +8,25 @@
 
 import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
-import { authorizeDashboardRequest, getDashboardAccessState } from "@/app/api/lib/dashboard-authorization";
 import {
+  guardBusinessGrowthApiRequest,
+  normalizeBusinessGrowthPostKind,
+  normalizeBusinessGrowthReadKind,
+} from "@/app/api/lib/business-growth-api-policy.mjs";
+import {
+  authorizeBusinessGrowthRequest,
+  getBusinessGrowthAccessState,
+  isBusinessGrowthAdministrator,
+  isBusinessGrowthCouncilor,
+  type BusinessGrowthAccessArea,
+  type BusinessGrowthRequestTarget,
+} from "@/app/api/lib/dashboard-authorization";
+import {
+  assignedCustomersFilter,
   customerCollection,
+  councilorForSession,
   councilorCollection,
+  councilorProgressFor,
   customerFollowUps,
   funnelCollection,
   funnelStages,
@@ -29,13 +44,21 @@ import {
   serializeFollowUps,
 } from "@/lib/customers/server";
 import { customerStatuses } from "@/lib/dashboard/customers";
-const guard = async (r: Request, method: "GET" | "POST") => {
+const guard = async (
+  r: Request,
+  method: "GET" | "POST",
+  area: BusinessGrowthAccessArea,
+  target: BusinessGrowthRequestTarget = "collection",
+) => {
   const limited = await rateLimitDistributed(r, "customer-api");
   if (limited) return limited;
-  const s = await auth.api.getSession({ headers: r.headers });
-  if (!s) return Response.json({ error: "Sign in required." }, { status: 401 });
-  const a = await authorizeDashboardRequest(s, "/api/dashboard/business-growth/v1", method);
-  return a.allowed ? null : Response.json({ error: a.state.message ?? "Unauthorized." }, { status: 403 });
+  return guardBusinessGrowthApiRequest(r, {
+    area,
+    method,
+    target,
+    getSession: (headers) => auth.api.getSession({ headers }),
+    authorize: authorizeBusinessGrowthRequest,
+  });
 };
 const text = (v: unknown, max: number) => (typeof v === "string" && v.trim().length <= max ? v.trim() : "");
 const customerStatus = (value: unknown) => (value === "inactive" || value === "archived" ? "inactive" : "active");
@@ -43,56 +66,51 @@ const followUpAuthor = (session: { user?: { email?: unknown; name?: unknown } } 
   authorEmail: typeof session?.user?.email === "string" ? session.user.email.trim().toLowerCase() : "",
   authorName: typeof session?.user?.name === "string" ? session.user.name.trim() : "",
 });
-const isAdministrator = (roleName: string | null) => /^(admin|super admin)$/i.test(roleName?.trim() ?? "");
 async function sessionAccess(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
-  return { session, access: session ? await getDashboardAccessState(session) : null };
+  return { session, access: session ? await getBusinessGrowthAccessState(session) : null };
 }
 export async function GET(r: Request) {
-  const g = await guard(r, "GET");
-  if (g) return g;
   const q = new URL(r.url).searchParams;
-  const kind = q.get("kind") ?? "customers";
+  const kind = normalizeBusinessGrowthReadKind(q.get("kind"));
+  if (!kind) return Response.json({ error: "Unknown Business Growth resource." }, { status: 400 });
+  const g = await guard(r, "GET", kind);
+  if (g) return g;
   const { session, access } = await sessionAccess(r);
   if (!session || !access) return Response.json({ error: "Sign in required." }, { status: 401 });
-  const admin = access.bypassed || isAdministrator(access.roleName);
-  if (kind === "workspace")
+  const admin = access.bypassed || isBusinessGrowthAdministrator(access.roleName);
+  const councilorRole = isBusinessGrowthCouncilor(access.roleName);
+  if (kind === "workspace") {
+    const workspacePermissionFor = (pathname: string) => {
+      const matching = (access.sidebarPermissions ?? []).filter(
+        (sidebar) =>
+          sidebar.url === pathname ||
+          (pathname === "/dashboard/business-growth/overview" && sidebar.url === "/dashboard/business-growth"),
+      );
+      const allowed = (operation: "read" | "create" | "update" | "delete") =>
+        admin || matching.some((sidebar) => Boolean(sidebar.permissions[operation]));
+      return {
+        read: allowed("read"),
+        create: allowed("create"),
+        update: allowed("update"),
+        delete: allowed("delete"),
+      };
+    };
     return Response.json({
-      isAdmin: admin,
-      isCouncilor: Boolean(
-        await councilorCollection().findOne({
-          $or: [{ userId: session.user.id }, { email: normalize(session.user.email) }],
-        }),
-      ),
+      canManageWorkspace: admin,
+      isCouncilor: councilorRole,
+      permissions: {
+        overview: workspacePermissionFor("/dashboard/business-growth/overview"),
+        funnels: workspacePermissionFor("/dashboard/business-growth/funnels"),
+        customers: workspacePermissionFor("/dashboard/business-growth/customer"),
+        councilors: workspacePermissionFor("/dashboard/business-growth/councillor"),
+        tasks: workspacePermissionFor("/dashboard/business-growth/task"),
+      },
     });
+  }
   if (kind === "councilors") {
-    if (!admin) return Response.json({ error: "Administrator access required." }, { status: 403 });
     const items = await councilorCollection().find({}).sort({ createdAt: -1 }).toArray();
-    const counts = new Map(
-      (
-        await customerCollection()
-          .aggregate<{ _id: string; count: number }>([{ $group: { _id: "$councilorId", count: { $sum: 1 } } }])
-          .toArray()
-      ).map((row) => [row._id, row.count]),
-    );
-    const statusCounts = new Map(
-      (
-        await customerCollection()
-          .aggregate<{ _id: { councilorId: string; status: "active" | "inactive" }; count: number }>([
-            { $match: { councilorId: { $exists: true, $ne: null } } },
-            {
-              $project: {
-                councilorId: 1,
-                status: {
-                  $cond: [{ $in: ["$customerStatus", ["inactive", "archived"]] }, "inactive", "active"],
-                },
-              },
-            },
-            { $group: { _id: { councilorId: "$councilorId", status: "$status" }, count: { $sum: 1 } } },
-          ])
-          .toArray()
-      ).map((row) => [`${row._id.councilorId}:${row._id.status}`, row.count]),
-    );
+    const progress = await councilorProgressFor(items);
     const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const counsellingCounts = new Map(
       (
@@ -109,10 +127,13 @@ export async function GET(r: Request) {
     return Response.json({
       items: items.map((item) => ({
         ...item,
-        assignedCount: counts.get(item.id) ?? 0,
-        activeCount: statusCounts.get(`${item.id}:active`) ?? 0,
-        inactiveCount: statusCounts.get(`${item.id}:inactive`) ?? 0,
+        assignedCount: progress.byCouncilorId.get(item.id)?.assignedCustomers ?? 0,
+        activeCount: progress.byCouncilorId.get(item.id)?.workingCustomers ?? 0,
+        inactiveCount:
+          (progress.byCouncilorId.get(item.id)?.assignedCustomers ?? 0) -
+          (progress.byCouncilorId.get(item.id)?.workingCustomers ?? 0),
         counsellingLast24Hours: counsellingCounts.get(item.id) ?? 0,
+        progress: progress.byCouncilorId.get(item.id),
         createdAt: item.createdAt.toISOString(),
       })),
     });
@@ -173,6 +194,10 @@ export async function GET(r: Request) {
         .aggregate<{ _id: string; amount: number }>([{ $group: { _id: "$funnelId", amount: { $sum: "$amount" } } }])
         .toArray(),
     ]);
+    const councilors = await councilorCollection()
+      .find({}, { projection: { id: 1, email: 1 } })
+      .toArray();
+    const councilorProgress = (await councilorProgressFor(councilors, current)).team;
     const funnels = await funnelCollection()
       .find({}, { projection: { id: 1, name: 1, color: 1, minimumAmount: 1, maximumAmount: 1 } })
       .toArray();
@@ -189,6 +214,9 @@ export async function GET(r: Request) {
     });
     return Response.json({
       total,
+      funnelCount: funnels.length,
+      councilorCount: councilors.length,
+      customersInFunnels: total - (counts.get(null) ?? 0),
       statuses,
       funnels: funnels.map((funnel) => {
         const minimum = Number(funnel.minimumAmount);
@@ -212,6 +240,7 @@ export async function GET(r: Request) {
       monthly,
       newLast30,
       newPrevious30,
+      councilorProgress,
     });
   }
   const search = normalize(q.get("search"));
@@ -220,36 +249,31 @@ export async function GET(r: Request) {
   const assignment = q.get("assignment");
   const pageSize = Math.min(100, Math.max(10, Number.parseInt(q.get("pageSize") ?? "25", 10) || 25));
   const councilorOnly = kind === "tasks";
-  if (
-    councilorOnly &&
-    !admin &&
-    !(await councilorCollection().findOne({
-      $or: [{ userId: session.user.id }, { email: normalize(session.user.email) }],
-    }))
-  )
-    return Response.json({ error: "Councilor access required." }, { status: 403 });
-  const filter: Record<string, unknown> = {
-    ...(councilorOnly ? { councilorEmail: normalize(session.user.email) } : {}),
-    ...(status && customerStatuses.includes(status as never)
-      ? { customerStatus: status === "active" ? { $in: ["active", "lead"] } : { $in: ["inactive", "archived"] } }
-      : {}),
-    ...(funnelId ? { funnelId } : {}),
-    ...(assignment === "assigned" ? { councilorId: { $exists: true, $ne: null } } : {}),
-    ...(assignment === "unassigned"
-      ? { $and: [{ $or: [{ councilorId: { $exists: false } }, { councilorId: null }] }] }
-      : {}),
-    ...(search
-      ? {
-          $or: [
-            { name: { $regex: search, $options: "i" } },
-            { email: { $regex: search, $options: "i" } },
-            { mobileNumber: { $regex: search, $options: "i" } },
-            { whatsappNumber: { $regex: search, $options: "i" } },
-          ],
-        }
-      : {}),
-  };
-  const assignmentFilter = councilorOnly ? { councilorEmail: normalize(session.user.email) } : filter;
+  const ownAssignmentsOnly = councilorRole && (kind === "customers" || councilorOnly);
+  const councilor = ownAssignmentsOnly ? await councilorForSession(session) : null;
+  if (ownAssignmentsOnly && !councilor)
+    return Response.json({ error: "Counselor assignment is required." }, { status: 403 });
+  const ownAssignmentFilter = councilor ? assignedCustomersFilter(councilor) : null;
+  const filters: Record<string, unknown>[] = [];
+  if (ownAssignmentFilter) filters.push(ownAssignmentFilter);
+  if (status && customerStatuses.includes(status as never))
+    filters.push({
+      customerStatus: status === "active" ? { $in: ["active", "lead"] } : { $in: ["inactive", "archived"] },
+    });
+  if (funnelId) filters.push({ funnelId });
+  if (assignment === "assigned") filters.push({ councilorId: { $exists: true, $ne: null } });
+  if (assignment === "unassigned") filters.push({ $or: [{ councilorId: { $exists: false } }, { councilorId: null }] });
+  if (search)
+    filters.push({
+      $or: [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { mobileNumber: { $regex: search, $options: "i" } },
+        { whatsappNumber: { $regex: search, $options: "i" } },
+      ],
+    });
+  const filter: Record<string, unknown> = filters.length > 1 ? { $and: filters } : (filters[0] ?? {});
+  const assignmentFilter: Record<string, unknown> = ownAssignmentFilter ?? filter;
   const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const [total, assigned, active, inactive, counsellingRows] = await Promise.all([
     customerCollection().countDocuments(filter),
@@ -299,19 +323,24 @@ export async function GET(r: Request) {
   });
 }
 export async function POST(r: Request) {
-  const g = await guard(r, "POST");
+  const b = (await r.json().catch(() => null)) as Record<string, unknown> | null;
+  const rawKind = b && Object.hasOwn(b, "kind") ? b.kind : undefined;
+  const kind = normalizeBusinessGrowthPostKind(rawKind);
+  if (!kind) return Response.json({ error: "Unknown Business Growth resource for this action." }, { status: 400 });
+  const area: BusinessGrowthAccessArea =
+    kind === "customer" ? "customers" : kind === "councilor" ? "councilors" : kind === "funnel" ? "funnels" : "spends";
+  const g = await guard(r, "POST", area);
   if (g) return g;
   const session = await auth.api.getSession({ headers: r.headers });
-  const b = (await r.json().catch(() => null)) as Record<string, unknown> | null;
-  const kind = b?.kind ?? "customer";
-  const access = await getDashboardAccessState(session!);
-  const admin = access.bypassed || isAdministrator(access.roleName);
+  if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
+  const access = await getBusinessGrowthAccessState(session);
+  const admin = access.bypassed || isBusinessGrowthAdministrator(access.roleName);
   if (kind === "councilor") {
     if (!admin) return Response.json({ error: "Administrator access required." }, { status: 403 });
     const email = normalize(b?.email);
     if (!email) return Response.json({ error: "Enter a valid user email." }, { status: 400 });
     const existing = await councilorCollection().findOne({ email });
-    if (existing) return Response.json({ error: "This email is already a councilor." }, { status: 409 });
+    if (existing) return Response.json({ error: "This email is already a counselor." }, { status: 409 });
     const item: CouncilorRecord = { id: id(), name: email, email, createdAt: now() };
     await councilorCollection().insertOne(item);
     return Response.json({ item: { ...item, createdAt: item.createdAt.toISOString() } }, { status: 201 });

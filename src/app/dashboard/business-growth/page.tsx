@@ -7,7 +7,6 @@
 
 "use client";
 
-import Link from "next/link";
 import {
   ChevronDown,
   ChevronUp,
@@ -23,6 +22,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import Link from "next/link";
 import { type ChangeEvent, type FormEvent, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 
@@ -35,26 +35,21 @@ import {
   type Customer,
   type Councilor,
   type CustomerFunnel,
-  type CustomerSpend,
   type CustomerStatus,
+  type CouncilorProgressSummary,
 } from "@/lib/dashboard/customers";
 import {
   useBulkDeleteCustomersMutation,
   useBulkDeleteFunnelsMutation,
   useBulkUpdateCustomersMutation,
   useCreateCustomerMutation,
-  useCreateDemoSpendsMutation,
   useCreateFunnelMutation,
-  useCreateSpendMutation,
-  useDeleteSpendMutation,
   useDeleteFunnelMutation,
   useGetCustomerOverviewQuery,
   useGetCustomersQuery,
   useGetFunnelsQuery,
-  useGetSpendsQuery,
   useImportCustomersMutation,
   useImportDemoCustomersWithOrdersMutation,
-  useBulkDeleteSpendsMutation,
   useAssignCustomersToCouncilorMutation,
   useArchiveCustomerMutation,
   useCreateCouncilorMutation,
@@ -65,25 +60,23 @@ import {
   useDeleteCouncilorMutation,
   useUpdateCustomerMutation,
   useUpdateFunnelMutation,
-  useUpdateSpendMutation,
 } from "@/redux/features/dashboard/business-growth/businessGrowthSlice";
-export type BusinessGrowthSection = "funnels" | "customer" | "overview" | "spend" | "councillor" | "task";
-type Tab = "funnels" | "customers" | "overview" | "spend" | "admin" | "task";
+export type BusinessGrowthSection = "funnels" | "customer" | "overview" | "councillor" | "task";
+type Tab = "funnels" | "customers" | "overview" | "admin" | "task";
 type AdminSubTab = "councillors" | "customers";
 type ImportRow = Partial<Customer> & { number?: string };
 const sectionHeadings: Record<BusinessGrowthSection, { title: string; description: string }> = {
   overview: { title: "Business Growth Overview", description: "Track customer journeys, contacts, and performance." },
   funnels: { title: "Customer Funnels", description: "Organize customer journeys with clear funnel stages." },
   customer: { title: "Customer Management", description: "Manage customer contacts, status, and funnel progress." },
-  spend: { title: "Marketing Spend", description: "Track campaign costs and marketing performance." },
-  councillor: { title: "Councillor Management", description: "Manage councillor assignments and customer support." },
+  councillor: { title: "Counselor Management", description: "Manage counselor assignments and customer support." },
   task: { title: "Customer Tasks", description: "Review assigned customers and record follow-up work." },
 };
 const sectionTabs: { section: BusinessGrowthSection; label: string; href: string }[] = [
   { section: "overview", label: "Overview", href: "/dashboard/business-growth/overview" },
   { section: "funnels", label: "Funnels", href: "/dashboard/business-growth/funnels" },
   { section: "customer", label: "Customers", href: "/dashboard/business-growth/customer" },
-  { section: "councillor", label: "Councillors", href: "/dashboard/business-growth/councillor" },
+  { section: "councillor", label: "Counselors", href: "/dashboard/business-growth/councillor" },
   { section: "task", label: "Tasks", href: "/dashboard/business-growth/task" },
 ];
 const pageSizes = [10, 25, 50, 100] as const;
@@ -129,9 +122,6 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
     [pageSize, setPageSize] = useState<(typeof pageSizes)[number]>(10),
     [funnelPage, setFunnelPage] = useState(1),
     [funnelPageSize, setFunnelPageSize] = useState<(typeof pageSizes)[number]>(10),
-    [spendPage, setSpendPage] = useState(1),
-    [spendPageSize, setSpendPageSize] = useState<(typeof pageSizes)[number]>(10),
-    [spendFunnelFilter, setSpendFunnelFilter] = useState(""),
     [selected, setSelected] = useState<string[]>([]),
     [bulkStatus, setBulkStatus] = useState<CustomerStatus>("active"),
     [bulkStatusOpen, setBulkStatusOpen] = useState(false),
@@ -146,12 +136,7 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
     [importRows, setImportRows] = useState<ImportRow[] | null>(null),
     [demoImportOpen, setDemoImportOpen] = useState(false),
     [demoCount, setDemoCount] = useState(235),
-    [importingDemo, setImportingDemo] = useState(false),
-    [spendForm, setSpendForm] = useState<CustomerSpend | null | undefined>(),
-    [viewSpend, setViewSpend] = useState<CustomerSpend | null>(null),
-    [deleteSpend, setDeleteSpend] = useState<CustomerSpend | null>(null),
-    [selectedSpends, setSelectedSpends] = useState<string[]>([]),
-    [confirmBulkSpendDelete, setConfirmBulkSpendDelete] = useState(false);
+    [importingDemo, setImportingDemo] = useState(false);
   const [adminSelected, setAdminSelected] = useState<string[]>([]),
     [adminSubTab] = useState<AdminSubTab>("councillors"),
     [adminSearch, setAdminSearch] = useState(""),
@@ -166,8 +151,28 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
     [taskPageSize, setTaskPageSize] = useState<(typeof pageSizes)[number]>(10),
     [taskSelected, setTaskSelected] = useState<string[]>([]);
   const fileRef = useRef<HTMLInputElement>(null);
-  const { data: funnels, isLoading: funnelsLoading, isFetching: funnelsFetching } = useGetFunnelsQuery();
   const { data: workspace, isLoading: workspaceLoading, isFetching: workspaceFetching } = useGetGrowthWorkspaceQuery();
+  const canManageWorkspace = workspace?.canManageWorkspace === true;
+  const can = (
+    area: "overview" | "funnels" | "customers" | "councilors" | "tasks",
+    operation: "read" | "create" | "update" | "delete",
+  ) => Boolean(workspace?.permissions[area][operation]);
+  const canCreateFunnel = can("funnels", "create");
+  const canUpdateFunnel = can("funnels", "update");
+  const canDeleteFunnel = can("funnels", "delete");
+  const canCreateCustomer = can("customers", "create");
+  const canUpdateCustomer = can("customers", "update");
+  const canDeleteCustomer = can("customers", "delete");
+  const canBulkUpdateCustomer = canUpdateCustomer && !workspace?.isCouncilor;
+  const canBulkDeleteCustomer = canDeleteCustomer && !workspace?.isCouncilor;
+  const canSelectCustomer =
+    canManageWorkspace || (!workspace?.isCouncilor && (canBulkUpdateCustomer || canBulkDeleteCustomer));
+  const canUpdateTask = can("tasks", "update");
+  const canDeleteTask = can("tasks", "delete");
+  const canSelectTask = canManageWorkspace || (!workspace?.isCouncilor && (canUpdateTask || canDeleteTask));
+  const { data: funnels, isLoading: funnelsLoading, isFetching: funnelsFetching } = useGetFunnelsQuery(undefined, {
+    skip: !["funnels", "customers", "task"].includes(tab) && !(tab === "admin" && adminSubTab === "customers"),
+  });
   const {
     data: customers,
     isLoading: customersLoading,
@@ -178,7 +183,7 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
     funnelId: funnelFilter || undefined,
     page,
     pageSize,
-  });
+  }, { skip: tab !== "customers" });
   const {
     data: adminCustomers,
     isLoading: adminCustomersLoading,
@@ -192,23 +197,29 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
       page,
       pageSize,
     },
-    { skip: !workspace?.isAdmin || tab !== "admin" || adminSubTab !== "customers" },
+    { skip: !canManageWorkspace || tab !== "admin" || adminSubTab !== "customers" },
   );
-  const { data: overview, isLoading: overviewLoading, isFetching: overviewFetching } = useGetCustomerOverviewQuery();
+  const { data: overview, isLoading: overviewLoading, isFetching: overviewFetching } = useGetCustomerOverviewQuery(
+    undefined,
+    { skip: tab !== "overview" && !(tab === "customers" && workspace?.isCouncilor === false) },
+  );
   const {
     data: councilors,
     isLoading: councilorsLoading,
     isFetching: councilorsFetching,
-  } = useGetCouncilorsQuery(undefined, { skip: !workspace?.isAdmin });
+  } = useGetCouncilorsQuery(undefined, {
+    skip:
+      !can("councilors", "read") ||
+      (tab !== "admin" && !(tab === "customers" && canManageWorkspace)),
+  });
   const {
     data: taskCustomers,
     isLoading: taskLoading,
     isFetching: taskFetching,
   } = useGetTaskCustomersQuery(
     { search: taskSearch, page: taskPage, pageSize: taskPageSize },
-    { skip: !workspace?.isCouncilor && !workspace?.isAdmin },
+    { skip: tab !== "task" || !can("tasks", "read") },
   );
-  const { data: spends, isLoading: spendsLoading, isFetching: spendsFetching } = useGetSpendsQuery();
   const [createFunnel, createFunnelState] = useCreateFunnelMutation();
   const [updateFunnel, updateFunnelState] = useUpdateFunnelMutation();
   const [removeFunnel, removeFunnelState] = useDeleteFunnelMutation();
@@ -224,11 +235,6 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
   const [bulkDeleteFunnels, bulkDeleteFunnelsState] = useBulkDeleteFunnelsMutation();
   const [importCustomers, importState] = useImportCustomersMutation();
   const [importDemoCustomersWithOrders, importDemoCustomersState] = useImportDemoCustomersWithOrdersMutation();
-  const [createSpend, createSpendState] = useCreateSpendMutation();
-  const [updateSpend, updateSpendState] = useUpdateSpendMutation();
-  const [removeSpend, removeSpendState] = useDeleteSpendMutation();
-  const [bulkDeleteSpends, bulkDeleteSpendsState] = useBulkDeleteSpendsMutation();
-  const [createDemoSpends, createDemoSpendsState] = useCreateDemoSpendsMutation();
   const busy =
     createFunnelState.isLoading ||
     updateFunnelState.isLoading ||
@@ -239,16 +245,6 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
   const funnelTotalPages = Math.max(1, Math.ceil(funnelItems.length / funnelPageSize));
   const activeFunnelPage = Math.min(funnelPage, funnelTotalPages);
   const visibleFunnels = funnelItems.slice((activeFunnelPage - 1) * funnelPageSize, activeFunnelPage * funnelPageSize);
-  const spendItems = spends?.items ?? [];
-  const filteredSpendItems = spendFunnelFilter
-    ? spendItems.filter((item) => item.funnelId === spendFunnelFilter)
-    : spendItems;
-  const spendTotalPages = Math.max(1, Math.ceil(filteredSpendItems.length / spendPageSize));
-  const activeSpendPage = Math.min(spendPage, spendTotalPages);
-  const visibleSpends = filteredSpendItems.slice(
-    (activeSpendPage - 1) * spendPageSize,
-    activeSpendPage * spendPageSize,
-  );
   const workspaceBusy = workspaceLoading || workspaceFetching;
   const funnelsBusy =
     funnelsLoading ||
@@ -278,15 +274,6 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
   const adminCustomersBusy =
     adminCustomersLoading || adminCustomersFetching || funnelsFetching || assignCustomersState.isLoading;
   const taskBusy = taskLoading || taskFetching || updateCustomerState.isLoading || archiveCustomerState.isLoading;
-  const spendBusy =
-    spendsLoading ||
-    spendsFetching ||
-    funnelsFetching ||
-    createSpendState.isLoading ||
-    updateSpendState.isLoading ||
-    removeSpendState.isLoading ||
-    bulkDeleteSpendsState.isLoading ||
-    createDemoSpendsState.isLoading;
   async function saveFunnel(
     form: Pick<CustomerFunnel, "name" | "description" | "minimumAmount" | "maximumAmount" | "color">,
   ) {
@@ -333,8 +320,23 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
   }
   async function saveCustomer(form: Omit<Customer, "id" | "createdAt" | "updatedAt" | "metrics">) {
     try {
-      if (customerForm) await updateCustomer({ ...form, id: customerForm.id }).unwrap();
-      else await createCustomer(form).unwrap();
+      if (customerForm) {
+        if (workspace?.isCouncilor) {
+          await updateCustomer({
+            id: customerForm.id,
+            ...(tab === "task" ? { kind: "task" as const } : {}),
+            customerStatus: form.customerStatus,
+            notes: form.notes,
+            followUps: form.followUps,
+          }).unwrap();
+        } else {
+          await updateCustomer({
+            ...form,
+            id: customerForm.id,
+            ...(tab === "task" ? { kind: "task" as const } : {}),
+          }).unwrap();
+        }
+      } else await createCustomer(form).unwrap();
       setCustomerForm(undefined);
       toast.success("Customer saved.");
     } catch (e) {
@@ -358,11 +360,17 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
       toast.error(errorMessage(e, "Bulk action failed."));
     }
   }
-  async function assignSelectedCustomers() {
-    if (!adminSelected.length || !assignedCouncilor) return;
+  async function assignSelectedCustomers(customerIds: string[], reassign = false) {
+    if (!customerIds.length || !assignedCouncilor) return;
+    if (reassign && !window.confirm(`Reassign ${customerIds.length} selected customer(s) to this Counselor?`)) return;
     try {
-      const result = await assignCustomers({ ids: adminSelected, councilorId: assignedCouncilor }).unwrap();
-      toast.success(`${result.updatedCount} customers assigned.`);
+      const result = await assignCustomers({
+        ids: customerIds,
+        councilorId: assignedCouncilor,
+        ...(reassign ? { reassign: true } : {}),
+      }).unwrap();
+      toast.success(`${result.updatedCount} customers ${reassign ? "reassigned" : "assigned"}.`);
+      setSelected((items) => items.filter((id) => !customerIds.includes(id)));
       setAdminSelected([]);
       setAssignedCouncilor("");
     } catch (error) {
@@ -372,7 +380,7 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
   async function removeCustomer() {
     if (!deleteCustomer) return;
     try {
-      if (tab === "task") await archiveCustomer(deleteCustomer.id).unwrap();
+      if (tab === "task") await archiveCustomer({ id: deleteCustomer.id, kind: "task" }).unwrap();
       else await bulkDelete([deleteCustomer.id]).unwrap();
       toast.success("Customer deleted.");
       setSelected((items) => items.filter((id) => id !== deleteCustomer.id));
@@ -475,44 +483,6 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
       setImportingDemo(false);
     }
   }
-  async function saveSpend(form: { funnelId: string; amount: number }) {
-    try {
-      if (spendForm) {
-        await updateSpend({ ...form, id: spendForm.id }).unwrap();
-        toast.success("Marketing spend updated.");
-      } else {
-        await createSpend(form).unwrap();
-        toast.success("Marketing spend recorded.");
-      }
-      setSpendForm(undefined);
-    } catch (error) {
-      toast.error(errorMessage(error, "Could not save marketing spend."));
-    }
-  }
-  async function deleteSelectedSpends(ids: string[]) {
-    try {
-      const result =
-        ids.length === 1
-          ? await removeSpend(ids[0])
-              .unwrap()
-              .then(() => ({ deletedCount: 1 }))
-          : await bulkDeleteSpends(ids).unwrap();
-      toast.success(`${result.deletedCount} spend ${result.deletedCount === 1 ? "entry" : "entries"} deleted.`);
-      setSelectedSpends([]);
-      setDeleteSpend(null);
-      setConfirmBulkSpendDelete(false);
-    } catch (error) {
-      toast.error(errorMessage(error, "Could not delete spend entries."));
-    }
-  }
-  async function importDemoSpends() {
-    try {
-      const result = await createDemoSpends().unwrap();
-      toast.success(`${result.createdCount} demo spend entries totaling ৳5,000 were added.`);
-    } catch (error) {
-      toast.error(errorMessage(error, "Could not import demo spend."));
-    }
-  }
   return (
     <main className="min-h-[calc(100vh-65px)] flex-1 bg-[#fffaf0] px-4 py-6 sm:px-6 lg:px-10">
       <section className="mx-auto max-w-7xl rounded-sm border border-[#eadfca] bg-white p-4 shadow-sm sm:p-6">
@@ -586,13 +556,15 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
               <h1 className="text-2xl font-semibold text-stone-900">{heading.title}</h1>
               {tab === "customers" && (
                 <span className="rounded-sm border border-amber-200 bg-amber-50 px-2.5 py-1 text-sm font-medium text-amber-800">
-                  Total users: {overviewLoading ? "…" : (overview?.total ?? 0)}
+                  {workspace?.isCouncilor
+                    ? `Assigned customers: ${customersLoading ? "…" : (customers?.total ?? 0)}`
+                    : `Total users: ${overviewLoading ? "…" : (overview?.total ?? 0)}`}
                 </span>
               )}
             </div>
             <p className="mt-1 text-sm text-stone-600">{heading.description}</p>
           </div>
-          {(tab === "funnels" || tab === "customers") && (
+          {((tab === "funnels" && canCreateFunnel) || (tab === "customers" && canCreateCustomer)) && (
             <button
               className="primary-button"
               onClick={() => (tab === "funnels" ? setFunnelForm(null) : setCustomerForm(null))}
@@ -612,7 +584,7 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
                 <h2 className="font-semibold text-stone-900">Customer funnels</h2>
                 <p className="text-sm text-stone-600">Use amount ranges to segment each customer.</p>
               </div>
-              {(funnels?.items.length ?? 0) <= 1 && (
+              {canCreateFunnel && (funnels?.items.length ?? 0) <= 1 && (
                 <button
                   className="secondary-button"
                   disabled={createFunnelState.isLoading}
@@ -623,7 +595,7 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
                 </button>
               )}
             </div>
-            {selectedFunnels.length > 0 && (
+            {canDeleteFunnel && selectedFunnels.length > 0 && (
               <div className="mt-3 flex items-center justify-between rounded-sm border border-red-200 bg-red-50 p-3">
                 <span className="text-sm font-medium">{selectedFunnels.length} funnels selected</span>
                 <button
@@ -641,6 +613,10 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
               loading={funnelsLoading}
               edit={setFunnelForm}
               remove={setDeleteFunnel}
+              canEdit={canUpdateFunnel}
+              canDelete={canDeleteFunnel}
+              canMove={canUpdateFunnel}
+              canSelect={canDeleteFunnel}
               view={setViewFunnel}
               selected={selectedFunnels}
               toggle={(id) =>
@@ -722,26 +698,30 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
                 <Download className="h-4 w-4" />
                 Export Excel
               </button>
-              <button className="secondary-button" onClick={() => fileRef.current?.click()} type="button">
-                <FileUp className="h-4 w-4" />
-                Import Excel
-              </button>
-              <input accept=".xlsx,.xls" className="hidden" onChange={readImport} ref={fileRef} type="file" />
+              {canCreateCustomer && (
+                <>
+                  <button className="secondary-button" onClick={() => fileRef.current?.click()} type="button">
+                    <FileUp className="h-4 w-4" />
+                    Import Excel
+                  </button>
+                  <input accept=".xlsx,.xls" className="hidden" onChange={readImport} ref={fileRef} type="file" />
+                </>
+              )}
             </div>
-            {selected.length > 0 && (
+            {canSelectCustomer && selected.length > 0 && (
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-sm border border-amber-200 bg-amber-50 p-3">
                 <span className="text-sm font-medium text-stone-800">
                   {selected.length} customer{selected.length === 1 ? "" : "s"} selected
                 </span>
                 <div className="flex flex-wrap gap-2">
-                  {workspace?.isAdmin && (
+                  {canManageWorkspace && (
                     <>
                       <select
                         className="input w-56"
                         onChange={(event) => setAssignedCouncilor(event.target.value)}
                         value={assignedCouncilor}
                       >
-                        <option value="">Assign to councillor</option>
+                        <option value="">Assign to Counselor</option>
                         {(councilors?.items ?? []).map((item) => (
                           <option key={item.id} value={item.id}>
                             {item.name || item.email}
@@ -751,31 +731,46 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
                       <button
                         className="primary-button"
                         disabled={!assignedCouncilor || assignCustomersState.isLoading}
-                        onClick={() => void assignSelectedCustomers()}
+                        onClick={() => void assignSelectedCustomers(selected)}
                         type="button"
                       >
                         Assign
                       </button>
+                      <button
+                        className="secondary-button"
+                        disabled={!assignedCouncilor || assignCustomersState.isLoading}
+                        onClick={() => void assignSelectedCustomers(selected, true)}
+                        type="button"
+                      >
+                        Reassign
+                      </button>
                     </>
                   )}
-                  <button className="secondary-button" onClick={() => setBulkStatusOpen(true)} type="button">
-                    <Edit3 className="h-4 w-4" />
-                    Bulk edit status
-                  </button>
-                  <button
-                    className="secondary-button border-red-200 text-red-700 hover:bg-red-50"
-                    onClick={() => setConfirmBulkCustomerDelete(true)}
-                    type="button"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete selected
-                  </button>
+                  {canBulkUpdateCustomer && (
+                    <button className="secondary-button" onClick={() => setBulkStatusOpen(true)} type="button">
+                      <Edit3 className="h-4 w-4" />
+                      Bulk edit status
+                    </button>
+                  )}
+                  {canBulkDeleteCustomer && (
+                    <button
+                      className="secondary-button border-red-200 text-red-700 hover:bg-red-50"
+                      onClick={() => setConfirmBulkCustomerDelete(true)}
+                      type="button"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete selected
+                    </button>
+                  )}
                 </div>
               </div>
             )}
             <CustomerTable
               customers={customers?.items ?? []}
               edit={setCustomerForm}
+              editable={canUpdateCustomer}
+              canDelete={canDeleteCustomer && !workspace?.isCouncilor}
+              canSelect={canSelectCustomer}
               funnels={funnels?.items ?? []}
               loading={customersLoading}
               remove={setDeleteCustomer}
@@ -795,9 +790,11 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
                 <p className="mt-1 text-sm text-stone-600">
                   Import demo customers with product purchases assigned from their funnel.
                 </p>
-                <button className="primary-button mt-4" onClick={() => setDemoImportOpen(true)} type="button">
-                  Import demo users
-                </button>
+                {canCreateCustomer && (
+                  <button className="primary-button mt-4" onClick={() => setDemoImportOpen(true)} type="button">
+                    Import demo users
+                  </button>
+                )}
               </div>
             )}
             <PaginationBar
@@ -822,11 +819,11 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
             <Overview data={overview} />
           </>
         )}
-        {tab === "admin" && workspace?.isAdmin && (
+        {tab === "admin" && can("councilors", "read") && (
           <section className="mt-5">
             {(adminSubTab === "councillors" ? adminCouncilorsBusy : adminCustomersBusy) && (
               <LoadingState
-                label={adminSubTab === "councillors" ? "Loading councillors" : "Loading customer assignments"}
+                label={adminSubTab === "councillors" ? "Loading counselors" : "Loading customer assignments"}
                 overlay
               />
             )}
@@ -834,18 +831,20 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
               <>
                 <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-amber-200 bg-amber-50 p-4">
                   <div>
-                    <h2 className="font-semibold text-stone-900">Councilor assignments</h2>
-                    <p className="text-sm text-stone-600">Select customers and assign them to a councilor.</p>
+                    <h2 className="font-semibold text-stone-900">Counselor assignments</h2>
+                    <p className="text-sm text-stone-600">Select customers and assign them to a counselor.</p>
                   </div>
-                  <button className="primary-button" onClick={() => setCouncilorDialogOpen(true)} type="button">
-                    <Plus className="h-4 w-4" />
-                    Add councilor
-                  </button>
+                  {canManageWorkspace && (
+                    <button className="primary-button" onClick={() => setCouncilorDialogOpen(true)} type="button">
+                      <Plus className="h-4 w-4" />
+                      Add counselor
+                    </button>
+                  )}
                 </div>
                 <div className="mt-3 overflow-hidden rounded-sm border border-[#eadfca] bg-white">
                   {(councilors?.items ?? []).map((item) => (
                     <div
-                      className="flex items-center gap-3 border-b border-[#eadfca] p-3 last:border-b-0"
+                      className="flex flex-wrap items-center gap-3 border-b border-[#eadfca] p-3 last:border-b-0"
                       key={item.id}
                     >
                       <span className="min-w-0 flex-1 break-all text-sm font-medium">{item.email}</span>
@@ -860,36 +859,68 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
                           Total inactive: {item.inactiveCount}
                         </span>
                         <span className="rounded-sm bg-sky-50 px-2 py-1 text-xs text-sky-800">
-                          24 H Counselling: {item.counsellingLast24Hours}
+                          Today: {item.progress?.periods.daily.followUps ?? 0} follow-ups
                         </span>
                       </div>
-                      <button
-                        className="icon-button"
-                        onClick={() => {
-                          setEditingCouncilor(item);
-                          setCouncilorDialogOpen(true);
-                        }}
-                        type="button"
-                      >
-                        <Edit3 className="h-4 w-4" />
-                      </button>
-                      <button
-                        className="icon-button border-red-100 text-red-700"
-                        onClick={() => {
-                          if (window.confirm(`Delete ${item.email}? Assigned customers will be unassigned.`))
-                            void deleteCouncilor(item.id)
-                              .unwrap()
-                              .then(() => toast.success("Councilor deleted."))
-                              .catch((error) => toast.error(errorMessage(error, "Could not delete councilor.")));
-                        }}
-                        type="button"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {canManageWorkspace && (
+                        <>
+                          <button
+                            className="icon-button"
+                            onClick={() => {
+                              setEditingCouncilor(item);
+                              setCouncilorDialogOpen(true);
+                            }}
+                            type="button"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </button>
+                          <button
+                            className="icon-button border-red-100 text-red-700"
+                            onClick={() => {
+                              if (window.confirm(`Delete ${item.email}? Assigned customers will be unassigned.`))
+                                void deleteCouncilor(item.id)
+                                  .unwrap()
+                                  .then(() => toast.success("Counselor deleted."))
+                                  .catch((error) => toast.error(errorMessage(error, "Could not delete counselor.")));
+                            }}
+                            type="button"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </>
+                      )}
+                      {item.progress && (
+                        <details className="basis-full rounded-sm bg-stone-50 px-3 py-2 text-sm text-stone-700">
+                          <summary className="cursor-pointer font-medium">
+                            Progress details ({item.progress.timeZone}; as of {item.progress.asOf})
+                          </summary>
+                          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                            <div className="rounded-sm border border-stone-200 bg-white p-2">
+                              <p className="text-xs text-stone-500">Working assignments</p>
+                              <p className="mt-1 font-semibold">
+                                {item.progress.workingCustomers} / {item.progress.assignedCustomers}
+                              </p>
+                            </div>
+                            {(
+                              [
+                                ["Today", item.progress.periods.daily],
+                                ["This week", item.progress.periods.weekly],
+                                ["This month", item.progress.periods.monthly],
+                              ] as const
+                            ).map(([label, period]) => (
+                              <div className="rounded-sm border border-stone-200 bg-white p-2" key={label}>
+                                <p className="text-xs text-stone-500">{label}</p>
+                                <p className="mt-1 font-semibold">{period.followUps} follow-ups</p>
+                                <p className="text-xs text-stone-500">{period.customersTouched} customers touched</p>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
                     </div>
                   ))}
                   {!councilors?.items.length && (
-                    <p className="p-4 text-sm text-stone-600">No councilor emails added yet.</p>
+                    <p className="p-4 text-sm text-stone-600">No counselors added yet.</p>
                   )}
                 </div>
               </>
@@ -962,7 +993,7 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
                       onChange={(event) => setAssignedCouncilor(event.target.value)}
                       value={assignedCouncilor}
                     >
-                      <option value="">Assign to councilor</option>
+                      <option value="">Assign to Counselor</option>
                       {(councilors?.items ?? []).map((item) => (
                         <option key={item.id} value={item.id}>
                           {item.name || item.email}
@@ -972,10 +1003,18 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
                     <button
                       className="primary-button"
                       disabled={!assignedCouncilor || assignCustomersState.isLoading}
-                      onClick={() => void assignSelectedCustomers()}
+                      onClick={() => void assignSelectedCustomers(adminSelected)}
                       type="button"
                     >
                       Assign
+                    </button>
+                    <button
+                      className="secondary-button"
+                      disabled={!assignedCouncilor || assignCustomersState.isLoading}
+                      onClick={() => void assignSelectedCustomers(adminSelected, true)}
+                      type="button"
+                    >
+                      Reassign
                     </button>
                   </div>
                 )}
@@ -1015,7 +1054,7 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
             )}
           </section>
         )}
-        {tab === "task" && (workspace?.isCouncilor || workspace?.isAdmin) && (
+        {tab === "task" && can("tasks", "read") && (
           <section className="mt-5">
             {taskBusy && <LoadingState label="Loading customer tasks" overlay />}
             <div className="rounded-sm border border-amber-200 bg-amber-50 p-4">
@@ -1055,6 +1094,9 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
             <CustomerTable
               customers={taskCustomers?.items ?? []}
               edit={setCustomerForm}
+              editable={canUpdateTask}
+              canDelete={canDeleteTask}
+              canSelect={canSelectTask}
               funnels={funnels?.items ?? []}
               loading={taskLoading}
               remove={setDeleteCustomer}
@@ -1083,51 +1125,6 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
             />
           </section>
         )}
-        {tab === "spend" && (
-          <>
-            {spendBusy && <LoadingState label="Loading marketing spend" overlay />}
-            <SpendPanel
-              funnels={funnels?.items ?? []}
-              items={visibleSpends}
-              totalItems={filteredSpendItems}
-              allItems={spendItems}
-              funnelFilter={spendFunnelFilter}
-              onFunnelFilterChange={(value) => {
-                setSpendFunnelFilter(value);
-                setSpendPage(1);
-                setSelectedSpends([]);
-              }}
-              loading={spendsLoading}
-              openForm={() => setSpendForm(null)}
-              importDemo={() => void importDemoSpends()}
-              importingDemo={createDemoSpendsState.isLoading}
-              edit={setSpendForm}
-              remove={setDeleteSpend}
-              selected={selectedSpends}
-              toggle={(id) =>
-                setSelectedSpends((items) =>
-                  items.includes(id) ? items.filter((item) => item !== id) : [...items, id],
-                )
-              }
-              toggleAll={(checked) => setSelectedSpends(checked ? visibleSpends.map((item) => item.id) : [])}
-              view={setViewSpend}
-              deleteSelected={() => setConfirmBulkSpendDelete(true)}
-            />
-            <PaginationBar
-              activePage={activeSpendPage}
-              isFetching={spendsFetching}
-              onPageChange={setSpendPage}
-              onPageSizeChange={(value) => {
-                setSpendPageSize(value);
-                setSpendPage(1);
-              }}
-              pageSize={spendPageSize}
-              total={filteredSpendItems.length}
-              totalPages={spendTotalPages}
-              noun="spend entries"
-            />
-          </>
-        )}
       </section>
       {funnelForm !== undefined && (
         <FunnelModal busy={busy} close={() => setFunnelForm(undefined)} initial={funnelForm} save={saveFunnel} />
@@ -1136,6 +1133,7 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
         <CustomerModal
           busy={busy}
           close={() => setCustomerForm(undefined)}
+          councilorMode={workspace?.isCouncilor === true}
           funnels={funnels?.items ?? []}
           initial={customerForm}
           save={saveCustomer}
@@ -1170,16 +1168,6 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
           setCount={setDemoCount}
         />
       )}
-      {spendForm !== undefined && (
-        <SpendModal
-          busy={createSpendState.isLoading || updateSpendState.isLoading}
-          close={() => setSpendForm(undefined)}
-          funnels={funnels?.items ?? []}
-          initial={spendForm}
-          save={saveSpend}
-        />
-      )}
-      {viewSpend && <SpendDetails close={() => setViewSpend(null)} funnels={funnels?.items ?? []} spend={viewSpend} />}
       {bulkStatusOpen && (
         <Dialog title="Update customer status">
           <p className="mt-2 text-sm text-stone-600">
@@ -1256,26 +1244,6 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
         open={confirmBulkCustomerDelete}
         title="Delete selected customers?"
       />
-      <AlertDialog
-        busy={removeSpendState.isLoading || bulkDeleteSpendsState.isLoading}
-        confirmLabel="Delete spend entry"
-        description={
-          deleteSpend ? `Delete the ৳${deleteSpend.amount.toLocaleString()} spend entry? This cannot be undone.` : ""
-        }
-        onCancel={() => setDeleteSpend(null)}
-        onConfirm={() => deleteSpend && void deleteSelectedSpends([deleteSpend.id])}
-        open={Boolean(deleteSpend)}
-        title="Delete this spend entry?"
-      />
-      <AlertDialog
-        busy={bulkDeleteSpendsState.isLoading}
-        confirmLabel="Delete selected spend entries"
-        description={`Delete ${selectedSpends.length} selected spend ${selectedSpends.length === 1 ? "entry" : "entries"}? This cannot be undone.`}
-        onCancel={() => setConfirmBulkSpendDelete(false)}
-        onConfirm={() => void deleteSelectedSpends(selectedSpends)}
-        open={confirmBulkSpendDelete}
-        title="Delete selected spend entries?"
-      />
     </main>
   );
 }
@@ -1349,6 +1317,10 @@ function FunnelTable({
   loading,
   edit,
   remove,
+  canEdit = true,
+  canDelete = true,
+  canMove = true,
+  canSelect = true,
   view,
   selected,
   toggle,
@@ -1359,6 +1331,10 @@ function FunnelTable({
   loading: boolean;
   edit: (x: CustomerFunnel) => void;
   remove: (x: CustomerFunnel) => void;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  canMove?: boolean;
+  canSelect?: boolean;
   view: (x: CustomerFunnel) => void;
   selected: string[];
   toggle: (id: string) => void;
@@ -1371,12 +1347,14 @@ function FunnelTable({
         <thead className="border-b border-[#eadfca] text-stone-500">
           <tr>
             <th className="p-3">
-              <input
-                aria-label="Select all funnels"
-                checked={funnels.length > 0 && funnels.every((funnel) => selected.includes(funnel.id))}
-                onChange={(event) => toggleAll(event.target.checked)}
-                type="checkbox"
-              />
+              {canSelect && (
+                <input
+                  aria-label="Select all funnels"
+                  checked={funnels.length > 0 && funnels.every((funnel) => selected.includes(funnel.id))}
+                  onChange={(event) => toggleAll(event.target.checked)}
+                  type="checkbox"
+                />
+              )}
             </th>
             <th className="p-3">Position</th>
             <th className="p-3">Name</th>
@@ -1397,12 +1375,14 @@ function FunnelTable({
             funnels.map((x, index) => (
               <tr className="border-b border-stone-100" key={x.id}>
                 <td className="p-3">
-                  <input
-                    aria-label={`Select ${x.name}`}
-                    checked={selected.includes(x.id)}
-                    onChange={() => toggle(x.id)}
-                    type="checkbox"
-                  />
+                  {canSelect && (
+                    <input
+                      aria-label={`Select ${x.name}`}
+                      checked={selected.includes(x.id)}
+                      onChange={() => toggle(x.id)}
+                      type="checkbox"
+                    />
+                  )}
                 </td>
                 <td className="p-3 font-semibold text-amber-800">{index + 1}</td>
                 <td className="p-3 font-medium">
@@ -1416,33 +1396,41 @@ function FunnelTable({
                 <td className="p-3">৳{x.minimumAmount}</td>
                 <td className="p-3">{x.maximumAmount == null ? "—" : `৳${x.maximumAmount}`}</td>
                 <td className="p-3 text-right flex gap-2 justify-end">
-                  <button
-                    aria-label={`Move ${x.name} up`}
-                    className="icon-button"
-                    disabled={index === 0}
-                    onClick={() => move(x, -1)}
-                    type="button"
-                  >
-                    <ChevronUp className="h-4 w-4" />
-                  </button>
-                  <button
-                    aria-label={`Move ${x.name} down`}
-                    className="icon-button ml-1"
-                    disabled={index === funnels.length - 1}
-                    onClick={() => move(x, 1)}
-                    type="button"
-                  >
-                    <ChevronDown className="h-4 w-4" />
-                  </button>
+                  {canMove && (
+                    <>
+                      <button
+                        aria-label={`Move ${x.name} up`}
+                        className="icon-button"
+                        disabled={index === 0}
+                        onClick={() => move(x, -1)}
+                        type="button"
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </button>
+                      <button
+                        aria-label={`Move ${x.name} down`}
+                        className="icon-button ml-1"
+                        disabled={index === funnels.length - 1}
+                        onClick={() => move(x, 1)}
+                        type="button"
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
                   <button className="icon-button" onClick={() => view(x)} type="button">
                     <Eye className="h-4 w-4" />
                   </button>
-                  <button className="icon-button" onClick={() => edit(x)} type="button">
-                    <Edit3 className="h-4 w-4" />
-                  </button>
-                  <button className="icon-button ml-1 text-red-700" onClick={() => remove(x)} type="button">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {canEdit && (
+                    <button className="icon-button" onClick={() => edit(x)} type="button">
+                      <Edit3 className="h-4 w-4" />
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button className="icon-button ml-1 text-red-700" onClick={() => remove(x)} type="button">
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))
@@ -1456,6 +1444,8 @@ function CustomerTable({
   customers,
   edit,
   editable = true,
+  canDelete = true,
+  canSelect = true,
   funnels,
   loading,
   remove,
@@ -1467,6 +1457,8 @@ function CustomerTable({
   customers: Customer[];
   edit: (customer: Customer) => void;
   editable?: boolean;
+  canDelete?: boolean;
+  canSelect?: boolean;
   funnels: CustomerFunnel[];
   loading: boolean;
   remove: (customer: Customer) => void;
@@ -1475,7 +1467,7 @@ function CustomerTable({
   toggleAll: (checked: boolean) => void;
   view: (customer: Customer) => void;
 }) {
-  const allSelected = customers.length > 0 && customers.every((customer) => selected.includes(customer.id));
+  const allSelected = canSelect && customers.length > 0 && customers.every((customer) => selected.includes(customer.id));
   return (
     <div className="mt-4 overflow-hidden rounded-sm border border-[#eadfca]">
       <div className="hidden overflow-x-auto lg:block">
@@ -1483,12 +1475,14 @@ function CustomerTable({
           <thead className="bg-[#fffdfa] text-stone-500">
             <tr>
               <th className="w-12 p-3">
-                <input
-                  aria-label="Select all visible customers"
-                  checked={allSelected}
-                  onChange={(event) => toggleAll(event.target.checked)}
-                  type="checkbox"
-                />
+                {canSelect && (
+                  <input
+                    aria-label="Select all visible customers"
+                    checked={allSelected}
+                    onChange={(event) => toggleAll(event.target.checked)}
+                    type="checkbox"
+                  />
+                )}
               </th>
               <th className="p-3">Customer</th>
               <th className="p-3">Contact</th>
@@ -1509,12 +1503,14 @@ function CustomerTable({
               customers.map((x) => (
                 <tr className="border-t border-stone-100" key={x.id}>
                   <td className="p-3">
-                    <input
-                      aria-label={`Select ${x.name}`}
-                      checked={selected.includes(x.id)}
-                      onChange={() => toggle(x.id)}
-                      type="checkbox"
-                    />
+                    {canSelect && (
+                      <input
+                        aria-label={`Select ${x.name}`}
+                        checked={selected.includes(x.id)}
+                        onChange={() => toggle(x.id)}
+                        type="checkbox"
+                      />
+                    )}
                   </td>
                   <td className="p-3 font-medium">{x.name}</td>
                   <td className="p-3 text-stone-600">{x.mobileNumber || x.whatsappNumber || x.email}</td>
@@ -1556,7 +1552,7 @@ function CustomerTable({
                         <Edit3 className="h-4 w-4" />
                       </button>
                     )}
-                    {editable && (
+                    {canDelete && (
                       <button
                         aria-label={`Delete ${x.name}`}
                         className="icon-button ml-1 border-red-100 text-red-700 hover:bg-red-50"
@@ -1583,13 +1579,15 @@ function CustomerTable({
               <article className="rounded-sm border border-[#eadfca] bg-[#fffdfa] p-3" key={customer.id}>
                 <div className="flex items-start justify-between gap-3">
                   <label className="flex min-w-0 items-start gap-3">
-                    <input
-                      aria-label={`Select ${customer.name}`}
-                      checked={selected.includes(customer.id)}
-                      className="mt-1"
-                      onChange={() => toggle(customer.id)}
-                      type="checkbox"
-                    />
+                    {canSelect && (
+                      <input
+                        aria-label={`Select ${customer.name}`}
+                        checked={selected.includes(customer.id)}
+                        className="mt-1"
+                        onChange={() => toggle(customer.id)}
+                        type="checkbox"
+                      />
+                    )}
                     <span className="min-w-0">
                       <span className="block truncate font-semibold text-stone-900">{customer.name}</span>
                       <span className="mt-1 block break-words text-sm text-stone-600">
@@ -1620,16 +1618,14 @@ function CustomerTable({
                   )}
                 </div>
                 <div className="mt-3 flex justify-end gap-1 border-t border-[#eadfca] pt-3">
-                  {editable && (
-                    <button
-                      aria-label={`View ${customer.name}`}
-                      className="icon-button"
-                      onClick={() => view(customer)}
-                      type="button"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                  )}
+                  <button
+                    aria-label={`View ${customer.name}`}
+                    className="icon-button"
+                    onClick={() => view(customer)}
+                    type="button"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </button>
                   {editable && (
                     <button
                       aria-label={`Edit ${customer.name}`}
@@ -1640,14 +1636,16 @@ function CustomerTable({
                       <Edit3 className="h-4 w-4" />
                     </button>
                   )}
-                  <button
-                    aria-label={`Delete ${customer.name}`}
-                    className="icon-button border-red-100 text-red-700 hover:bg-red-50"
-                    onClick={() => remove(customer)}
-                    type="button"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {canDelete && (
+                    <button
+                      aria-label={`Delete ${customer.name}`}
+                      className="icon-button border-red-100 text-red-700 hover:bg-red-50"
+                      onClick={() => remove(customer)}
+                      type="button"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </article>
             );
@@ -1663,370 +1661,26 @@ function customerStatusClass(status: CustomerStatus) {
     inactive: "bg-stone-200 text-stone-700",
   }[status];
 }
-type FunnelSpendSummary = { funnel: CustomerFunnel; total: number; count: number };
-function SpendPanel({
-  funnels,
-  items,
-  totalItems,
-  allItems,
-  funnelFilter,
-  onFunnelFilterChange,
-  loading,
-  openForm,
-  importDemo,
-  importingDemo,
-  edit,
-  remove,
-  selected,
-  toggle,
-  toggleAll,
-  view,
-  deleteSelected,
-}: {
-  funnels: CustomerFunnel[];
-  items: CustomerSpend[];
-  totalItems: CustomerSpend[];
-  allItems: CustomerSpend[];
-  funnelFilter: string;
-  onFunnelFilterChange: (value: string) => void;
-  loading: boolean;
-  openForm: () => void;
-  importDemo: () => void;
-  importingDemo: boolean;
-  edit: (spend: CustomerSpend) => void;
-  remove: (spend: CustomerSpend) => void;
-  selected: string[];
-  toggle: (id: string) => void;
-  toggleAll: (checked: boolean) => void;
-  view: (spend: CustomerSpend) => void;
-  deleteSelected: () => void;
-}) {
-  const total = totalItems.reduce((sum, item) => sum + item.amount, 0);
-  const funnelSpend: FunnelSpendSummary[] = funnels.map((funnel) => {
-    const matchingItems = allItems.filter((item) => item.funnelId === funnel.id);
-    return { funnel, total: matchingItems.reduce((sum, item) => sum + item.amount, 0), count: matchingItems.length };
-  });
-  const allSelected = items.length > 0 && items.every((item) => selected.includes(item.id));
-  return (
-    <section className="mt-5">
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-sm border border-[#eadfca] bg-[#fffdfa] p-4">
-        <div>
-          <h2 className="font-semibold text-stone-900">Marketing spend</h2>
-          <p className="mt-1 text-sm text-stone-600">Record each marketing cost against a funnel.</p>
-        </div>
-        <button className="primary-button" disabled={!funnels.length} onClick={openForm} type="button">
-          <Plus className="h-4 w-4" />
-          Add spend
-        </button>
-      </div>
-      {!funnels.length && (
-        <p className="mt-3 rounded-sm border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          Create a funnel before recording marketing spend.
-        </p>
-      )}
-      {funnels.length > 0 && <FunnelSpendChart items={funnelSpend} />}
-      <div className="mt-4 grid gap-4 lg:grid-cols-2">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Summary label={funnelFilter ? "Filtered funnel spend" : "Total recorded spend"} value={total} prefix="৳" />
-          <Summary label={funnelFilter ? "Filtered entries" : "Spend entries"} value={totalItems.length} />
-        </div>
-        <div className="rounded-sm border border-[#eadfca] bg-[#fffdfa] p-3">
-          <label className="block text-sm font-medium text-stone-700">
-            <span className="mb-1 block">Filter by funnel</span>
-            <select
-              className="input w-full"
-              onChange={(event) => onFunnelFilterChange(event.target.value)}
-              value={funnelFilter}
-            >
-              <option value="">All funnels</option>
-              {funnels.map((funnel) => (
-                <option key={funnel.id} value={funnel.id}>
-                  {funnel.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      </div>
-      {funnels.length > 0 && (
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {funnelSpend.map(({ funnel, total: funnelTotal, count }) => (
-            <div className="rounded-sm border border-[#eadfca] bg-white p-3" key={funnel.id}>
-              <div className="flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: funnel.color }} />
-                <p className="font-medium text-stone-900">{funnel.name}</p>
-              </div>
-              <p className="mt-2 text-xl font-semibold text-stone-900">৳{funnelTotal.toLocaleString()}</p>
-              <p className="mt-1 text-xs text-stone-500">
-                {count} spend {count === 1 ? "entry" : "entries"}
-              </p>
-            </div>
-          ))}
-        </div>
-      )}
-      {selected.length > 0 && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-sm border border-red-200 bg-red-50 p-3">
-          <span className="text-sm font-medium text-stone-800">
-            {selected.length} spend {selected.length === 1 ? "entry" : "entries"} selected
-          </span>
-          <button
-            className="secondary-button border-red-200 text-red-700 hover:bg-red-50"
-            onClick={deleteSelected}
-            type="button"
-          >
-            <Trash2 className="h-4 w-4" />
-            Delete selected
-          </button>
-        </div>
-      )}
-      <div className="mt-4 overflow-x-auto rounded-sm border border-[#eadfca]">
-        <table className="w-full min-w-[560px] text-left text-sm">
-          <thead className="bg-[#fffdfa] text-stone-500">
-            <tr>
-              <th className="w-12 p-3">
-                <input
-                  aria-label="Select all visible spend entries"
-                  checked={allSelected}
-                  onChange={(event) => toggleAll(event.target.checked)}
-                  type="checkbox"
-                />
-              </th>
-              <th className="p-3">Funnel</th>
-              <th className="p-3">Amount</th>
-              <th className="p-3">Recorded date & time</th>
-              <th className="p-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td className="p-6" colSpan={5}>
-                  Loading spend history…
-                </td>
-              </tr>
-            ) : items.length ? (
-              items.map((item) => (
-                <tr className="border-t border-stone-100" key={item.id}>
-                  <td className="p-3">
-                    <input
-                      aria-label={`Select spend entry ৳${item.amount}`}
-                      checked={selected.includes(item.id)}
-                      onChange={() => toggle(item.id)}
-                      type="checkbox"
-                    />
-                  </td>
-                  <td className="p-3 font-medium">
-                    {funnels.find((funnel) => funnel.id === item.funnelId)?.name ?? "Deleted funnel"}
-                  </td>
-                  <td className="p-3">৳{item.amount.toLocaleString()}</td>
-                  <td className="p-3 text-stone-600">
-                    {new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
-                      new Date(item.createdAt),
-                    )}
-                  </td>
-                  <td className="p-3 text-right">
-                    <button
-                      aria-label="View spend entry"
-                      className="icon-button"
-                      onClick={() => view(item)}
-                      type="button"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </button>
-                    <button
-                      aria-label="Edit spend entry"
-                      className="icon-button ml-1"
-                      onClick={() => edit(item)}
-                      type="button"
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </button>
-                    <button
-                      aria-label="Delete spend entry"
-                      className="icon-button ml-1 border-red-100 text-red-700 hover:bg-red-50"
-                      onClick={() => remove(item)}
-                      type="button"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td className="p-6 text-center text-stone-600" colSpan={5}>
-                  <p>No marketing spend recorded yet.</p>
-                  <button
-                    className="secondary-button mt-3"
-                    disabled={importingDemo || funnels.length < 5}
-                    onClick={importDemo}
-                    type="button"
-                  >
-                    {importingDemo && <Loader2 className="h-4 w-4 animate-spin" />}Import 14 demo spends (৳5,000)
-                  </button>
-                  {funnels.length < 5 && (
-                    <p className="mt-2 text-xs text-amber-800">Create all five funnels to use the demo split.</p>
-                  )}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-function FunnelSpendChart({ items }: { items: FunnelSpendSummary[] }) {
-  const total = items.reduce((sum, item) => sum + item.total, 0);
-  const chart = items.reduce(
-    (result, item) => {
-      if (!item.total || !total) return result;
-      const end = result.offset + (item.total / total) * 100;
-      result.stops.push(`${item.funnel.color} ${result.offset}% ${end}%`);
-      return { stops: result.stops, offset: end };
-    },
-    { stops: [] as string[], offset: 0 },
-  );
-  return (
-    <section className="mt-4 max-w-2xl rounded-sm border border-[#eadfca] bg-[#fffdfa] p-4">
-      <h3 className="font-semibold text-stone-900">Funnel spend split</h3>
-      <div className="mt-4 grid items-center gap-5 sm:grid-cols-[9rem_1fr]">
-        <div
-          aria-label="Funnel spend pie chart"
-          className="relative mx-auto grid h-36 w-36 place-items-center rounded-full"
-          style={{ background: chart.stops.length ? `conic-gradient(${chart.stops.join(", ")})` : "#e7e5e4" }}
-        >
-          <div className="grid h-20 w-20 place-items-center rounded-full bg-white text-center">
-            <span className="text-xs text-stone-500">Total</span>
-            <span className="text-sm font-semibold text-stone-900">৳{total.toLocaleString()}</span>
-          </div>
-        </div>
-        <div className="space-y-2">
-          {items.map(({ funnel, total: funnelTotal, count }) => (
-            <div className="flex items-center justify-between gap-3 text-sm" key={funnel.id}>
-              <span className="flex min-w-0 items-center gap-2 text-stone-700">
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: funnel.color }} />
-                <span className="truncate">{funnel.name}</span>
-              </span>
-              <span className="shrink-0 text-right font-medium text-stone-900">
-                ৳{funnelTotal.toLocaleString()} <span className="font-normal text-stone-500">({count})</span>
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-function SpendModal({
-  funnels,
-  close,
-  save,
-  busy,
-  initial,
-}: {
-  funnels: CustomerFunnel[];
-  close: () => void;
-  save: (form: { funnelId: string; amount: number }) => Promise<void>;
-  busy: boolean;
-  initial: CustomerSpend | null;
-}) {
-  const [funnelId, setFunnelId] = useState(initial?.funnelId ?? funnels[0]?.id ?? "");
-  const [amount, setAmount] = useState(initial?.amount.toString() ?? "");
-  return (
-    <Dialog title={initial ? "Edit marketing spend" : "Add marketing spend"}>
-      <form
-        className="mt-5 space-y-4"
-        onSubmit={(event: FormEvent) => {
-          event.preventDefault();
-          void save({ funnelId, amount: Number(amount) });
-        }}
-      >
-        <Field label="Amount">
-          <input
-            autoFocus
-            className="input"
-            min="1"
-            onChange={(event) => setAmount(event.target.value)}
-            required
-            type="number"
-            value={amount}
-          />
-        </Field>
-        <Field label="Funnel">
-          <select className="input" onChange={(event) => setFunnelId(event.target.value)} required value={funnelId}>
-            {funnels.map((funnel) => (
-              <option key={funnel.id} value={funnel.id}>
-                {funnel.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <p className="rounded-sm bg-stone-100 p-3 text-sm text-stone-600">
-          Date and time are recorded automatically when you save.
-        </p>
-        <div className="flex justify-end gap-2">
-          <button className="secondary-button" disabled={busy} onClick={close} type="button">
-            Cancel
-          </button>
-          <button className="primary-button" disabled={busy} type="submit">
-            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
-            {initial ? "Save changes" : "Save spend"}
-          </button>
-        </div>
-      </form>
-    </Dialog>
-  );
-}
-function SpendDetails({
-  close,
-  funnels,
-  spend,
-}: {
-  close: () => void;
-  funnels: CustomerFunnel[];
-  spend: CustomerSpend;
-}) {
-  const funnel = funnels.find((item) => item.id === spend.funnelId);
-  return (
-    <Dialog title="Spend entry details">
-      <dl className="mt-5 space-y-3 text-sm">
-        <Detail label="Funnel" value={funnel?.name ?? "Deleted funnel"} />
-        <Detail label="Amount" value={formatBDT(spend.amount)} />
-        <Detail
-          label="Recorded"
-          value={new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(
-            new Date(spend.createdAt),
-          )}
-        />
-      </dl>
-      <div className="mt-5 flex justify-end">
-        <button className="secondary-button" onClick={close} type="button">
-          Close
-        </button>
-      </div>
-    </Dialog>
-  );
-}
 function Overview({
   data,
 }: {
   data?: {
     total: number;
+    funnelCount: number;
+    councilorCount: number;
+    customersInFunnels: number;
     statuses: { _id: CustomerStatus; count: number }[];
     funnels: {
       id: string;
       name: string;
       color: string;
       count: number;
-      spend: number;
-      averageReturn: number;
-      estimatedReturn: number;
     }[];
     unassigned: number;
     monthly: { label: string; count: number }[];
     newLast30: number;
     newPrevious30: number;
+    councilorProgress: CouncilorProgressSummary;
   };
 }) {
   const total = data?.total ?? 0;
@@ -2038,8 +1692,6 @@ function Overview({
     : data?.newLast30
       ? 100
       : 0;
-  const totalSpend = data?.funnels.reduce((sum, funnel) => sum + funnel.spend, 0) ?? 0;
-  const totalReturn = data?.funnels.reduce((sum, funnel) => sum + funnel.estimatedReturn, 0) ?? 0;
   const newCustomers = data?.newLast30 ?? 0;
   const customerPercent = (value: number) => (total ? Math.round((value / total) * 100) : 0);
   return (
@@ -2068,6 +1720,90 @@ function Overview({
           tone="rose"
         />
       </div>
+      <section className="mt-5">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-stone-500">Business Growth summaries</h2>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Link
+            className="rounded-sm border border-[#eadfca] bg-white p-4 transition hover:border-amber-400 hover:bg-amber-50"
+            href="/dashboard/business-growth/funnels"
+          >
+            <p className="text-sm font-medium text-stone-600">Funnels</p>
+            <p className="mt-2 text-2xl font-semibold text-stone-900">{data?.funnelCount ?? 0}</p>
+            <p className="mt-1 text-xs text-stone-500">{data?.customersInFunnels ?? 0} customers in funnels</p>
+          </Link>
+          <Link
+            className="rounded-sm border border-[#eadfca] bg-white p-4 transition hover:border-amber-400 hover:bg-amber-50"
+            href="/dashboard/business-growth/customer"
+          >
+            <p className="text-sm font-medium text-stone-600">Customers</p>
+            <p className="mt-2 text-2xl font-semibold text-stone-900">{total.toLocaleString()}</p>
+            <p className="mt-1 text-xs text-stone-500">{active} active · {inactive} inactive</p>
+          </Link>
+          <Link
+            className="rounded-sm border border-[#eadfca] bg-white p-4 transition hover:border-amber-400 hover:bg-amber-50"
+            href="/dashboard/business-growth/councillor"
+          >
+            <p className="text-sm font-medium text-stone-600">Counselors</p>
+            <p className="mt-2 text-2xl font-semibold text-stone-900">{data?.councilorCount ?? 0}</p>
+            <p className="mt-1 text-xs text-stone-500">
+              {data?.councilorProgress.workingCustomers ?? 0} assigned customers working
+            </p>
+          </Link>
+          <Link
+            className="rounded-sm border border-[#eadfca] bg-white p-4 transition hover:border-amber-400 hover:bg-amber-50"
+            href="/dashboard/business-growth/task"
+          >
+            <p className="text-sm font-medium text-stone-600">Tasks</p>
+            <p className="mt-2 text-2xl font-semibold text-stone-900">
+              {data?.councilorProgress.assignedCustomers ?? 0}
+            </p>
+            <p className="mt-1 text-xs text-stone-500">Assigned customer follow-up work</p>
+          </Link>
+        </div>
+      </section>
+      {data?.councilorProgress && (
+        <section className="mt-5 rounded-sm border border-amber-300 bg-amber-50 p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h2 className="font-semibold text-stone-900">Counselor progress</h2>
+              <p className="mt-1 text-sm text-stone-600">
+                Working status counts assigned customers not marked inactive or archived. Follow-up periods use {data.councilorProgress.timeZone}.
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="rounded-sm bg-white px-3 py-1.5 text-sm font-semibold text-emerald-800">
+                {data.councilorProgress.workingCustomers} working · {data.councilorProgress.assignedCustomers} assigned
+              </p>
+              <p className="mt-1 text-xs text-stone-500">As of {data.councilorProgress.asOf}</p>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <OverviewMetric
+              label="Working assigned customers"
+              value={data.councilorProgress.workingCustomers}
+              percent={data.councilorProgress.assignedCustomers
+                ? Math.round((data.councilorProgress.workingCustomers / data.councilorProgress.assignedCustomers) * 100)
+                : 0}
+              detail={`${data.councilorProgress.assignedCustomers} assigned to counselors`}
+              tone="emerald"
+            />
+            {(
+              [
+                ["Today", data.councilorProgress.periods.daily],
+                ["This week", data.councilorProgress.periods.weekly],
+                ["This month", data.councilorProgress.periods.monthly],
+              ] as const
+            ).map(([label, period]) => (
+              <div className="rounded-sm border border-[#eadfca] bg-white p-3" key={label}>
+                <p className="text-xs text-stone-500">{label}</p>
+                <p className="mt-1 text-2xl font-semibold">{period.followUps}</p>
+                <p className="text-xs text-stone-500">follow-ups on assigned customers</p>
+                <p className="mt-1 text-xs text-stone-600">{period.customersTouched} customers touched</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <div className="mt-5 grid gap-4 lg:grid-cols-[1.5fr_1fr]">
         <section className="rounded-sm border border-[#eadfca] bg-[#fffdfa] p-4">
           <div className="flex items-start justify-between gap-4">
@@ -2141,33 +1877,6 @@ function Overview({
           </div>
         </section>
       </div>
-      <section className="mt-5 rounded-sm border border-[#eadfca] bg-white p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="font-semibold text-stone-900">Funnel spend &amp; return</h2>
-            <p className="mt-1 text-sm text-stone-600">
-              Return uses each funnel&apos;s average configured value multiplied by its customer count.
-            </p>
-          </div>
-          <span className="rounded-sm bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-800">
-            {formatBDT(totalReturn)} estimated return
-          </span>
-        </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <Summary label="Total spend" suffix=" BDT" value={totalSpend} />
-          <Summary label="Total return from averages" suffix=" BDT" value={totalReturn} />
-        </div>
-        <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          {(data?.funnels ?? []).map((funnel) => (
-            <FunnelReturnCard funnel={funnel} total={total} key={funnel.id} />
-          ))}
-          {!data?.funnels.length && (
-            <p className="rounded-sm border border-dashed border-[#eadfca] p-6 text-center text-sm text-stone-600 lg:col-span-2">
-              No funnels to report yet.
-            </p>
-          )}
-        </div>
-      </section>
     </section>
   );
 }
@@ -2204,46 +1913,6 @@ function OverviewMetric({
     </section>
   );
 }
-function FunnelReturnCard({
-  funnel,
-  total,
-}: {
-  funnel: { name: string; color: string; count: number; spend: number; averageReturn: number; estimatedReturn: number };
-  total: number;
-}) {
-  const customerPercent = total ? Math.round((funnel.count / total) * 100) : 0;
-  return (
-    <section className="overflow-hidden rounded-sm border border-[#eadfca] bg-[#fffdfa]">
-      <div className="h-1.5" style={{ backgroundColor: funnel.color }} />
-      <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: funnel.color }} />
-            <h3 className="font-semibold text-stone-900">{funnel.name}</h3>
-          </div>
-          <span className="rounded-sm bg-white px-2 py-1 text-xs font-bold text-stone-700">{customerPercent}%</span>
-        </div>
-        <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
-          <Metric label="Customers" value={String(funnel.count)} />
-          <Metric label="Spend" value={formatBDT(funnel.spend)} />
-          <Metric label="Avg. return" value={formatBDT(funnel.averageReturn)} />
-        </div>
-        <div className="mt-4 flex items-end justify-between gap-3 border-t border-[#eadfca] pt-3">
-          <span className="text-xs font-medium text-stone-500">Estimated total return</span>
-          <strong className="text-base text-emerald-700">{formatBDT(funnel.estimatedReturn)}</strong>
-        </div>
-      </div>
-    </section>
-  );
-}
-function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <p className="text-xs text-stone-500">{label}</p>
-      <p className="mt-1 font-semibold text-stone-800">{value}</p>
-    </div>
-  );
-}
 function formatBDT(value: number) {
   return `${Math.max(0, Math.round(value || 0)).toLocaleString("en-BD")} BDT`;
 }
@@ -2271,28 +1940,6 @@ function Fact({ label, value }: { label: string; value: string }) {
     <div className="flex items-center justify-between gap-3 border-b border-stone-100 pb-3 text-sm">
       <span className="text-stone-600">{label}</span>
       <strong className="text-right text-stone-900">{value}</strong>
-    </div>
-  );
-}
-function Summary({
-  label,
-  value,
-  suffix = "",
-  prefix = "",
-}: {
-  label: string;
-  value: number;
-  suffix?: string;
-  prefix?: string;
-}) {
-  return (
-    <div className="rounded-sm border border-[#eadfca] bg-[#fffdfa] p-4">
-      <p className="text-sm capitalize text-stone-600">{label}</p>
-      <p className="mt-2 text-2xl font-semibold">
-        {prefix}
-        {value.toLocaleString()}
-        {suffix}
-      </p>
     </div>
   );
 }
@@ -2517,16 +2164,16 @@ function CouncilorModal({
     try {
       if (initial) await updateCouncilor({ id: initial.id, email }).unwrap();
       else await createCouncilor({ email }).unwrap();
-      toast.success(initial ? "Councilor email updated." : "Councilor added.");
+      toast.success(initial ? "Counselor email updated." : "Counselor added.");
       close();
     } catch (error) {
-      toast.error(errorMessage(error, "Could not add councilor."));
+      toast.error(errorMessage(error, "Could not add counselor."));
     } finally {
       setSaving(false);
     }
   }
   return (
-    <Dialog title={initial ? "Edit councilor email" : "Add councilor"}>
+    <Dialog title={initial ? "Edit counselor email" : "Add counselor"}>
       <form
         className="mt-5 space-y-4"
         onSubmit={(event) => {
@@ -2563,18 +2210,21 @@ function CustomerModal({
   close,
   save,
   busy,
+  councilorMode,
 }: {
   initial: Customer | null;
   funnels: CustomerFunnel[];
   close: () => void;
   save: (x: Omit<Customer, "id" | "createdAt" | "updatedAt" | "metrics">) => Promise<void>;
   busy: boolean;
+  councilorMode: boolean;
 }) {
   const [form, setForm] = useState({
     name: initial?.name ?? "",
     mobileNumber: initial?.mobileNumber ?? "",
     email: initial?.email ?? "",
     funnelId: initial?.funnelId ?? "",
+    notes: initial?.notes ?? "",
     customerStatus: (initial?.customerStatus === "inactive" ? "inactive" : "active") as CustomerStatus,
     followUps: initial?.followUps ?? [],
   });
@@ -2585,7 +2235,7 @@ function CustomerModal({
   const [editingFollowUp, setEditingFollowUp] = useState<Customer["followUps"][number] | null>(null);
   const [deleteFollowUp, setDeleteFollowUp] = useState<Customer["followUps"][number] | null>(null);
   return (
-    <Dialog title={initial ? "Edit customer" : "Create customer"}>
+    <Dialog title={initial ? (councilorMode ? "Update customer progress" : "Edit customer") : "Create customer"}>
       <form
         className="mt-5 space-y-4"
         onSubmit={(e: FormEvent) => {
@@ -2603,45 +2253,59 @@ function CustomerModal({
           });
         }}
       >
-        <Field label="Name">
-          <input
-            autoFocus
-            className="input"
-            onChange={(e) => setForm({ ...form, name: e.target.value })}
-            required
-            value={form.name}
-          />
-        </Field>
-        <Field label="Mobile number or email">
-          <input
-            className="input"
-            onChange={(e) => setForm({ ...form, mobileNumber: e.target.value })}
-            required={!form.email}
-            value={form.mobileNumber}
-          />
-        </Field>
-        <Field label="Email (optional)">
-          <input
-            className="input"
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            type="email"
-            value={form.email}
-          />
-        </Field>
-        <Field label="Funnel">
-          <select
-            className="input"
-            onChange={(e) => setForm({ ...form, funnelId: e.target.value })}
-            value={form.funnelId}
-          >
-            <option value="">Unassigned</option>
-            {funnels.map((x) => (
-              <option key={x.id} value={x.id}>
-                {x.name}
-              </option>
-            ))}
-          </select>
-        </Field>
+        {councilorMode ? (
+          <section className="rounded-sm border border-[#eadfca] bg-[#fffdfa] p-3">
+            <p className="font-semibold text-stone-900">{initial?.name}</p>
+            <p className="mt-1 text-sm text-stone-600">
+              {[initial?.mobileNumber, initial?.email].filter(Boolean).join(" · ") || "No contact details"}
+            </p>
+            <p className="mt-1 text-xs text-stone-500">
+              Funnel: {funnels.find((funnel) => funnel.id === initial?.funnelId)?.name ?? "Unassigned"}
+            </p>
+          </section>
+        ) : (
+          <>
+            <Field label="Name">
+              <input
+                autoFocus
+                className="input"
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                required
+                value={form.name}
+              />
+            </Field>
+            <Field label="Mobile number or email">
+              <input
+                className="input"
+                onChange={(e) => setForm({ ...form, mobileNumber: e.target.value })}
+                required={!form.email}
+                value={form.mobileNumber}
+              />
+            </Field>
+            <Field label="Email (optional)">
+              <input
+                className="input"
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                type="email"
+                value={form.email}
+              />
+            </Field>
+            <Field label="Funnel">
+              <select
+                className="input"
+                onChange={(e) => setForm({ ...form, funnelId: e.target.value })}
+                value={form.funnelId}
+              >
+                <option value="">Unassigned</option>
+                {funnels.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {x.name}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </>
+        )}
         <Field label="Status">
           <select
             className="input"
@@ -2653,6 +2317,16 @@ function CustomerModal({
             ))}
           </select>
         </Field>
+        {councilorMode && (
+          <Field label="Progress notes">
+            <textarea
+              className="input min-h-24"
+              maxLength={2000}
+              onChange={(event) => setForm({ ...form, notes: event.target.value })}
+              value={form.notes}
+            />
+          </Field>
+        )}
         {initial && (
           <section className="rounded-sm border border-[#eadfca] bg-[#fffdfa] p-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2733,7 +2407,7 @@ function CustomerModal({
             Cancel
           </button>
           <button className="primary-button" disabled={busy} type="submit">
-            Save customer
+            {councilorMode ? "Save progress" : "Save customer"}
           </button>
         </div>
       </form>
