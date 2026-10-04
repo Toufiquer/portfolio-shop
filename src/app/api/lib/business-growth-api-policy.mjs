@@ -10,7 +10,7 @@ const pageForArea = {
   funnels: "/dashboard/business-growth/funnels",
   councilors: "/dashboard/business-growth/councillor",
   customers: "/dashboard/business-growth/customer",
-  tasks: "/dashboard/business-growth/task",
+  tasks: "/dashboard/business-growth/my-customer",
 };
 
 export function isBusinessGrowthAdministratorRole(roleName) {

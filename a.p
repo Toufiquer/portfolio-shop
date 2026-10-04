@@ -1,10 +1,1 @@
-
------------------------
------------------------
------------------------
------------------------
------------------------
------------------------
------------------------
------------------------
------------------------
+Look at the page 'src/app/dashboard/developer/sidebar' and please check why I can not delete sidebar data. I ensure I have create role and assign permissoin CURD to the role for sidebar. 

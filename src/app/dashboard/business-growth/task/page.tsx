@@ -5,8 +5,8 @@
 |-----------------------------------------
 */
 
-import { BusinessGrowthPage } from "../page";
+import { redirect } from "next/navigation";
 
 export default function BusinessGrowthTaskPage() {
-  return <BusinessGrowthPage section="task" />;
+  redirect("/dashboard/business-growth/my-customer");
 }

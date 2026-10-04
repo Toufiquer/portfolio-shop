@@ -18,7 +18,11 @@ import {
   normalizeBusinessGrowthPostKind,
   normalizeBusinessGrowthReadKind,
 } from "./business-growth-api-policy.mjs";
-import { assignedCustomersFilterFor } from "../../../lib/customers/assignment-core.mjs";
+import {
+  assignedCustomerFilterForEmail,
+  assignedCustomersFilterFor,
+  assignedCustomersFilterForEmail,
+} from "../../../lib/customers/assignment-core.mjs";
 
 const stateFor = (roleName, overrides = {}) => ({
   bypassed: false,
@@ -219,6 +223,17 @@ test("Counselor item ownership filter includes only that Counselor's current and
   assert.equal(matches({ id: "legacy-without-id", councilorEmail: "a@example.com" }), true);
   assert.equal(matches({ id: "legacy-b", councilorId: null, councilorEmail: "b@example.com" }), false);
   assert.equal(matches({ id: "unassigned", councilorId: null, councilorEmail: null }), false);
+});
+
+test("My Customer filter uses only the normalized session email", () => {
+  assert.deepEqual(assignedCustomersFilterForEmail(" Counselor@Example.com "), {
+    councilorEmail: "counselor@example.com",
+  });
+  assert.equal(assignedCustomersFilterForEmail(""), null);
+  assert.deepEqual(assignedCustomerFilterForEmail("customer-a", "Counselor@example.com"), {
+    id: "customer-a",
+    councilorEmail: "counselor@example.com",
+  });
 });
 
 test("blocked roles remain denied before the administrator shortcut", async () => {

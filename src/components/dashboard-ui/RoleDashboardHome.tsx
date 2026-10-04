@@ -155,9 +155,9 @@ const content = {
         icon: ShieldCheck,
       },
       {
-        title: "Tasks",
-        description: "Review assigned customers and follow-up work.",
-        href: "/dashboard/business-growth/task",
+        title: "My Customer",
+        description: "Review customers assigned to your email and their follow-up work.",
+        href: "/dashboard/business-growth/my-customer",
         icon: CheckCircle2,
       },
     ] satisfies RoleHomeLink[],

@@ -20,7 +20,11 @@ import {
   isBusinessGrowthCouncilor,
   type BusinessGrowthAccessArea,
 } from "@/app/api/lib/dashboard-authorization";
-import { assignCustomerAtomically, assignedCustomerFilterFor } from "@/lib/customers/assignment-core.mjs";
+import {
+  assignCustomerAtomically,
+  assignedCustomerFilterFor,
+  assignedCustomerFilterForEmail,
+} from "@/lib/customers/assignment-core.mjs";
 import {
   customerCollection,
   councilorForSession,
@@ -57,8 +61,13 @@ const followUpAuthor = (session: { user?: { email?: unknown; name?: unknown } } 
   authorEmail: typeof session?.user?.email === "string" ? session.user.email.trim().toLowerCase() : "",
   authorName: typeof session?.user?.name === "string" ? session.user.name.trim() : "",
 });
-async function customerMutationFilter(session: Awaited<ReturnType<typeof auth.api.getSession>>, id: string) {
+async function customerMutationFilter(
+  session: Awaited<ReturnType<typeof auth.api.getSession>>,
+  id: string,
+  ownEmailOnly = false,
+) {
   if (!session) return null;
+  if (ownEmailOnly) return assignedCustomerFilterForEmail(id, session.user.email);
   const access = await getBusinessGrowthAccessState(session);
   if (isBusinessGrowthCouncilor(access.roleName)) {
     const councilor = await councilorForSession(session);
@@ -169,6 +178,8 @@ export async function PATCH(r: Request, { params }: { params: Promise<{ id: stri
   const hasCouncilorId = Object.hasOwn(b ?? {}, "councilorId");
   const hasCouncilorEmail = Object.hasOwn(b ?? {}, "councilorEmail");
   if (hasCouncilorId || hasCouncilorEmail) {
+    if (kind === "task")
+      return Response.json({ error: "Customer assignment is unavailable from My Customer." }, { status: 403 });
     if (councilorRole)
       return Response.json({ error: "Counselors cannot assign or reassign customers." }, { status: 403 });
     if (!access || (!access.bypassed && !isBusinessGrowthAdministrator(access.roleName)))
@@ -210,7 +221,7 @@ export async function PATCH(r: Request, { params }: { params: Promise<{ id: stri
       );
     return Response.json({ item: await customerCollection().findOne({ id }), assignmentStatus: result.status });
   }
-  const customerFilter = await customerMutationFilter(session, id);
+  const customerFilter = await customerMutationFilter(session, id, kind === "task");
   if (!customerFilter) return Response.json({ error: "This customer is not assigned to you." }, { status: 403 });
   const allowed = ["active", "inactive"];
   const update = {
@@ -283,7 +294,7 @@ export async function DELETE(r: Request, { params }: { params: Promise<{ id: str
     return Response.json({ deleted: true });
   }
   const session = await auth.api.getSession({ headers: r.headers });
-  const customerFilter = await customerMutationFilter(session, id);
+  const customerFilter = await customerMutationFilter(session, id, kind === "task");
   if (!customerFilter) return Response.json({ error: "This customer is not assigned to you." }, { status: 403 });
   const x = await customerCollection().findOneAndUpdate(
     customerFilter,

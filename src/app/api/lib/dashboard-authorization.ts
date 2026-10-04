@@ -56,7 +56,8 @@ export function isBusinessGrowthCouncilor(roleName: string | null) {
 
 function canonicalBusinessGrowthSidebarPath(pathname: string) {
   const canonical = pathname.replace(/^\/dashboard\/admin\/business-growth(?=\/|$)/, "/dashboard/business-growth");
-  return canonical.length > 1 ? canonical.replace(/\/$/, "") : canonical;
+  const normalized = canonical.length > 1 ? canonical.replace(/\/$/, "") : canonical;
+  return normalized === "/dashboard/business-growth/task" ? "/dashboard/business-growth/my-customer" : normalized;
 }
 
 function isBusinessGrowthPermissionPath(pathname: string) {
@@ -80,7 +81,7 @@ function businessGrowthPermissionsForRole(roleName: string, pathname: string): P
     case "/dashboard/business-growth/councillor":
       return businessGrowthCouncilorPermissions;
     case "/dashboard/business-growth/customer":
-    case "/dashboard/business-growth/task":
+    case "/dashboard/business-growth/my-customer":
       return businessGrowthCouncilorUpdatePermissions;
     default:
       return { read: false, create: false, update: false, delete: false };
@@ -276,6 +277,7 @@ function apiResourcePaths(pathname: string, method: string): string[] | null {
       "/dashboard/business-growth/customer",
       "/dashboard/business-growth/councillor",
       "/dashboard/business-growth/task",
+      "/dashboard/business-growth/my-customer",
       "/dashboard/admin/business-growth",
       "/dashboard/admin/business-growth/",
       "/dashboard/admin/business-growth/overview",
@@ -283,6 +285,7 @@ function apiResourcePaths(pathname: string, method: string): string[] | null {
       "/dashboard/admin/business-growth/customer",
       "/dashboard/admin/business-growth/councillor",
       "/dashboard/admin/business-growth/task",
+      "/dashboard/admin/business-growth/my-customer",
     ],
     navigation: ["/dashboard/developer/navigation"],
   };
@@ -299,6 +302,10 @@ function pageResourcePaths(pathname: string) {
     "/dashboard/admin/topbanner": ["/dashboard/admin/top-banner"],
     "/dashboard/admin/footer": ["/dashboard/admin/footer-editor"],
     "/dashboard/admin/customer": ["/dashboard/business-growth"],
+    "/dashboard/business-growth/my-customer": [
+      "/dashboard/business-growth/task",
+      "/dashboard/admin/business-growth/task",
+    ],
   };
   // Editor, database, and preview pages inherit their parent dashboard
   // permission. This keeps direct reloads authorized just like navigating from

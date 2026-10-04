@@ -70,14 +70,17 @@ const sectionHeadings: Record<BusinessGrowthSection, { title: string; descriptio
   funnels: { title: "Customer Funnels", description: "Organize customer journeys with clear funnel stages." },
   customer: { title: "Customer Management", description: "Manage customer contacts, status, and funnel progress." },
   councillor: { title: "Counselor Management", description: "Manage counselor assignments and customer support." },
-  task: { title: "Customer Tasks", description: "Review assigned customers and record follow-up work." },
+  task: {
+    title: "My Customer",
+    description: "Review customers assigned to your signed-in email and record follow-up work.",
+  },
 };
 const sectionTabs: { section: BusinessGrowthSection; label: string; href: string }[] = [
   { section: "overview", label: "Overview", href: "/dashboard/business-growth/overview" },
   { section: "funnels", label: "Funnels", href: "/dashboard/business-growth/funnels" },
   { section: "customer", label: "Customers", href: "/dashboard/business-growth/customer" },
   { section: "councillor", label: "Counselors", href: "/dashboard/business-growth/councillor" },
-  { section: "task", label: "Tasks", href: "/dashboard/business-growth/task" },
+  { section: "task", label: "My Customer", href: "/dashboard/business-growth/my-customer" },
 ];
 const pageSizes = [10, 25, 50, 100] as const;
 const demoFunnels = [
@@ -170,20 +173,27 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
   const canUpdateTask = can("tasks", "update");
   const canDeleteTask = can("tasks", "delete");
   const canSelectTask = canManageWorkspace || (!workspace?.isCouncilor && (canUpdateTask || canDeleteTask));
-  const { data: funnels, isLoading: funnelsLoading, isFetching: funnelsFetching } = useGetFunnelsQuery(undefined, {
+  const {
+    data: funnels,
+    isLoading: funnelsLoading,
+    isFetching: funnelsFetching,
+  } = useGetFunnelsQuery(undefined, {
     skip: !["funnels", "customers", "task"].includes(tab) && !(tab === "admin" && adminSubTab === "customers"),
   });
   const {
     data: customers,
     isLoading: customersLoading,
     isFetching: customersFetching,
-  } = useGetCustomersQuery({
-    search,
-    status,
-    funnelId: funnelFilter || undefined,
-    page,
-    pageSize,
-  }, { skip: tab !== "customers" });
+  } = useGetCustomersQuery(
+    {
+      search,
+      status,
+      funnelId: funnelFilter || undefined,
+      page,
+      pageSize,
+    },
+    { skip: tab !== "customers" },
+  );
   const {
     data: adminCustomers,
     isLoading: adminCustomersLoading,
@@ -199,18 +209,19 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
     },
     { skip: !canManageWorkspace || tab !== "admin" || adminSubTab !== "customers" },
   );
-  const { data: overview, isLoading: overviewLoading, isFetching: overviewFetching } = useGetCustomerOverviewQuery(
-    undefined,
-    { skip: tab !== "overview" && !(tab === "customers" && workspace?.isCouncilor === false) },
-  );
+  const {
+    data: overview,
+    isLoading: overviewLoading,
+    isFetching: overviewFetching,
+  } = useGetCustomerOverviewQuery(undefined, {
+    skip: tab !== "overview" && !(tab === "customers" && workspace?.isCouncilor === false),
+  });
   const {
     data: councilors,
     isLoading: councilorsLoading,
     isFetching: councilorsFetching,
   } = useGetCouncilorsQuery(undefined, {
-    skip:
-      !can("councilors", "read") ||
-      (tab !== "admin" && !(tab === "customers" && canManageWorkspace)),
+    skip: !can("councilors", "read") || (tab !== "admin" && !(tab === "customers" && canManageWorkspace)),
   });
   const {
     data: taskCustomers,
@@ -497,7 +508,9 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
               type="button"
             >
               <span className="min-w-0">
-                <span className="block text-xs font-medium uppercase tracking-wide text-stone-500">Business Growth</span>
+                <span className="block text-xs font-medium uppercase tracking-wide text-stone-500">
+                  Business Growth
+                </span>
                 <span className="block truncate text-sm font-semibold">
                   {sectionTabs.find((item) => item.section === section)?.label}
                 </span>
@@ -919,9 +932,7 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
                       )}
                     </div>
                   ))}
-                  {!councilors?.items.length && (
-                    <p className="p-4 text-sm text-stone-600">No counselors added yet.</p>
-                  )}
+                  {!councilors?.items.length && <p className="p-4 text-sm text-stone-600">No counselors added yet.</p>}
                 </div>
               </>
             ) : (
@@ -1056,10 +1067,10 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
         )}
         {tab === "task" && can("tasks", "read") && (
           <section className="mt-5">
-            {taskBusy && <LoadingState label="Loading customer tasks" overlay />}
+            {taskBusy && <LoadingState label="Loading my customers" overlay />}
             <div className="rounded-sm border border-amber-200 bg-amber-50 p-4">
-              <h2 className="font-semibold text-stone-900">My customer tasks</h2>
-              <p className="text-sm text-stone-600">Review your assigned customers and record follow-up notes.</p>
+              <h2 className="font-semibold text-stone-900">My Customer</h2>
+              <p className="text-sm text-stone-600">Only customers assigned to your signed-in email are shown.</p>
               <label className="relative mt-4 block max-w-md">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-stone-400" />
                 <input
@@ -1068,14 +1079,14 @@ export function BusinessGrowthPage({ section = "overview" }: { section?: Busines
                     setTaskSearch(event.target.value);
                     setTaskPage(1);
                   }}
-                  placeholder="Search assigned customers"
+                  placeholder="Search my customers"
                   value={taskSearch}
                 />
               </label>
             </div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-sm border border-[#eadfca] bg-white p-3">
-                <p className="text-xs text-stone-500">Total assigned customers</p>
+                <p className="text-xs text-stone-500">My customers</p>
                 <p className="mt-1 text-2xl font-semibold">{taskCustomers?.summary.assigned ?? 0}</p>
               </div>
               <div className="rounded-sm border border-[#eadfca] bg-white p-3">
@@ -1467,7 +1478,8 @@ function CustomerTable({
   toggleAll: (checked: boolean) => void;
   view: (customer: Customer) => void;
 }) {
-  const allSelected = canSelect && customers.length > 0 && customers.every((customer) => selected.includes(customer.id));
+  const allSelected =
+    canSelect && customers.length > 0 && customers.every((customer) => selected.includes(customer.id));
   return (
     <div className="mt-4 overflow-hidden rounded-sm border border-[#eadfca]">
       <div className="hidden overflow-x-auto lg:block">
@@ -1737,7 +1749,9 @@ function Overview({
           >
             <p className="text-sm font-medium text-stone-600">Customers</p>
             <p className="mt-2 text-2xl font-semibold text-stone-900">{total.toLocaleString()}</p>
-            <p className="mt-1 text-xs text-stone-500">{active} active · {inactive} inactive</p>
+            <p className="mt-1 text-xs text-stone-500">
+              {active} active · {inactive} inactive
+            </p>
           </Link>
           <Link
             className="rounded-sm border border-[#eadfca] bg-white p-4 transition hover:border-amber-400 hover:bg-amber-50"
@@ -1751,13 +1765,13 @@ function Overview({
           </Link>
           <Link
             className="rounded-sm border border-[#eadfca] bg-white p-4 transition hover:border-amber-400 hover:bg-amber-50"
-            href="/dashboard/business-growth/task"
+            href="/dashboard/business-growth/my-customer"
           >
-            <p className="text-sm font-medium text-stone-600">Tasks</p>
+            <p className="text-sm font-medium text-stone-600">My Customer</p>
             <p className="mt-2 text-2xl font-semibold text-stone-900">
               {data?.councilorProgress.assignedCustomers ?? 0}
             </p>
-            <p className="mt-1 text-xs text-stone-500">Assigned customer follow-up work</p>
+            <p className="mt-1 text-xs text-stone-500">Your assigned customer follow-up work</p>
           </Link>
         </div>
       </section>
@@ -1767,7 +1781,8 @@ function Overview({
             <div>
               <h2 className="font-semibold text-stone-900">Counselor progress</h2>
               <p className="mt-1 text-sm text-stone-600">
-                Working status counts assigned customers not marked inactive or archived. Follow-up periods use {data.councilorProgress.timeZone}.
+                Working status counts assigned customers not marked inactive or archived. Follow-up periods use{" "}
+                {data.councilorProgress.timeZone}.
               </p>
             </div>
             <div className="text-right">
@@ -1781,9 +1796,13 @@ function Overview({
             <OverviewMetric
               label="Working assigned customers"
               value={data.councilorProgress.workingCustomers}
-              percent={data.councilorProgress.assignedCustomers
-                ? Math.round((data.councilorProgress.workingCustomers / data.councilorProgress.assignedCustomers) * 100)
-                : 0}
+              percent={
+                data.councilorProgress.assignedCustomers
+                  ? Math.round(
+                      (data.councilorProgress.workingCustomers / data.councilorProgress.assignedCustomers) * 100,
+                    )
+                  : 0
+              }
               detail={`${data.councilorProgress.assignedCustomers} assigned to counselors`}
               tone="emerald"
             />

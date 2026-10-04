@@ -13,6 +13,16 @@ export function assignedCustomersFilterFor(councilor) {
   };
 }
 
+export function assignedCustomersFilterForEmail(email) {
+  const councilorEmail = normalize(email);
+  return councilorEmail ? { councilorEmail } : null;
+}
+
+export function assignedCustomerFilterForEmail(customerId, email) {
+  const filter = assignedCustomersFilterForEmail(email);
+  return filter ? { id: customerId, ...filter } : null;
+}
+
 export function assignedCustomerFilterFor(customerId, councilor) {
   return { id: customerId, ...assignedCustomersFilterFor(councilor) };
 }

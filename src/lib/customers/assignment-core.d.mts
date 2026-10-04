@@ -11,6 +11,13 @@ export declare function assignedCustomersFilterFor(councilor: { id: string; emai
   $or: ({ councilorId: string } | { councilorId: null; councilorEmail: string })[];
 };
 
+export declare function assignedCustomersFilterForEmail(email?: string | null): { councilorEmail: string } | null;
+
+export declare function assignedCustomerFilterForEmail(
+  customerId: string,
+  email?: string | null,
+): { id: string; councilorEmail: string } | null;
+
 export declare function assignedCustomerFilterFor(
   customerId: string,
   councilor: { id: string; email?: string | null },

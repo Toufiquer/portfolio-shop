@@ -38,7 +38,8 @@ const businessGrowthPathMigrations = [
   ["/dashboard/admin/business-growth/funnels", "/dashboard/business-growth/funnels"],
   ["/dashboard/admin/business-growth/customer", "/dashboard/business-growth/customer"],
   ["/dashboard/admin/business-growth/councillor", "/dashboard/business-growth/councillor"],
-  ["/dashboard/admin/business-growth/task", "/dashboard/business-growth/task"],
+  ["/dashboard/admin/business-growth/task", "/dashboard/business-growth/my-customer"],
+  ["/dashboard/business-growth/task", "/dashboard/business-growth/my-customer"],
   ["/dashboard/admin/customer", "/dashboard/business-growth"],
 ] as const;
 

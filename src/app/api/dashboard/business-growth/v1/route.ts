@@ -21,6 +21,7 @@ import {
   type BusinessGrowthAccessArea,
   type BusinessGrowthRequestTarget,
 } from "@/app/api/lib/dashboard-authorization";
+import { assignedCustomersFilterForEmail } from "@/lib/customers/assignment-core.mjs";
 import {
   assignedCustomersFilter,
   customerCollection,
@@ -82,9 +83,14 @@ export async function GET(r: Request) {
   const councilorRole = isBusinessGrowthCouncilor(access.roleName);
   if (kind === "workspace") {
     const workspacePermissionFor = (pathname: string) => {
+      const legacyPaths =
+        pathname === "/dashboard/business-growth/my-customer"
+          ? ["/dashboard/business-growth/task", "/dashboard/admin/business-growth/task"]
+          : [];
       const matching = (access.sidebarPermissions ?? []).filter(
         (sidebar) =>
           sidebar.url === pathname ||
+          legacyPaths.includes(sidebar.url) ||
           (pathname === "/dashboard/business-growth/overview" && sidebar.url === "/dashboard/business-growth"),
       );
       const allowed = (operation: "read" | "create" | "update" | "delete") =>
@@ -104,7 +110,7 @@ export async function GET(r: Request) {
         funnels: workspacePermissionFor("/dashboard/business-growth/funnels"),
         customers: workspacePermissionFor("/dashboard/business-growth/customer"),
         councilors: workspacePermissionFor("/dashboard/business-growth/councillor"),
-        tasks: workspacePermissionFor("/dashboard/business-growth/task"),
+        tasks: workspacePermissionFor("/dashboard/business-growth/my-customer"),
       },
     });
   }
@@ -248,12 +254,15 @@ export async function GET(r: Request) {
   const funnelId = q.get("funnelId");
   const assignment = q.get("assignment");
   const pageSize = Math.min(100, Math.max(10, Number.parseInt(q.get("pageSize") ?? "25", 10) || 25));
-  const councilorOnly = kind === "tasks";
-  const ownAssignmentsOnly = councilorRole && (kind === "customers" || councilorOnly);
+  const myCustomerOnly = kind === "tasks";
+  const taskAssignmentFilter = myCustomerOnly ? assignedCustomersFilterForEmail(session.user.email) : null;
+  if (myCustomerOnly && !taskAssignmentFilter)
+    return Response.json({ error: "An email address is required to load your customers." }, { status: 403 });
+  const ownAssignmentsOnly = councilorRole && kind === "customers";
   const councilor = ownAssignmentsOnly ? await councilorForSession(session) : null;
   if (ownAssignmentsOnly && !councilor)
     return Response.json({ error: "Counselor assignment is required." }, { status: 403 });
-  const ownAssignmentFilter = councilor ? assignedCustomersFilter(councilor) : null;
+  const ownAssignmentFilter = taskAssignmentFilter ?? (councilor ? assignedCustomersFilter(councilor) : null);
   const filters: Record<string, unknown>[] = [];
   if (ownAssignmentFilter) filters.push(ownAssignmentFilter);
   if (status && customerStatuses.includes(status as never))

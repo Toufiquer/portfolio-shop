@@ -12,7 +12,8 @@ const legacySections: Record<string, string> = {
   funnels: "/dashboard/business-growth/funnels",
   customer: "/dashboard/business-growth/customer",
   councillor: "/dashboard/business-growth/councillor",
-  task: "/dashboard/business-growth/task",
+  task: "/dashboard/business-growth/my-customer",
+  "my-customer": "/dashboard/business-growth/my-customer",
 };
 
 export default async function LegacyBusinessGrowthPage({ params }: { params: Promise<{ slug?: string[] }> }) {
