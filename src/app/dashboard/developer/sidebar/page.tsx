@@ -105,8 +105,8 @@ export default function SidebarPage() {
     try {
       await deleteSidebar(id).unwrap();
       setToast({ message: "Sidebar deleted successfully.", type: "success" });
-    } catch {
-      const errorMessage = "Could not delete sidebar. Changes were restored.";
+    } catch (error) {
+      const errorMessage = getErrorMessage(error, "Could not delete sidebar. Changes were restored.");
       setMessage(errorMessage);
       setToast({ message: errorMessage, type: "error" });
     }
@@ -443,4 +443,13 @@ function makeTree(items: SidebarItem[]) {
   };
   sort(roots);
   return roots;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return typeof error === "object" &&
+    error &&
+    "data" in error &&
+    typeof (error as { data?: { error?: string } }).data?.error === "string"
+    ? (error as { data: { error: string } }).data.error
+    : fallback;
 }

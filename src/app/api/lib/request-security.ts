@@ -38,6 +38,15 @@ function hasJsonContentType(mediaType: string | undefined) {
   return mediaType === "application/json" || Boolean(mediaType && /^application\/[\w.-]+\+json$/.test(mediaType));
 }
 
+function deleteCarriesPayload(request: Request) {
+  const contentLength = request.headers.get("content-length");
+  return (
+    request.headers.has("content-type") ||
+    request.headers.has("transfer-encoding") ||
+    (contentLength !== null && Number(contentLength) > 0)
+  );
+}
+
 /**
  * Validate writes that may carry an authenticated browser cookie. The configured
  * app URL is authoritative behind reverse proxies; forwarded Host headers are
@@ -65,7 +74,7 @@ export function validateCookieApiWrite(request: Request) {
 
   const bodyExpected =
     ["POST", "PUT", "PATCH"].includes(request.method.toUpperCase()) ||
-    (request.method.toUpperCase() === "DELETE" && request.body !== null);
+    (request.method.toUpperCase() === "DELETE" && deleteCarriesPayload(request));
   const isMultipartEndpoint = multipartEndpoints.has(
     `${request.method.toUpperCase()} ${new URL(request.url).pathname}`,
   );
