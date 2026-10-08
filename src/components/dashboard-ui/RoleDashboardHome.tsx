@@ -17,7 +17,6 @@ import {
   ShieldCheck,
   Users,
   Wrench,
-  Workflow,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -117,48 +116,6 @@ const content = {
         description: "Manage marketing and analytics integrations.",
         href: "/dashboard/admin/tracking",
         icon: BarChart3,
-      },
-    ] satisfies RoleHomeLink[],
-  },
-  businessGrowth: {
-    eyebrow: "Business growth workspace",
-    title: "Turn customer activity into sustainable growth.",
-    description:
-      "Use these tools to understand customer journeys, organize funnels, monitor marketing spend, and keep follow-up work moving.",
-    accent: "bg-sky-100 text-sky-900",
-    primary: { label: "View overview", href: "/dashboard/business-growth/overview" },
-    secondary: { label: "Manage customers", href: "/dashboard/business-growth/customer" },
-    highlights: ["Customer journey visibility", "Funnel performance", "Customer support coordination"],
-    links: [
-      {
-        title: "Overview",
-        description: "Review customer, funnel, and return performance.",
-        href: "/dashboard/business-growth/overview",
-        icon: BarChart3,
-      },
-      {
-        title: "Funnels",
-        description: "Organize the stages of each customer journey.",
-        href: "/dashboard/business-growth/funnels",
-        icon: Workflow,
-      },
-      {
-        title: "Customers",
-        description: "Manage contacts, statuses, and funnel progress.",
-        href: "/dashboard/business-growth/customer",
-        icon: Users,
-      },
-      {
-        title: "Counselors",
-        description: "Manage customer support assignments.",
-        href: "/dashboard/business-growth/councillor",
-        icon: ShieldCheck,
-      },
-      {
-        title: "My Customer",
-        description: "Review customers assigned to your email and their follow-up work.",
-        href: "/dashboard/business-growth/my-customer",
-        icon: CheckCircle2,
       },
     ] satisfies RoleHomeLink[],
   },

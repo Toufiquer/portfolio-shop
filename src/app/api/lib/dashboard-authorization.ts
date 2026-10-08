@@ -8,11 +8,6 @@
 
 import { randomUUID } from "crypto";
 
-import {
-  authorizeBusinessGrowthPolicy,
-  isBusinessGrowthAdministratorRole,
-  isBusinessGrowthCouncilorRole,
-} from "@/app/api/lib/business-growth-api-policy.mjs";
 import { invalidateDashboardCache, redisKeys } from "@/app/api/lib/redis";
 import { accessesCollection, rolesCollection, sidebarsCollection } from "@/lib/models/auth";
 
@@ -42,51 +37,6 @@ type Sidebar = {
 type SessionUser = { user: { id?: string | null; email?: string | null } };
 
 const standardUserPaths = new Set(["/dashboard/profile", "/dashboard/media", "/dashboard/install"]);
-const businessGrowthFullPermissions: Permission = { read: true, create: true, update: true, delete: true };
-const businessGrowthCouncilorPermissions: Permission = { read: true, create: false, update: false, delete: false };
-const businessGrowthCouncilorUpdatePermissions: Permission = { ...businessGrowthCouncilorPermissions, update: true };
-
-export function isBusinessGrowthAdministrator(roleName: string | null) {
-  return isBusinessGrowthAdministratorRole(roleName);
-}
-
-export function isBusinessGrowthCouncilor(roleName: string | null) {
-  return isBusinessGrowthCouncilorRole(roleName);
-}
-
-function canonicalBusinessGrowthSidebarPath(pathname: string) {
-  const canonical = pathname.replace(/^\/dashboard\/admin\/business-growth(?=\/|$)/, "/dashboard/business-growth");
-  const normalized = canonical.length > 1 ? canonical.replace(/\/$/, "") : canonical;
-  return normalized === "/dashboard/business-growth/task" ? "/dashboard/business-growth/my-customer" : normalized;
-}
-
-function isBusinessGrowthPermissionPath(pathname: string) {
-  return (
-    pathname === "/dashboard/business-growth" ||
-    pathname.startsWith("/dashboard/business-growth/") ||
-    pathname === "/dashboard/admin/business-growth" ||
-    pathname.startsWith("/dashboard/admin/business-growth/")
-  );
-}
-
-function businessGrowthPermissionsForRole(roleName: string, pathname: string): Permission | undefined {
-  if (!isBusinessGrowthPermissionPath(pathname)) return undefined;
-  if (isBusinessGrowthAdministrator(roleName)) return businessGrowthFullPermissions;
-  if (!isBusinessGrowthCouncilor(roleName)) return undefined;
-
-  switch (canonicalBusinessGrowthSidebarPath(pathname)) {
-    case "/dashboard/business-growth":
-    case "/dashboard/business-growth/overview":
-    case "/dashboard/business-growth/funnels":
-    case "/dashboard/business-growth/councillor":
-      return businessGrowthCouncilorPermissions;
-    case "/dashboard/business-growth/customer":
-    case "/dashboard/business-growth/my-customer":
-      return businessGrowthCouncilorUpdatePermissions;
-    default:
-      return { read: false, create: false, update: false, delete: false };
-  }
-}
 
 export type DashboardAccessState = {
   bypassed: boolean;
@@ -165,11 +115,8 @@ async function enforceStandardUserPermissions(role: Role, sidebars: Sidebar[]) {
   return { ...role, permissions };
 }
 
-export async function getDashboardAccessState(
-  session: SessionUser,
-  options: { enforce?: boolean } = {},
-): Promise<DashboardAccessState> {
-  if (authorizationIsDisabled() && !options.enforce)
+export async function getDashboardAccessState(session: SessionUser): Promise<DashboardAccessState> {
+  if (authorizationIsDisabled())
     return { bypassed: true, blocked: false, roleId: null, roleName: null, allowedSidebarIds: [] };
 
   const email = cleanEmail(session.user.email);
@@ -215,7 +162,7 @@ export async function getDashboardAccessState(
   const sidebarPermissions = sidebars.map((sidebar) => ({
     id: sidebar.id,
     url: sidebar.url,
-    permissions: businessGrowthPermissionsForRole(role.name, sidebar.url) ?? role.permissions?.[sidebar.id] ?? {},
+    permissions: role.permissions?.[sidebar.id] ?? {},
   }));
   // A role can reach a dashboard area when it has at least one operation on
   // that sidebar entry. The sidebar API uses these IDs to render only the
@@ -231,10 +178,6 @@ export async function getDashboardAccessState(
     allowedSidebarIds: allowed,
     sidebarPermissions,
   };
-}
-
-export function getBusinessGrowthAccessState(session: SessionUser) {
-  return getDashboardAccessState(session, { enforce: true });
 }
 
 function operationForMethod(method: string): DashboardOperation {
@@ -269,24 +212,6 @@ function apiResourcePaths(pathname: string, method: string): string[] | null {
     products: ["/dashboard/products"],
     orders: ["/dashboard/orders"],
     coupons: ["/dashboard/coupon"],
-    "business-growth": [
-      "/dashboard/business-growth",
-      "/dashboard/business-growth/",
-      "/dashboard/business-growth/overview",
-      "/dashboard/business-growth/funnels",
-      "/dashboard/business-growth/customer",
-      "/dashboard/business-growth/councillor",
-      "/dashboard/business-growth/task",
-      "/dashboard/business-growth/my-customer",
-      "/dashboard/admin/business-growth",
-      "/dashboard/admin/business-growth/",
-      "/dashboard/admin/business-growth/overview",
-      "/dashboard/admin/business-growth/funnels",
-      "/dashboard/admin/business-growth/customer",
-      "/dashboard/admin/business-growth/councillor",
-      "/dashboard/admin/business-growth/task",
-      "/dashboard/admin/business-growth/my-customer",
-    ],
     navigation: ["/dashboard/developer/navigation"],
   };
   return Object.prototype.hasOwnProperty.call(resources, resource) ? (resources[resource] ?? []) : null;
@@ -301,25 +226,17 @@ function pageResourcePaths(pathname: string) {
     "/dashboard/admin/whatsapp": ["/dashboard/whatsapp"],
     "/dashboard/admin/topbanner": ["/dashboard/admin/top-banner"],
     "/dashboard/admin/footer": ["/dashboard/admin/footer-editor"],
-    "/dashboard/admin/customer": ["/dashboard/business-growth"],
-    "/dashboard/business-growth/my-customer": [
-      "/dashboard/business-growth/task",
-      "/dashboard/admin/business-growth/task",
-    ],
   };
   // Editor, database, and preview pages inherit their parent dashboard
   // permission. This keeps direct reloads authorized just like navigating from
   // the parent list.
-  const businessGrowthPath = canonicalBusinessGrowthSidebarPath(pathname);
   const parents = [
-    ...(businessGrowthPath === "/dashboard/business-growth/overview" ? ["/dashboard/business-growth"] : []),
     ...(pathname.startsWith("/dashboard/admin/menu/") ? ["/dashboard/admin/menu"] : []),
     ...(pathname.startsWith("/dashboard/admin/pages/") ? ["/dashboard/admin/pages"] : []),
     ...(pathname.startsWith("/dashboard/orders/") ? ["/dashboard/orders"] : []),
   ];
   return [
     pathname,
-    ...(businessGrowthPath !== pathname ? [businessGrowthPath] : []),
     ...(aliases[pathname] ?? []),
     ...parents,
   ];
@@ -356,9 +273,6 @@ async function authorizeDashboardRequestWithState(state: DashboardAccessState, p
   const paths = apiPaths ?? pageResourcePaths(pathname);
   if (!paths.length) return { allowed: true, state };
 
-  if (isBusinessGrowthAdministrator(state.roleName) && paths.some(isBusinessGrowthPermissionPath))
-    return { allowed: true, state };
-
   if (!state.roleId) return { allowed: false, state: { ...state, message: "Your role is unavailable." } };
   const operation = operationForMethod(method);
   const allowed = (state.sidebarPermissions ?? []).some(
@@ -372,18 +286,4 @@ async function authorizeDashboardRequestWithState(state: DashboardAccessState, p
 
 export async function authorizeDashboardRequest(session: SessionUser, pathname: string, method: string) {
   return authorizeDashboardRequestWithState(await getDashboardAccessState(session), pathname, method);
-}
-
-export type BusinessGrowthAccessArea =
-  "workspace" | "overview" | "funnels" | "councilors" | "customers" | "tasks" | "spends";
-export type BusinessGrowthRequestTarget = "collection" | "item" | "bulk";
-
-export async function authorizeBusinessGrowthRequest(
-  session: SessionUser,
-  area: BusinessGrowthAccessArea,
-  method: string,
-  target: BusinessGrowthRequestTarget = "collection",
-) {
-  const state = await getBusinessGrowthAccessState(session);
-  return authorizeBusinessGrowthPolicy(state, area, method, target, authorizeDashboardRequestWithState);
 }

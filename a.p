@@ -1,1 +1,1 @@
-Look at the page 'src/app/dashboard/developer/sidebar' and please check why I can not delete sidebar data. I ensure I have create role and assign permissoin CURD to the role for sidebar. 
+Look at the page '/dashboard/business-growth' and I want to remove this page and it's sub page '/dashboard/business-growth/...' Now remove api, redux and dashboard page. 

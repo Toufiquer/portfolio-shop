@@ -50,18 +50,6 @@ export const sidebarDefaults: ImportSidebarDefault[] = [
       { name: "WhatsApp", url: "/dashboard/admin/whatsapp", icon: "MessageCircle" },
     ],
   },
-  {
-    name: "Business Growth",
-    url: "/dashboard/business-growth",
-    icon: "Users",
-    children: [
-      { name: "Overview", url: "/dashboard/business-growth/overview", icon: "Users" },
-      { name: "Funnels", url: "/dashboard/business-growth/funnels", icon: "Filter" },
-      { name: "Customers", url: "/dashboard/business-growth/customer", icon: "Users" },
-      { name: "Counselors", url: "/dashboard/business-growth/councillor", icon: "Users" },
-      { name: "My Customer", url: "/dashboard/business-growth/my-customer", icon: "Check" },
-    ],
-  },
   { name: "Media", url: "/dashboard/media", icon: "Image" },
   { name: "Profile", url: "/dashboard/profile", icon: "User" },
   { name: "Products", url: "/dashboard/products", icon: "Package" },

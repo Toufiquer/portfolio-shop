@@ -54,7 +54,13 @@ export async function listSidebars(allowedSidebarIds: string[], bypassed: boolea
     }
   }
   if (!cached) await setCache(redisKeys.sidebars, { items });
-  return { items: items.filter((item) => bypassed || visibleIds.has(item.id)) };
+  const visibleItems = items.filter(
+    (item) =>
+      !/^\/dashboard\/(?:admin\/)?business-growth(?:\/|$)/.test(item.url) &&
+      item.url !== "/dashboard/admin/customer" &&
+      (bypassed || visibleIds.has(item.id)),
+  );
+  return { items: visibleItems };
 }
 
 export async function addSidebar(

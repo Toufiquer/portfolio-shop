@@ -31,18 +31,6 @@ const defaultSidebarUrls = new Set(
   sidebarDefaults.flatMap((item) => [item.url, ...(item.children ?? []).map((child) => child.url)]),
 );
 const defaultPagePaths = new Set(pageDefaults.map((page) => page.path));
-const businessGrowthPathMigrations = [
-  ["/dashboard/admin/business-growth/", "/dashboard/business-growth/"],
-  ["/dashboard/admin/business-growth", "/dashboard/business-growth"],
-  ["/dashboard/admin/business-growth/overview", "/dashboard/business-growth/overview"],
-  ["/dashboard/admin/business-growth/funnels", "/dashboard/business-growth/funnels"],
-  ["/dashboard/admin/business-growth/customer", "/dashboard/business-growth/customer"],
-  ["/dashboard/admin/business-growth/councillor", "/dashboard/business-growth/councillor"],
-  ["/dashboard/admin/business-growth/task", "/dashboard/business-growth/my-customer"],
-  ["/dashboard/business-growth/task", "/dashboard/business-growth/my-customer"],
-  ["/dashboard/admin/customer", "/dashboard/business-growth"],
-] as const;
-
 export async function importDefaultData(body: ImportRequest) {
   const legacyTarget = body?.target ?? "all";
   const selectedSidebarUrls = new Set(
@@ -71,16 +59,6 @@ export async function importDefaultData(body: ImportRequest) {
     itemsByUrl.delete("/dashboard/Admin");
     itemsByUrl.set(legacyAdmin.url, legacyAdmin);
   }
-  if (importSidebars)
-    for (const [oldUrl, newUrl] of businessGrowthPathMigrations) {
-      const legacyItem = itemsByUrl.get(oldUrl);
-      if (!selectedSidebarUrls.has(newUrl) || !legacyItem || itemsByUrl.has(newUrl)) continue;
-      await updateImportSidebar(legacyItem.id, { url: newUrl, updatedAt: new Date() });
-      legacyItem.url = newUrl;
-      itemsByUrl.delete(oldUrl);
-      itemsByUrl.set(newUrl, legacyItem);
-    }
-
   let inserted = 0;
   let updated = 0;
   if (importSidebars)
