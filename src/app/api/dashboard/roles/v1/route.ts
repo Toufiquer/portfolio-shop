@@ -26,6 +26,28 @@ type Role = {
   updatedAt?: Date;
 };
 type Sidebar = { id: string; name: string; url: string; icon: string; parentId: string | null; position: number };
+function visibleRoleSidebars(sidebars: Sidebar[]) {
+  const removedIds = new Set(
+    sidebars
+      .filter(
+        (sidebar) =>
+          /^\/dashboard\/(?:admin\/)?business-growth(?:\/|$)/.test(sidebar.url) ||
+          sidebar.url === "/dashboard/admin/customer",
+      )
+      .map((sidebar) => sidebar.id),
+  );
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const sidebar of sidebars) {
+      if (sidebar.parentId && removedIds.has(sidebar.parentId) && !removedIds.has(sidebar.id)) {
+        removedIds.add(sidebar.id);
+        changed = true;
+      }
+    }
+  }
+  return sidebars.filter((sidebar) => !removedIds.has(sidebar.id));
+}
 function serialize(role: Role) {
   return {
     ...role,
@@ -65,6 +87,7 @@ export async function GET(request: Request) {
     return Response.json({
       ...cached,
       roles: cached.roles.map((role) => ({ ...role, responsible: sanitizeRoleDescription(role.responsible) })),
+      sidebars: visibleRoleSidebars(cached.sidebars),
     });
   const database = client.db();
   const [roles, sidebars] = await Promise.all([
@@ -75,7 +98,7 @@ export async function GET(request: Request) {
       .sort({ position: 1, name: 1 })
       .toArray(),
   ]);
-  const payload = { roles: roles.map(serialize), sidebars };
+  const payload = { roles: roles.map(serialize), sidebars: visibleRoleSidebars(sidebars) };
   await setCache(redisKeys.roles, payload);
   return Response.json(payload);
 }

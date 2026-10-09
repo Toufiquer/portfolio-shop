@@ -9,6 +9,7 @@ import "server-only";
 import { randomUUID } from "crypto";
 
 import { getCache, invalidateDashboardCache, redisKeys, setCache } from "@/app/api/lib/redis";
+import { leadTabs } from "@/lib/dashboard/leads";
 import {
   clearSidebarPermissions,
   createSidebar as createSidebarRecord,
@@ -38,7 +39,7 @@ function serializeSidebar(item: SidebarItem): SerializedSidebar {
   };
 }
 
-export async function listSidebars(allowedSidebarIds: string[], bypassed: boolean) {
+export async function listSidebars(allowedSidebarIds: string[], bypassed: boolean, leadsAllowed = false) {
   const cached = await getCache<{ items: SerializedSidebar[] }>(redisKeys.sidebars);
   const items = cached?.items ?? (await findSidebars()).map(serializeSidebar);
   const allowedIds = new Set(allowedSidebarIds);
@@ -58,8 +59,40 @@ export async function listSidebars(allowedSidebarIds: string[], bypassed: boolea
     (item) =>
       !/^\/dashboard\/(?:admin\/)?business-growth(?:\/|$)/.test(item.url) &&
       item.url !== "/dashboard/admin/customer" &&
-      (bypassed || visibleIds.has(item.id)),
+      (/^\/dashboard\/leads(?:\/|$)/.test(item.url) ? leadsAllowed : bypassed || visibleIds.has(item.id)),
   );
+  // Existing installations can reach Leads before importing the new defaults.
+  // Saved sidebar rows win; the fallback is navigation only and never persisted.
+  if (leadsAllowed) {
+    let parent = visibleItems.find((item) => item.url === "/dashboard/leads");
+    if (!parent) {
+      parent = {
+        id: "leads-navigation",
+        name: "Leads",
+        url: "/dashboard/leads",
+        icon: "Users",
+        parentId: null,
+        position: 2,
+        createdAt: null,
+        updatedAt: null,
+      };
+      visibleItems.push(parent);
+    }
+    for (const [position, tab] of leadTabs.entries()) {
+      const url = `/dashboard/leads/${tab.path}`;
+      if (!visibleItems.some((item) => item.url === url))
+        visibleItems.push({
+          id: `leads-navigation-${tab.path}`,
+          name: tab.label,
+          url,
+          icon: tab.icon,
+          parentId: parent.id,
+          position,
+          createdAt: null,
+          updatedAt: null,
+        });
+    }
+  }
   return { items: visibleItems };
 }
 

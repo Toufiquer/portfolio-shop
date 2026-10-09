@@ -8,7 +8,11 @@
 
 import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth } from "@/app/api/lib/auth";
-import { authorizeDashboardRequest, getDashboardAccessState } from "@/app/api/lib/dashboard-authorization";
+import {
+  authorizeDashboardRequest,
+  getDashboardAccessState,
+  getLeadsActor,
+} from "@/app/api/lib/dashboard-authorization";
 import type { SidebarItem } from "@/lib/models/auth";
 import { addSidebar, listSidebars } from "@/lib/services/sidebars";
 async function access(request: Request) {
@@ -23,7 +27,11 @@ export async function GET(request: Request) {
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
   const authorization = await getDashboardAccessState(session);
   if (authorization.blocked) return Response.json({ error: authorization.message ?? "Unauthorized." }, { status: 403 });
-  const sidebars = await listSidebars(authorization.allowedSidebarIds, authorization.bypassed);
+  const sidebars = await listSidebars(
+    authorization.allowedSidebarIds,
+    authorization.bypassed,
+    Boolean(await getLeadsActor(session)),
+  );
   return Response.json({ ...sidebars, roleName: authorization.roleName });
 }
 

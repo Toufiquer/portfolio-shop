@@ -1,1 +1,1 @@
-Look at the page '/dashboard/business-growth' and I want to remove this page and it's sub page '/dashboard/business-growth/...' Now remove api, redux and dashboard page. 
+Please Look at those page and verity that all features is working well. 

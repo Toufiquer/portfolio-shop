@@ -1,0 +1,195 @@
+/*
+|-----------------------------------------
+| setting up Leads create and edit dialog
+| @author: Codex
+|-----------------------------------------
+*/
+
+"use client";
+
+import { useState, type FormEvent } from "react";
+
+import { Checkbox } from "@/components/ui/checkbox";
+import { toast } from "@/components/ui/global-toast";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { parseLeadInput, type LeadItem, type LeadKind } from "@/lib/dashboard/leads";
+import { useMutateLeadsMutation } from "@/redux/features/dashboard/leads/leadsSlice";
+
+import { Action, errorMessage, LeadsModal, LeadSelect, RecordSelect } from "./ui";
+
+export default function Mutation({
+  kind,
+  mine,
+  item,
+  onClose,
+}: {
+  kind: LeadKind;
+  mine: boolean;
+  item?: LeadItem;
+  onClose: () => void;
+}) {
+  const [name, setName] = useState(item?.name ?? "");
+  const [mobile, setMobile] = useState(item && item.kind !== "funnels" ? item.mobile : "");
+  const [email, setEmail] = useState(item && item.kind !== "funnels" ? item.email : "");
+  const [status, setStatus] = useState(item?.status ?? "active");
+  const [description, setDescription] = useState(item?.kind === "funnels" ? item.description : "");
+  const [position, setPosition] = useState(item?.kind === "funnels" ? String(item.position) : "1");
+  const [funnelId, setFunnelId] = useState(item?.kind === "customers" ? item.funnelId : "");
+  const [blocked, setBlocked] = useState(item?.kind === "customers" ? item.blocked : false);
+  const [save, { isLoading }] = useMutateLeadsMutation();
+  const [error, setError] = useState("");
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    setError("");
+    try {
+      const data = parseLeadInput(kind, {
+        name,
+        status,
+        ...(kind === "funnels" ? { position: Number(position), description } : { mobile, email }),
+        ...(kind === "customers" ? { funnelId, blocked } : {}),
+      });
+      await save({ operation: item ? "update" : "create", kind, mine, id: item?.id, data }).unwrap();
+      toast.success(item ? "Record updated." : "Record created.");
+      onClose();
+    } catch (failure) {
+      const message = errorMessage(failure);
+      setError(message);
+      toast.error(message);
+    }
+  }
+  return (
+    <LeadsModal
+      title={`${item ? "Edit" : "Add"} ${kind === "funnels" ? "funnel" : kind === "councilors" ? "councilor" : "customer"}`}
+      busy={isLoading}
+      onClose={onClose}
+    >
+      <form className="custom-parent-border grid gap-3 rounded-sm p-3" onSubmit={submit}>
+        <fieldset className="grid min-w-0 gap-3" disabled={isLoading}>
+          <label className="grid gap-1 text-sm">
+            Name
+            <Input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              maxLength={160}
+              required
+              className="border-[#eadfca]"
+              autoComplete="name"
+            />
+          </label>
+          {kind === "funnels" ? (
+            <>
+              <label className="grid gap-1 text-sm">
+                Unique position
+                <Input
+                  type="number"
+                  min={1}
+                  max={1000000}
+                  step={1}
+                  value={position}
+                  onChange={(event) => setPosition(event.target.value)}
+                  required
+                  className="border-[#eadfca]"
+                />
+              </label>
+              <p className="text-xs text-stone-500">Choose an unused position. Funnels are sorted by this number.</p>
+              <label className="grid gap-1 text-sm">
+                Description
+                <Textarea
+                  value={description}
+                  onChange={(event) => setDescription(event.target.value)}
+                  maxLength={2000}
+                  className="border-[#eadfca]"
+                />
+              </label>
+            </>
+          ) : (
+            <>
+              <label className="grid gap-1 text-sm">
+                Mobile
+                <Input
+                  type="tel"
+                  value={mobile}
+                  onChange={(event) => setMobile(event.target.value)}
+                  maxLength={32}
+                  required
+                  className="border-[#eadfca]"
+                  autoComplete="tel"
+                />
+              </label>
+              <label className="grid gap-1 text-sm">
+                Email{kind === "customers" ? " (optional)" : ""}
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  maxLength={254}
+                  required={kind === "councilors"}
+                  className="border-[#eadfca]"
+                  autoComplete="email"
+                />
+              </label>
+            </>
+          )}
+          {kind === "customers" && (
+            <>
+              <div className="grid gap-1 text-sm">
+                Funnel
+                <RecordSelect
+                  kind="funnels"
+                  label="Choose funnel"
+                  selectedLabel={item?.kind === "customers" ? item.funnelName : undefined}
+                  value={funnelId}
+                  onChange={setFunnelId}
+                  activeOnly
+                  disabled={isLoading}
+                />
+              </div>
+              <label className="flex items-center gap-2 text-sm">
+                <Checkbox checked={blocked} onCheckedChange={setBlocked} disabled={isLoading} />
+                Block customer
+              </label>
+            </>
+          )}
+          <div className="grid gap-1 text-sm">
+            Status
+            <LeadSelect
+              label="Status"
+              value={status}
+              options={[
+                { value: "active", label: "Active" },
+                { value: "inactive", label: "Inactive" },
+              ]}
+              onChange={(value) => setStatus(value as "active" | "inactive")}
+              disabled={isLoading}
+            />
+          </div>
+          {kind === "councilors" && (
+            <p className="text-xs text-stone-500">
+              Use the same email as the councilor&apos;s login, and assign their Councilor role in Admin → Access. A
+              contact record does not grant account permissions.
+            </p>
+          )}
+          {kind === "customers" && mine && (
+            <p className="text-xs text-stone-500">
+              New customers are automatically assigned to your signed-in account.
+            </p>
+          )}
+        </fieldset>
+        {error && (
+          <p role="alert" className="text-sm text-red-700">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <Action disabled={isLoading} onClick={onClose}>
+            Cancel
+          </Action>
+          <Action tone="save" type="submit" disabled={isLoading}>
+            {isLoading ? "Saving…" : "Save"}
+          </Action>
+        </div>
+      </form>
+    </LeadsModal>
+  );
+}

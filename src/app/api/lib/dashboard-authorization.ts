@@ -9,6 +9,7 @@
 import { randomUUID } from "crypto";
 
 import { invalidateDashboardCache, redisKeys } from "@/app/api/lib/redis";
+import { leadRole, normalizeLeadEmail, type LeadActor } from "@/lib/dashboard/leads";
 import { accessesCollection, rolesCollection, sidebarsCollection } from "@/lib/models/auth";
 
 export type DashboardOperation = "read" | "create" | "update" | "delete";
@@ -180,6 +181,18 @@ export async function getDashboardAccessState(session: SessionUser): Promise<Das
   };
 }
 
+// Leads always enforces its two roles, even when general dashboard authorization
+// is disabled. A client email, a counselor contact, or a sidebar grant is not a role.
+export async function getLeadsActor(session: SessionUser): Promise<LeadActor | null> {
+  const email = normalizeLeadEmail(session.user.email ?? "");
+  if (!email) return null;
+  const access = await accessesCollection<Access>().findOne({ email });
+  if (!access || access.blocked) return null;
+  const role = await rolesCollection<Role>().findOne({ id: access.roleId });
+  const roleName = leadRole(role?.name);
+  return roleName ? { email, role: roleName } : null;
+}
+
 function operationForMethod(method: string): DashboardOperation {
   if (method === "POST") return "create";
   if (method === "PATCH" || method === "PUT") return "update";
@@ -213,6 +226,7 @@ function apiResourcePaths(pathname: string, method: string): string[] | null {
     orders: ["/dashboard/orders"],
     coupons: ["/dashboard/coupon"],
     navigation: ["/dashboard/developer/navigation"],
+    leads: ["/dashboard/leads"],
   };
   return Object.prototype.hasOwnProperty.call(resources, resource) ? (resources[resource] ?? []) : null;
 }
@@ -235,11 +249,7 @@ function pageResourcePaths(pathname: string) {
     ...(pathname.startsWith("/dashboard/admin/pages/") ? ["/dashboard/admin/pages"] : []),
     ...(pathname.startsWith("/dashboard/orders/") ? ["/dashboard/orders"] : []),
   ];
-  return [
-    pathname,
-    ...(aliases[pathname] ?? []),
-    ...parents,
-  ];
+  return [pathname, ...(aliases[pathname] ?? []), ...parents];
 }
 
 export function isPublicDashboardRead(pathname: string, method: string) {
@@ -285,5 +295,15 @@ async function authorizeDashboardRequestWithState(state: DashboardAccessState, p
 }
 
 export async function authorizeDashboardRequest(session: SessionUser, pathname: string, method: string) {
-  return authorizeDashboardRequestWithState(await getDashboardAccessState(session), pathname, method);
+  const state = await getDashboardAccessState(session);
+  if (/^\/(?:api\/)?dashboard\/leads(?:\/|$)/.test(pathname)) {
+    const actor = await getLeadsActor(session);
+    return {
+      allowed: Boolean(actor),
+      state: actor ? state : { ...state, message: "Leads requires an Admin or Councilor role." },
+    };
+  }
+  if (pathname === "/dashboard" && method === "GET" && !state.blocked && leadRole(state.roleName))
+    return { allowed: true, state };
+  return authorizeDashboardRequestWithState(state, pathname, method);
 }
