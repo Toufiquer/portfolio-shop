@@ -21,7 +21,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
   const { id } = await params;
   const access = await getDashboardAccessState(session),
-    result = await removeMediaForApi(id, mediaIsAdministrator(access.roleName), session.user.email);
+    result = await removeMediaForApi(id, access.bypassed || mediaIsAdministrator(access.roleName), session.user.email);
   if (result.kind === "not-found") return Response.json({ error: "Media not found." }, { status: 404 });
   if (result.kind === "forbidden")
     return Response.json({ error: "You can only delete your own media." }, { status: 403 });
@@ -42,7 +42,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const name = body?.name?.trim();
   if (!name) return Response.json({ error: "Name is required." }, { status: 400 });
   const access = await getDashboardAccessState(session),
-    result = await renameMediaForApi(id, name, mediaIsAdministrator(access.roleName), session.user.email);
+    result = await renameMediaForApi(
+      id,
+      name,
+      access.bypassed || mediaIsAdministrator(access.roleName),
+      session.user.email,
+    );
   if (result.kind === "not-found") return Response.json({ error: "Media not found." }, { status: 404 });
   if (result.kind === "forbidden")
     return Response.json({ error: "You can only edit your own media." }, { status: 403 });

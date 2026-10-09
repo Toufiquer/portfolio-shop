@@ -18,7 +18,12 @@ import {
   Users,
   Wrench,
 } from "lucide-react";
+import { headers } from "next/headers";
 import Link from "next/link";
+
+import { auth } from "@/app/api/lib/auth";
+import { getDashboardAccessState } from "@/app/api/lib/dashboard-authorization";
+import { dashboardCanEnter } from "@/lib/dashboard/permissions";
 
 type RoleHomeLink = { title: string; description: string; href: string; icon: LucideIcon };
 
@@ -121,8 +126,10 @@ const content = {
   },
 } as const;
 
-export function RoleDashboardHome({ role }: { role: keyof typeof content }) {
+export async function RoleDashboardHome({ role }: { role: keyof typeof content }) {
   const data = content[role];
+  const session = await auth.api.getSession({ headers: await headers() });
+  const access = session ? await getDashboardAccessState(session) : undefined;
   return (
     <main className="min-h-[calc(100vh-65px)] flex-1 bg-[#fffaf0] px-4 py-6 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl">
@@ -139,13 +146,17 @@ export function RoleDashboardHome({ role }: { role: keyof typeof content }) {
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-600 sm:text-base">{data.description}</p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link className="primary-button" href={data.primary.href}>
-                  {data.primary.label}
-                  <ArrowUpRight className="h-4 w-4" />
-                </Link>
-                <Link className="secondary-button" href={data.secondary.href}>
-                  {data.secondary.label}
-                </Link>
+                {dashboardCanEnter(access, data.primary.href) && (
+                  <Link className="primary-button" href={data.primary.href}>
+                    {data.primary.label}
+                    <ArrowUpRight className="h-4 w-4" />
+                  </Link>
+                )}
+                {dashboardCanEnter(access, data.secondary.href) && (
+                  <Link className="secondary-button" href={data.secondary.href}>
+                    {data.secondary.label}
+                  </Link>
+                )}
               </div>
             </div>
             <aside className="rounded-sm border border-[#eadfca] bg-[#fffdfa] p-5">
@@ -169,22 +180,24 @@ export function RoleDashboardHome({ role }: { role: keyof typeof content }) {
             </div>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {data.links.map(({ title, description, href, icon: Icon }) => (
-              <Link
-                className="group rounded-sm border border-[#eadfca] bg-white p-5 transition duration-700 hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-50"
-                href={href}
-                key={href}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="grid h-10 w-10 place-items-center rounded-sm bg-amber-100 text-amber-800">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <ArrowUpRight className="h-4 w-4 text-stone-400 transition group-hover:text-amber-800" />
-                </div>
-                <h3 className="mt-4 font-semibold text-stone-900">{title}</h3>
-                <p className="mt-1 text-sm leading-6 text-stone-600">{description}</p>
-              </Link>
-            ))}
+            {data.links
+              .filter((item) => dashboardCanEnter(access, item.href))
+              .map(({ title, description, href, icon: Icon }) => (
+                <Link
+                  className="group rounded-sm border border-[#eadfca] bg-white p-5 transition duration-700 hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-50"
+                  href={href}
+                  key={href}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="grid h-10 w-10 place-items-center rounded-sm bg-amber-100 text-amber-800">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <ArrowUpRight className="h-4 w-4 text-stone-400 transition group-hover:text-amber-800" />
+                  </div>
+                  <h3 className="mt-4 font-semibold text-stone-900">{title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-stone-600">{description}</p>
+                </Link>
+              ))}
           </div>
         </section>
       </div>

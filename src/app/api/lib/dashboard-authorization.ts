@@ -10,9 +10,19 @@ import { randomUUID } from "crypto";
 
 import { invalidateDashboardCache, redisKeys } from "@/app/api/lib/redis";
 import { leadRole, normalizeLeadEmail, type LeadActor } from "@/lib/dashboard/leads";
+import {
+  councilorRestrictedPath,
+  councilorPermission,
+  dashboardCan,
+  dashboardCanEnter,
+  emptyDashboardPermission,
+  fullDashboardPermission,
+  type DashboardOperation,
+  type DashboardPermission,
+} from "@/lib/dashboard/permissions";
 import { accessesCollection, rolesCollection, sidebarsCollection } from "@/lib/models/auth";
 
-export type DashboardOperation = "read" | "create" | "update" | "delete";
+export type { DashboardOperation } from "@/lib/dashboard/permissions";
 
 type Permission = Record<DashboardOperation, boolean>;
 type Role = { id: string; name: string; permissions: Record<string, Permission> };
@@ -45,7 +55,7 @@ export type DashboardAccessState = {
   roleId: string | null;
   roleName: string | null;
   allowedSidebarIds: string[];
-  sidebarPermissions?: { id: string; url: string; permissions: Partial<Permission> }[];
+  sidebarPermissions?: { id: string; url: string; parentId?: string | null; permissions: Partial<Permission> }[];
   message?: string;
 };
 
@@ -117,9 +127,7 @@ async function enforceStandardUserPermissions(role: Role, sidebars: Sidebar[]) {
 }
 
 export async function getDashboardAccessState(session: SessionUser): Promise<DashboardAccessState> {
-  if (authorizationIsDisabled())
-    return { bypassed: true, blocked: false, roleId: null, roleName: null, allowedSidebarIds: [] };
-
+  const bypassed = authorizationIsDisabled();
   const email = cleanEmail(session.user.email);
   if (!email)
     return {
@@ -131,10 +139,10 @@ export async function getDashboardAccessState(session: SessionUser): Promise<Das
       message: "Your account has no email address.",
     };
 
-  const access = await ensureDefaultAccess(email);
-  if (access.blocked)
+  const access = bypassed ? await accessesCollection<Access>().findOne({ email }) : await ensureDefaultAccess(email);
+  if (access?.blocked)
     return {
-      bypassed: false,
+      bypassed,
       blocked: true,
       roleId: access.roleId,
       roleName: access.roleName,
@@ -143,54 +151,77 @@ export async function getDashboardAccessState(session: SessionUser): Promise<Das
     };
 
   const [savedRole, savedSidebars] = await Promise.all([
-    rolesCollection<Role>().findOne({ id: access.roleId }),
+    access ? rolesCollection<Role>().findOne({ id: access.roleId }) : Promise.resolve(null),
     sidebarsCollection<Sidebar>()
       .find({}, { projection: { id: 1, url: 1, parentId: 1 } })
       .toArray(),
   ]);
-  if (!savedRole)
+  if (!savedRole && !bypassed)
     return {
       bypassed: false,
-      blocked: true,
-      roleId: access.roleId,
-      roleName: access.roleName,
+      blocked: false,
+      roleId: null,
+      roleName: null,
       allowedSidebarIds: [],
       message: "Your assigned role no longer exists.",
     };
 
   const sidebars = savedSidebars;
-  const role = await enforceStandardUserPermissions(savedRole, sidebars);
+  const role = savedRole ? (bypassed ? savedRole : await enforceStandardUserPermissions(savedRole, sidebars)) : null;
+  const leadsRole = leadRole(role?.name);
   const sidebarPermissions = sidebars.map((sidebar) => ({
     id: sidebar.id,
     url: sidebar.url,
-    permissions: role.permissions?.[sidebar.id] ?? {},
+    parentId: sidebar.parentId,
+    permissions: bypassed
+      ? fullDashboardPermission
+      : (/^\/dashboard\/leads(?:\/|$)/.test(sidebar.url) && !leadsRole) ||
+          (leadsRole === "councilor" && councilorRestrictedPath(sidebar.url))
+        ? emptyDashboardPermission
+        : leadsRole === "councilor"
+          ? councilorPermission(sidebar.url, role?.permissions?.[sidebar.id] ?? {})
+          : (role?.permissions?.[sidebar.id] ?? {}),
   }));
   // A role can reach a dashboard area when it has at least one operation on
   // that sidebar entry. The sidebar API uses these IDs to render only the
   // role's permitted navigation tree.
   const allowed = sidebarPermissions
-    .filter((sidebar) => Object.values(sidebar.permissions).some(Boolean))
+    .filter((sidebar) => dashboardCanEnter({ bypassed, blocked: false, sidebarPermissions }, sidebar.url))
     .map((x) => x.id);
   return {
-    bypassed: false,
+    bypassed,
     blocked: false,
-    roleId: role.id,
-    roleName: role.name,
+    roleId: role?.id ?? null,
+    roleName: role?.name ?? null,
     allowedSidebarIds: allowed,
     sidebarPermissions,
   };
 }
 
-// Leads always enforces its two roles, even when general dashboard authorization
-// is disabled. A client email, a counselor contact, or a sidebar grant is not a role.
-export async function getLeadsActor(session: SessionUser): Promise<LeadActor | null> {
+export async function getLeadsActor(
+  session: SessionUser,
+  accessState?: DashboardAccessState,
+): Promise<LeadActor | null> {
   const email = normalizeLeadEmail(session.user.email ?? "");
   if (!email) return null;
-  const access = await accessesCollection<Access>().findOne({ email });
-  if (!access || access.blocked) return null;
-  const role = await rolesCollection<Role>().findOne({ id: access.roleId });
-  const roleName = leadRole(role?.name);
-  return roleName ? { email, role: roleName } : null;
+  const state = accessState ?? (await getDashboardAccessState(session));
+  if (state.blocked) return null;
+  const role = leadRole(state.roleName);
+  if (!role && !state.bypassed) return null;
+  const permissions = Object.fromEntries(
+    ["overview", "funnels", "customers", "councilors", "my-leads"].map((area) => [
+      area,
+      Object.fromEntries(
+        ["read", "create", "update", "delete"].map((operation) => [
+          operation,
+          role === "councilor" && !state.bypassed && ["funnels", "councilors"].includes(area) && operation !== "read"
+            ? false
+            : dashboardCan(state, `/dashboard/leads/${area}`, operation as DashboardOperation),
+        ]),
+      ) as DashboardPermission,
+    ]),
+  );
+  return { email, role: role ?? "unrestricted", bypassed: state.bypassed, permissions };
 }
 
 function operationForMethod(method: string): DashboardOperation {
@@ -226,30 +257,20 @@ function apiResourcePaths(pathname: string, method: string): string[] | null {
     orders: ["/dashboard/orders"],
     coupons: ["/dashboard/coupon"],
     navigation: ["/dashboard/developer/navigation"],
-    leads: ["/dashboard/leads"],
+    leads: [
+      "/dashboard/leads",
+      "/dashboard/leads/overview",
+      "/dashboard/leads/funnels",
+      "/dashboard/leads/customers",
+      "/dashboard/leads/councilors",
+      "/dashboard/leads/my-leads",
+    ],
   };
   return Object.prototype.hasOwnProperty.call(resources, resource) ? (resources[resource] ?? []) : null;
 }
 
 export function isKnownDashboardApiResource(pathname: string) {
   return pathname.startsWith("/api/dashboard/") && apiResourcePaths(pathname, "GET") !== null;
-}
-
-function pageResourcePaths(pathname: string) {
-  const aliases: Record<string, string[]> = {
-    "/dashboard/admin/whatsapp": ["/dashboard/whatsapp"],
-    "/dashboard/admin/topbanner": ["/dashboard/admin/top-banner"],
-    "/dashboard/admin/footer": ["/dashboard/admin/footer-editor"],
-  };
-  // Editor, database, and preview pages inherit their parent dashboard
-  // permission. This keeps direct reloads authorized just like navigating from
-  // the parent list.
-  const parents = [
-    ...(pathname.startsWith("/dashboard/admin/menu/") ? ["/dashboard/admin/menu"] : []),
-    ...(pathname.startsWith("/dashboard/admin/pages/") ? ["/dashboard/admin/pages"] : []),
-    ...(pathname.startsWith("/dashboard/orders/") ? ["/dashboard/orders"] : []),
-  ];
-  return [pathname, ...(aliases[pathname] ?? []), ...parents];
 }
 
 export function isPublicDashboardRead(pathname: string, method: string) {
@@ -265,8 +286,8 @@ export function isPublicDashboardRead(pathname: string, method: string) {
 }
 
 async function authorizeDashboardRequestWithState(state: DashboardAccessState, pathname: string, method: string) {
-  if (state.bypassed) return { allowed: true, state };
   if (state.blocked) return { allowed: false, state };
+  if (state.bypassed) return { allowed: true, state };
 
   // The dashboard home is not an editable sidebar row. A role that can read at
   // least one sidebar area may enter it; a default "user" role still cannot.
@@ -280,14 +301,16 @@ async function authorizeDashboardRequestWithState(state: DashboardAccessState, p
 
   const apiPaths = pathname.startsWith("/api/dashboard/") ? apiResourcePaths(pathname, method) : undefined;
   if (apiPaths === null) return { allowed: false, state: { ...state, message: "Unknown dashboard API resource." } };
-  const paths = apiPaths ?? pageResourcePaths(pathname);
+  const paths = apiPaths ?? [pathname];
   if (!paths.length) return { allowed: true, state };
 
   if (!state.roleId) return { allowed: false, state: { ...state, message: "Your role is unavailable." } };
   const operation = operationForMethod(method);
-  const allowed = (state.sidebarPermissions ?? []).some(
-    (sidebar) => paths.includes(sidebar.url) && Boolean(sidebar.permissions[operation]),
-  );
+  const allowed = apiPaths
+    ? paths.some((path) => dashboardCan(state, path, operation))
+    : method === "GET"
+      ? dashboardCanEnter(state, pathname)
+      : dashboardCan(state, pathname, operation);
   return {
     allowed,
     state: allowed ? state : { ...state, message: `You do not have ${operation} permission for this area.` },
@@ -297,13 +320,9 @@ async function authorizeDashboardRequestWithState(state: DashboardAccessState, p
 export async function authorizeDashboardRequest(session: SessionUser, pathname: string, method: string) {
   const state = await getDashboardAccessState(session);
   if (/^\/(?:api\/)?dashboard\/leads(?:\/|$)/.test(pathname)) {
-    const actor = await getLeadsActor(session);
-    return {
-      allowed: Boolean(actor),
-      state: actor ? state : { ...state, message: "Leads requires an Admin or Councilor role." },
-    };
+    const actor = await getLeadsActor(session, state);
+    if (!actor)
+      return { allowed: false, state: { ...state, message: "Leads requires a Developer, Admin, or Councilor role." } };
   }
-  if (pathname === "/dashboard" && method === "GET" && !state.blocked && leadRole(state.roleName))
-    return { allowed: true, state };
   return authorizeDashboardRequestWithState(state, pathname, method);
 }

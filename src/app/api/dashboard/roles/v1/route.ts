@@ -12,6 +12,8 @@ import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth, client } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { getCache, invalidateDashboardCache, redisKeys, setCache } from "@/app/api/lib/redis";
+import { leadRole } from "@/lib/dashboard/leads";
+import { councilorPermission } from "@/lib/dashboard/permissions";
 import { sanitizeRoleDescription } from "@/lib/security/role-description";
 
 type Permission = { read: boolean; create: boolean; update: boolean; delete: boolean };
@@ -61,17 +63,17 @@ async function access(request: Request) {
   if (limited) return { limited };
   return { limited: null, session: await auth.api.getSession({ headers: request.headers }) };
 }
-function cleanPermissions(input: Record<string, Partial<Permission>> | undefined, sidebars: Sidebar[]) {
+function cleanPermissions(input: Record<string, Partial<Permission>> | undefined, sidebars: Sidebar[], name: string) {
   return Object.fromEntries(
-    sidebars.map((sidebar) => [
-      sidebar.id,
-      {
-        read: Boolean(input?.[sidebar.id]?.read),
-        create: Boolean(input?.[sidebar.id]?.create),
-        update: Boolean(input?.[sidebar.id]?.update),
-        delete: Boolean(input?.[sidebar.id]?.delete),
-      },
-    ]),
+    sidebars.map((sidebar) => {
+      const grant = {
+        read: input?.[sidebar.id]?.read === true,
+        create: input?.[sidebar.id]?.create === true,
+        update: input?.[sidebar.id]?.update === true,
+        delete: input?.[sidebar.id]?.delete === true,
+      };
+      return [sidebar.id, leadRole(name) === "councilor" ? councilorPermission(sidebar.url, grant) : grant];
+    }),
   ) as Record<string, Permission>;
 }
 
@@ -79,6 +81,20 @@ export async function GET(request: Request) {
   const { limited, session } = await access(request);
   if (limited) return limited;
   if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
+  if (new URL(request.url).searchParams.get("options") === "true") {
+    const grants = await Promise.all(
+      ["POST", "PATCH"].map((method) => authorizeDashboardRequest(session, "/api/dashboard/roles/v1", method)),
+    );
+    if (!grants.some((grant) => grant.allowed))
+      return Response.json({ error: "You cannot configure roles." }, { status: 403 });
+    const sidebars = await client
+      .db()
+      .collection<Sidebar>("sidebar")
+      .find({}, { projection: { _id: 0, id: 1, name: 1, url: 1, icon: 1, parentId: 1, position: 1 } })
+      .sort({ position: 1, name: 1 })
+      .toArray();
+    return Response.json({ roles: [], sidebars: visibleRoleSidebars(sidebars) });
+  }
   const authorization = await authorizeDashboardRequest(session, "/api/dashboard/roles/v1", "GET");
   if (!authorization.allowed)
     return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
@@ -86,7 +102,11 @@ export async function GET(request: Request) {
   if (cached)
     return Response.json({
       ...cached,
-      roles: cached.roles.map((role) => ({ ...role, responsible: sanitizeRoleDescription(role.responsible) })),
+      roles: cached.roles.map((role) => ({
+        ...role,
+        responsible: sanitizeRoleDescription(role.responsible),
+        permissions: cleanPermissions(role.permissions, cached.sidebars, role.name),
+      })),
       sidebars: visibleRoleSidebars(cached.sidebars),
     });
   const database = client.db();
@@ -98,7 +118,12 @@ export async function GET(request: Request) {
       .sort({ position: 1, name: 1 })
       .toArray(),
   ]);
-  const payload = { roles: roles.map(serialize), sidebars: visibleRoleSidebars(sidebars) };
+  const payload = {
+    roles: roles.map((role) =>
+      serialize({ ...role, permissions: cleanPermissions(role.permissions, sidebars, role.name) }),
+    ),
+    sidebars: visibleRoleSidebars(sidebars),
+  };
   await setCache(redisKeys.roles, payload);
   return Response.json(payload);
 }
@@ -115,7 +140,7 @@ export async function POST(request: Request) {
   const database = client.db();
   const sidebars = await database
     .collection<Sidebar>("sidebar")
-    .find({}, { projection: { id: 1 } })
+    .find({}, { projection: { id: 1, url: 1 } })
     .toArray();
   const last = await database.collection<Role>("role").find({}).sort({ position: -1 }).limit(1).next();
   const role: Role = {
@@ -124,7 +149,7 @@ export async function POST(request: Request) {
     responsible: sanitizeRoleDescription(body?.responsible),
     icon: body?.icon?.trim() || "ShieldCheck",
     position: typeof body?.position === "number" ? body.position : (last?.position ?? -1) + 1,
-    permissions: cleanPermissions(body?.permissions, sidebars),
+    permissions: cleanPermissions(body?.permissions, sidebars, name),
     createdAt: new Date(),
     updatedAt: new Date(),
   };

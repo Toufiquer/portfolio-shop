@@ -11,7 +11,7 @@ import { auth } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { addTracking, listTracking, type TrackingItem, type TrackingProvider } from "@/lib/services/tracking";
 
-export const trackingProviders = ["facebook", "gtm", "ga4", "tiktok"] as const;
+const trackingProviders = ["facebook", "gtm", "ga4", "tiktok"] as const;
 export type { TrackingItem, TrackingProvider };
 async function access(request: Request, method: "GET" | "POST") {
   const limited = await rateLimitDistributed(request, "dashboard-tracking-api", 30, 60_000);

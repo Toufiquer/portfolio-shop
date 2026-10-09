@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:leads": "node scripts/test-leads.cjs",
+    "test:dashboard-authorization": "node scripts/test-dashboard-authorization.cjs",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

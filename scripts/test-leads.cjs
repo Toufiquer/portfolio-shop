@@ -9,7 +9,8 @@ const assert = require("node:assert/strict");
 const { randomUUID } = require("node:crypto");
 const { spawn } = require("node:child_process");
 const { once } = require("node:events");
-const { readFileSync } = require("node:fs");
+const { readFileSync, writeFileSync, cpSync, mkdirSync, rmSync, symlinkSync, existsSync } = require("node:fs");
+const os = require("node:os");
 const Module = require("node:module");
 const path = require("node:path");
 const { loadEnvConfig } = require("@next/env");
@@ -24,6 +25,9 @@ if (!qaUri.includes(`/${qaName}`) || !/^leads_qa_[a-f0-9]{24}$/.test(qaName))
   throw new Error("QA database isolation failed.");
 const mongo = new MongoClient(qaUri, { serverSelectionTimeoutMS: 10000 });
 const db = mongo.db(qaName);
+const qaRoot = path.resolve(os.tmpdir(), `shop-${qaName}`);
+const qaRootPrefix = path.resolve(os.tmpdir()) + path.sep;
+const authorizationDisabled = process.argv.includes("--authorization-disabled");
 const origin = "http://127.0.0.1:3001";
 const password = "Leads-QA-only-2026!";
 let server,
@@ -52,6 +56,9 @@ async function cleanup() {
     await db.dropDatabase();
   } finally {
     await mongo.close();
+    if (!qaRoot.startsWith(qaRootPrefix) || !/^shop-leads_qa_[a-f0-9]{24}$/.test(path.basename(qaRoot)))
+      throw new Error("Refusing unsafe QA directory cleanup.");
+    if (existsSync(qaRoot)) rmSync(qaRoot, { recursive: true, force: true, maxRetries: 4 });
   }
 }
 process.on("SIGINT", async () => {
@@ -110,8 +117,26 @@ function excelParser() {
   const { hashPassword } = await import("better-auth/crypto");
   const hashedPassword = await hashPassword(password);
   const now = new Date();
+  const ts = require("typescript");
+  const defaultsModule = { exports: {} };
+  new Function(
+    "module",
+    "exports",
+    ts.transpileModule(readFileSync("src/lib/defaults/import-data.ts", "utf8"), {
+      compilerOptions: { module: ts.ModuleKind.CommonJS },
+    }).outputText,
+  )(defaultsModule, defaultsModule.exports);
+  const seededSidebars = [];
+  for (const [position, group] of defaultsModule.exports.sidebarDefaults.entries()) {
+    const parentId = `qa-sidebar-${seededSidebars.length}`;
+    seededSidebars.push({ id: parentId, name: group.name, url: group.url, icon: group.icon, parentId: null, position });
+    for (const [childPosition, child] of (group.children ?? []).entries())
+      seededSidebars.push({ ...child, id: `qa-sidebar-${seededSidebars.length}`, parentId, position: childPosition });
+  }
+  await db.collection("sidebar").insertMany(seededSidebars);
   for (const [key, role] of [
     ["admin", "Admin"],
+    ["developer", "Developer"],
     ["councilor-a", "Councilor"],
     ["councilor-b", "Councilor"],
     ["user", "user"],
@@ -120,9 +145,19 @@ function excelParser() {
       id = `qa-${key}`,
       roleId = `qa-role-${role}`;
     const userObjectId = new ObjectId();
-    await db
-      .collection("role")
-      .updateOne({ id: roleId }, { $set: { id: roleId, name: role, permissions: {} } }, { upsert: true });
+    await db.collection("role").updateOne(
+      { id: roleId },
+      {
+        $set: {
+          id: roleId,
+          name: role,
+          permissions: Object.fromEntries(
+            seededSidebars.map((item) => [item.id, { read: true, create: true, update: true, delete: true }]),
+          ),
+        },
+      },
+      { upsert: true },
+    );
     await db
       .collection("user")
       .insertOne({ _id: userObjectId, name: `QA ${key}`, email, emailVerified: true, createdAt: now, updatedAt: now });
@@ -139,11 +174,26 @@ function excelParser() {
       .collection("access")
       .insertOne({ id, email, roleId, roleName: role, blocked: false, createdAt: now, updatedAt: now });
   }
+  // Keep Next's lock, generated types, cache, and config writes outside the
+  // user's running app. Only this disposable copy uses the synthetic database.
+  mkdirSync(qaRoot);
+  cpSync("src", path.join(qaRoot, "src"), { recursive: true });
+  const qaHealthDirectory = path.join(qaRoot, "src/app/api/qa-isolation-check");
+  mkdirSync(qaHealthDirectory, { recursive: true });
+  writeFileSync(
+    path.join(qaHealthDirectory, "route.ts"),
+    `export function GET() { return Response.json({qa: "${qaName}"}); }`,
+  );
+  for (const file of ["package.json", "tsconfig.json", "next.config.ts", "postcss.config.mjs"]) {
+    if (existsSync(file)) cpSync(file, path.join(qaRoot, file));
+  }
+  symlinkSync(path.resolve("node_modules"), path.join(qaRoot, "node_modules"), "junction");
+  if (existsSync("public")) symlinkSync(path.resolve("public"), path.join(qaRoot, "public"), "junction");
   server = spawn(
     process.execPath,
-    ["node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", "3001"],
+    [path.resolve("node_modules/next/dist/bin/next"), "dev", "--webpack", "--hostname", "127.0.0.1", "--port", "3001"],
     {
-      cwd: process.cwd(),
+      cwd: qaRoot,
       windowsHide: true,
       stdio: ["ignore", "pipe", "pipe"],
       env: {
@@ -152,7 +202,7 @@ function excelParser() {
         BETTER_AUTH_URL: origin,
         BETTER_AUTH_TRUSTED_ORIGINS: origin,
         BETTER_AUTH_SECRET: randomUUID() + randomUUID(),
-        AuthorizationEnable: process.argv.includes("--authorization-disabled") ? "false" : "true",
+        AuthorizationEnable: authorizationDisabled ? "false" : "true",
         REDIS_HOST: "",
         REDIS_USERNAME: "",
         REDIS_PASSWORD: "",
@@ -173,7 +223,8 @@ function excelParser() {
   for (let attempt = 0; attempt < 120; attempt++) {
     if (server.exitCode !== null) throw new Error(`QA server exited: ${startupOutput.slice(-1200)}`);
     try {
-      if ((await fetch(`${origin}/api/auth/v1/ok`)).ok) break;
+      const health = await fetch(`${origin}/api/qa-isolation-check`);
+      if (health.ok && (await health.json()).qa === qaName) break;
     } catch {}
     if (attempt === 119) throw new Error("QA server startup timed out.");
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -192,6 +243,247 @@ function excelParser() {
     login("councilor-b"),
     login("user"),
   ]);
+  const developer = await login("developer");
+  await check("sidebar metadata, assigned role, and Developer Leads permissions", async () => {
+    const navigation = await expectStatus("/api/dashboard/sidebars/v1", "GET", undefined, developer, 200);
+    assert.equal(navigation.roleName, "Developer");
+    assert.equal(navigation.access.bypassed, authorizationDisabled);
+    assert.ok(navigation.items.some((item) => item.url === "/dashboard/leads/customers"));
+    await expectStatus(endpoint("customers"), "GET", undefined, developer, 200);
+    const roleData = await expectStatus("/api/dashboard/roles/v1", "GET", undefined, admin, 200);
+    const councilorRole = roleData.roles.find((role) => role.name === "Councilor");
+    for (const url of [
+      "/dashboard/admin/access",
+      "/dashboard/admin/role",
+      "/dashboard/leads/funnels",
+      "/dashboard/leads/councilors",
+    ]) {
+      const sidebar = seededSidebars.find((item) => item.url === url);
+      assert.equal(councilorRole.permissions[sidebar.id].create, false);
+      assert.equal(councilorRole.permissions[sidebar.id].update, false);
+      assert.equal(councilorRole.permissions[sidebar.id].delete, false);
+    }
+  });
+  await check("media management follows bypass or Developer grants while preserving upload ownership", async () => {
+    const media = (
+      await expectStatus(
+        "/api/dashboard/media/v1",
+        "POST",
+        {
+          name: "QA video",
+          url: "https://youtu.be/dQw4w9WgXcQ",
+          uploadPlane: "Youtube",
+          type: "video",
+        },
+        admin,
+        201,
+      )
+    ).item;
+    const listed = await expectStatus("/api/dashboard/media/v1", "GET", undefined, developer, 200);
+    assert.ok(listed.items.some((item) => item.id === media.id));
+    await expectStatus(`/api/dashboard/media/v1/${media.id}`, "PATCH", { name: "QA renamed" }, developer, 200);
+    await expectStatus(
+      `/api/dashboard/media/v1/${media.id}`,
+      "PATCH",
+      { name: "Councilor rename" },
+      councilorA,
+      authorizationDisabled ? 200 : 403,
+    );
+    await expectStatus(
+      "/api/dashboard/media/v1",
+      "POST",
+      {
+        name: "Unowned upload",
+        url: "https://utfs.io/f/synthetic",
+        uploadPlane: "Uploadthings",
+        type: "picture",
+        fileKey: "synthetic",
+      },
+      developer,
+      403,
+    );
+    await expectStatus(`/api/dashboard/media/v1/${media.id}`, "DELETE", undefined, developer, 200);
+  });
+  await check("assigned-role deletion, own bulk access deletion, and import inventory", async () => {
+    await expectStatus("/api/dashboard/roles/v1/qa-role-Admin", "DELETE", undefined, admin, 409);
+    await expectStatus("/api/dashboard/access/v1/bulk", "DELETE", { ids: ["qa-admin"] }, admin, 400);
+    const inventory = await expectStatus("/api/tools/import-data/v1", "GET", undefined, admin, 200);
+    assert.equal(inventory.sidebarUrls.length, seededSidebars.length);
+    const sync = await expectStatus(
+      "/api/tools/import-data/v1",
+      "POST",
+      { sidebarUrls: seededSidebars.map((item) => item.url), pagePaths: [] },
+      admin,
+      200,
+    );
+    assert.equal(sync.inserted, 0);
+    assert.deepEqual(
+      (await db.collection("sidebar").find({}).toArray()).map((item) => item.id).sort(),
+      seededSidebars.map((item) => item.id).sort(),
+    );
+  });
+  await check("missing assignments can be reviewed and explicitly repaired", async () => {
+    await db.collection("access").updateOne({ id: "qa-user" }, { $set: { roleId: "missing-role" } });
+    const review = await expectStatus("/api/dashboard/access/v1?missingRole=true", "GET", undefined, admin, 200);
+    assert.equal(review.missingRoleCount, 1);
+    assert.equal(review.items[0].roleMissing, true);
+    assert.equal(review.items[0].suggestedRoleName, "user");
+    await expectStatus(
+      "/api/dashboard/access/v1/qa-user",
+      "PATCH",
+      { roleId: "qa-role-user", blocked: false },
+      admin,
+      200,
+    );
+    assert.equal(
+      (await expectStatus("/api/dashboard/access/v1?missingRole=true", "GET", undefined, admin, 200)).missingRoleCount,
+      0,
+    );
+  });
+  await check("catalog handler extraction preserves CRUD, references, validation, and authorization", async () => {
+    for (const resource of ["categories", "products", "coupons"]) {
+      await expectStatus(`/api/dashboard/${resource}/v1`, "GET", undefined, undefined, 401);
+      await expectStatus(`/api/dashboard/${resource}/v1`, "POST", {}, user, authorizationDisabled ? 400 : 403);
+    }
+    const categoryInput = { name: "QA category", slug: "qa-category", description: "", status: "active" };
+    const category = (await expectStatus("/api/dashboard/categories/v1", "POST", categoryInput, developer, 201)).item;
+    await expectStatus(
+      `/api/dashboard/categories/v1/${category.id}`,
+      "PATCH",
+      { ...categoryInput, name: "Renamed category" },
+      developer,
+      200,
+    );
+    const catalogModule = { exports: {} };
+    new Function(
+      "module",
+      "exports",
+      ts.transpileModule(readFileSync("src/lib/dashboard/catalog.ts", "utf8"), {
+        compilerOptions: { module: ts.ModuleKind.CommonJS },
+      }).outputText,
+    )(catalogModule, catalogModule.exports);
+    const productInput = catalogModule.exports.createProductDefaults({
+      categoryId: category.id,
+      imageUrl: "https://placehold.co/200.png",
+      now: 1,
+    });
+    const product = (await expectStatus("/api/dashboard/products/v1", "POST", productInput, developer, 201)).item;
+    assert.equal(typeof product.createdAt, "string");
+    await expectStatus("/api/dashboard/products/v1", "POST", productInput, developer, 409);
+    await expectStatus(`/api/dashboard/categories/v1/${category.id}`, "DELETE", undefined, developer, 409);
+    await expectStatus(
+      `/api/dashboard/products/v1/${product.id}`,
+      "PATCH",
+      { stock: 3, status: "active" },
+      developer,
+      200,
+    );
+    await expectStatus(
+      "/api/dashboard/products/v1/bulk",
+      "PATCH",
+      { ids: [product.id], status: "draft" },
+      developer,
+      200,
+    );
+    assert.equal((await expectStatus("/api/dashboard/products/v1", "GET", undefined, developer, 200)).total, 1);
+    await expectStatus("/api/dashboard/products/v1/bulk", "DELETE", { ids: [product.id] }, developer, 200);
+    await expectStatus(
+      "/api/dashboard/categories/v1/bulk",
+      "PATCH",
+      { ids: [category.id], status: "inactive" },
+      developer,
+      200,
+    );
+    await expectStatus("/api/dashboard/categories/v1/bulk", "DELETE", { ids: [category.id] }, developer, 200);
+    const couponInput = { code: "QA10", discountType: "flat", discountValue: 10, maximumDiscount: null, active: true };
+    const coupon = (await expectStatus("/api/dashboard/coupons/v1", "POST", couponInput, developer, 201)).item;
+    await expectStatus(
+      `/api/dashboard/coupons/v1/${coupon.id}`,
+      "PATCH",
+      { ...couponInput, discountValue: 20 },
+      developer,
+      200,
+    );
+    await expectStatus(`/api/dashboard/coupons/v1/${coupon.id}`, "DELETE", undefined, developer, 200);
+    await expectStatus("/api/dashboard/navigation/v1?dashboard=true", "GET", undefined, developer, 200);
+    await expectStatus("/api/dashboard/tracking/v1", "GET", undefined, developer, 200);
+  });
+  if (authorizationDisabled) {
+    await check("disabled authorization permits role-free CRUD and imports", async () => {
+      await db.collection("access").deleteOne({ id: "qa-user" });
+      const funnel = (
+        await expectStatus(
+          endpoint("funnels"),
+          "POST",
+          { name: "Role-free funnel", position: 1, description: "", status: "active" },
+          user,
+          201,
+        )
+      ).item;
+      const customer = (
+        await expectStatus(
+          endpoint("customers"),
+          "POST",
+          { name: "Role-free customer", mobile: "01780000001", funnelId: funnel.id, status: "active", blocked: false },
+          user,
+          201,
+        )
+      ).item;
+      await expectStatus(
+        itemEndpoint(customer.id),
+        "PATCH",
+        { name: "Updated customer", mobile: "01780000001", funnelId: funnel.id, status: "active", blocked: false },
+        councilorA,
+        200,
+      );
+      await expectStatus(
+        `${base}/import`,
+        "POST",
+        {
+          kind: "customers",
+          rows: [{ name: "Imported", mobile: "01780000002", funnelId: funnel.id, status: "active", blocked: false }],
+        },
+        user,
+        200,
+      );
+      await expectStatus(itemEndpoint(customer.id), "DELETE", undefined, user, 200);
+      await expectStatus(
+        endpoint("councilors"),
+        "POST",
+        { name: "Role-free councilor", mobile: "01780000003", email: "free@example.test", status: "active" },
+        councilorA,
+        201,
+      );
+      await expectStatus("/api/tools/import-data/v1", "POST", { sidebarUrls: [], pagePaths: ["/about-us"] }, user, 200);
+      await expectStatus(endpoint("customers"), "GET", undefined, undefined, 401);
+    });
+    await check("disabled mode still scopes My Leads and rejects blocked accounts", async () => {
+      const funnel = await db.collection("leads-funnels").findOne({});
+      const mine = (
+        await expectStatus(
+          endpoint("customers", true),
+          "POST",
+          { name: "Mine", mobile: "01780000004", funnelId: funnel.id, status: "active", blocked: false },
+          user,
+          201,
+        )
+      ).item;
+      await expectStatus(
+        itemEndpoint(mine.id, true),
+        "PATCH",
+        { name: "Not mine", mobile: mine.mobile, funnelId: funnel.id, status: "active", blocked: false },
+        councilorA,
+        404,
+      );
+      assert.equal((await expectStatus(endpoint("customers", true), "GET", undefined, councilorA, 200)).total, 0);
+      await db.collection("access").updateOne({ id: "qa-councilor-a" }, { $set: { blocked: true } });
+      await expectStatus(endpoint("customers"), "GET", undefined, councilorA, 403);
+      await expectStatus("/api/dashboard/sidebars/v1", "GET", undefined, councilorA, 403);
+    });
+    console.log(`Leads disabled authorization integration: ${passed} scenarios passed using an isolated database.`);
+    await cleanup();
+    return;
+  }
   await check("all Leads handlers reject anonymous and unrelated roles", async () => {
     const calls = [
       [endpoint("customers"), "GET"],
@@ -322,6 +614,87 @@ function excelParser() {
       [adminOwn.id],
     );
   });
+  await check("Councilor list, search, exports, and overview exclude other assignments", async () => {
+    const list = await expectStatus(endpoint("customers"), "GET", undefined, councilorA, 200);
+    assert.ok(
+      list.items.every((item) => item.assignedTo === null || item.assignedTo === "qa-councilor-a@example.test"),
+    );
+    assert.ok(!list.items.some((item) => item.id === other.id || item.id === adminOwn.id));
+    assert.equal(
+      (await expectStatus(`${endpoint("customers")}&search=QA%20Other`, "GET", undefined, councilorA, 200)).total,
+      0,
+    );
+    const overview = await expectStatus(`${base}?overview=true`, "GET", undefined, councilorA, 200);
+    assert.equal(
+      overview.summary.all,
+      await db
+        .collection("leads-customers")
+        .countDocuments({ assignedTo: { $in: [null, "qa-councilor-a@example.test"] } }),
+    );
+    assert.ok(overview.progress.every((row) => row.email === "qa-councilor-a@example.test"));
+    await expectStatus("/api/dashboard/access/v1", "GET", undefined, councilorA, 403);
+    await expectStatus("/api/dashboard/roles/v1", "POST", { name: "Escalation" }, councilorA, 403);
+  });
+  await check("path CRUD grants enforce every Leads method independently", async () => {
+    const row = seededSidebars.find((item) => item.url === "/dashboard/leads/customers");
+    for (const [operation, path, method, body] of [
+      ["create", endpoint("customers"), "POST", {}],
+      ["update", itemEndpoint(own.id), "PATCH", {}],
+      ["delete", itemEndpoint(own.id), "DELETE"],
+      ["read", endpoint("customers"), "GET"],
+    ]) {
+      await db
+        .collection("role")
+        .updateOne({ id: "qa-role-Admin" }, { $set: { [`permissions.${row.id}.${operation}`]: false } });
+      await expectStatus(path, method, body, admin, 403);
+      await db
+        .collection("role")
+        .updateOne({ id: "qa-role-Admin" }, { $set: { [`permissions.${row.id}.${operation}`]: true } });
+    }
+  });
+  await check("create-only Leads pages use minimal reference options without reading records", async () => {
+    const customers = seededSidebars.find((item) => item.url === "/dashboard/leads/customers");
+    const funnels = seededSidebars.find((item) => item.url === "/dashboard/leads/funnels");
+    await db
+      .collection("role")
+      .updateOne(
+        { id: "qa-role-Admin" },
+        { $set: { [`permissions.${customers.id}.read`]: false, [`permissions.${funnels.id}.read`]: false } },
+      );
+    await expectStatus(endpoint("customers"), "GET", undefined, admin, 403);
+    await expectStatus(endpoint("funnels"), "GET", undefined, admin, 403);
+    const options = await expectStatus(`${base}?lookup=funnels&area=customers`, "GET", undefined, admin, 200);
+    assert.ok(options.items.every((item) => Object.keys(item).sort().join() === "name,value"));
+    assert.ok(options.items.some((item) => item.value === funnel.id));
+    await expectStatus("/dashboard/leads/customers", "GET", undefined, admin, 200);
+    await db
+      .collection("role")
+      .updateOne(
+        { id: "qa-role-Admin" },
+        { $set: { [`permissions.${customers.id}.read`]: true, [`permissions.${funnels.id}.read`]: true } },
+      );
+  });
+  await check(
+    "role rename synchronizes assignment labels and parent containers accept permitted children",
+    async () => {
+      const saved = await db.collection("role").findOne({ id: "qa-role-Admin" });
+      const body = { ...saved, name: "Administrator", responsible: "", icon: "ShieldCheck" };
+      await expectStatus("/api/dashboard/roles/v1/qa-role-Admin", "PATCH", body, admin, 200);
+      assert.equal((await db.collection("access").findOne({ id: "qa-admin" })).roleName, "Administrator");
+      await expectStatus("/api/dashboard/roles/v1/qa-role-Admin", "PATCH", { ...body, name: "Admin" }, admin, 200);
+      const parent = seededSidebars.find((item) => item.url === "/dashboard/admin");
+      await db
+        .collection("role")
+        .updateOne(
+          { id: "qa-role-Admin" },
+          { $set: { [`permissions.${parent.id}`]: { read: false, create: false, update: false, delete: false } } },
+        );
+      await expectStatus("/dashboard/admin", "GET", undefined, admin, 200);
+      await db
+        .collection("role")
+        .updateOne({ id: "qa-role-Admin" }, { $set: { [`permissions.${parent.id}`]: saved.permissions[parent.id] } });
+    },
+  );
   await check("item and mixed bulk writes cannot mutate another councilor's customers", async () => {
     await expectStatus(itemEndpoint(other.id), "PATCH", { ...customerInput, mobile: other.mobile }, councilorA, 404);
     await expectStatus(itemEndpoint(other.id, true), "DELETE", undefined, councilorA, 409);

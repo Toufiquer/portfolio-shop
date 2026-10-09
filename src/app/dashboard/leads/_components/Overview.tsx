@@ -12,6 +12,7 @@ import { useState } from "react";
 
 import { Icon } from "@/components/all-icons/all-icons";
 import { toast } from "@/components/ui/global-toast";
+import { useDashboardPermissions } from "@/lib/dashboard/use-dashboard-permissions";
 import { useGetLeadsOverviewQuery } from "@/redux/features/dashboard/leads/leadsSlice";
 
 import { Action, errorMessage, LeadSelect, LeadsSkeleton, Pagination, useRefreshCooldown } from "./ui";
@@ -145,7 +146,8 @@ function MonthlyChart({
   );
 }
 export default function Overview() {
-  const { data, isLoading, isFetching, error, refetch } = useGetLeadsOverviewQuery();
+  const { can } = useDashboardPermissions("/dashboard/leads/overview");
+  const { data, isLoading, isFetching, error, refetch } = useGetLeadsOverviewQuery(undefined, { skip: !can("read") });
   const cooldown = useRefreshCooldown();
   const [progressPage, setProgressPage] = useState(1),
     [progressSize, setProgressSize] = useState(10);
@@ -174,12 +176,14 @@ export default function Overview() {
           <h1 className="text-xl font-semibold">Leads overview</h1>
           <p className="text-sm text-stone-500">Customer relationships and councilor activity · Asia/Dhaka</p>
         </div>
-        <Action disabled={isFetching || Boolean(cooldown.remaining)} onClick={refresh}>
+        <Action disabled={!can("read") || isFetching || Boolean(cooldown.remaining)} onClick={refresh}>
           <Icon name="RefreshCw" className={isFetching ? "animate-spin" : ""} />
           {cooldown.remaining ? `Refresh (${cooldown.remaining}s)` : "Refresh"}
         </Action>
       </header>
-      {error ? (
+      {!can("read") ? (
+        <p className="text-sm text-stone-500">Read permission is required to display the overview.</p>
+      ) : error ? (
         <p className="text-sm text-red-700" role="alert">
           {errorMessage(error)}
         </p>

@@ -16,7 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { LeadKind } from "@/lib/dashboard/leads";
-import { useGetLeadsQuery } from "@/redux/features/dashboard/leads/leadsSlice";
+import { useGetLeadOptionsQuery } from "@/redux/features/dashboard/leads/leadsSlice";
 
 export const normalButton =
   "cursor-pointer rounded-sm border-[#eadfca] bg-amber-100 text-amber-900 transition duration-700 hover:bg-amber-200";
@@ -220,6 +220,7 @@ export function LeadsModal({
 
 /** Paginated selections keep large funnel/councilor lists usable on mobile. */
 export function RecordSelect({
+  area = "customers",
   kind,
   value,
   label,
@@ -229,6 +230,7 @@ export function RecordSelect({
   activeOnly = false,
   disabled = false,
 }: {
+  area?: string;
   kind: Exclude<LeadKind, "customers">;
   value: string;
   label: string;
@@ -243,15 +245,15 @@ export function RecordSelect({
   const [text, setText] = useState("");
   const [search, setSearch] = useState("");
   const [chosenLabel, setChosenLabel] = useState(selectedLabel || value);
-  const { data, isFetching, error } = useGetLeadsQuery({
+  const { data, isFetching, error } = useGetLeadOptionsQuery({
     kind,
+    area,
     page,
     pageSize,
     search,
     ...(activeOnly ? { status: "active" } : {}),
   });
-  const options =
-    data?.items.map((item) => ({ value: item.kind === "councilors" ? item.email : item.id, label: item.name })) ?? [];
+  const options = data?.items.map((item) => ({ value: item.value, label: item.name })) ?? [];
   if (value && !options.some((option) => option.value === value))
     options.unshift({ value, label: chosenLabel || value });
   return (

@@ -31,6 +31,7 @@ export const apiSlice = createApi({
     "Sidebar",
     "Role",
     "Access",
+    "Leads",
     "Media",
     "Install",
     "WhatsApp",

@@ -33,7 +33,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const access = await getDashboardAccessState(session);
-  const result = await downloadMediaForApi(id, mediaIsAdministrator(access.roleName), session.user.email);
+  const result = await downloadMediaForApi(
+    id,
+    access.bypassed || mediaIsAdministrator(access.roleName),
+    session.user.email,
+  );
   if (result.kind === "not-found") return Response.json({ error: "Media not found." }, { status: 404 });
   if (result.kind === "youtube")
     return Response.json({ error: "YouTube videos cannot be downloaded." }, { status: 400 });

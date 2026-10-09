@@ -6,9 +6,9 @@
 |-----------------------------------------
 */
 
-import { authorizeCategoryRequest, serializeCategory } from "@/app/api/dashboard/categories/v1/route";
+import { authorizeCategoryRequest } from "@/app/api/lib/catalog-authorization";
 import { parseCategoryInput } from "@/lib/dashboard/catalog";
-import { removeCategoryForApi, updateCategoryForApi } from "@/lib/services/categories";
+import { removeCategoryForApi, serializeCategory, updateCategoryForApi } from "@/lib/services/categories";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const access = await authorizeCategoryRequest(request, "PATCH");

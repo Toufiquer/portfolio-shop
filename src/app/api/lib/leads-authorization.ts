@@ -21,7 +21,8 @@ export async function withLeads(request: Request, run: (actor: LeadActor) => Pro
     const session = await auth.api.getSession({ headers: request.headers });
     if (!session) return Response.json({ error: "Sign in required." }, { status: 401 });
     const actor = await getLeadsActor(session);
-    if (!actor) return Response.json({ error: "Leads requires an Admin or Councilor role." }, { status: 403 });
+    if (!actor)
+      return Response.json({ error: "Leads requires a Developer, Admin, or Councilor role." }, { status: 403 });
     const userLimited = await rateLimitDistributedIdentity("leads-user", actor.email, 90, 60_000);
     if (userLimited) return userLimited;
     await requireActiveCouncilor(actor);

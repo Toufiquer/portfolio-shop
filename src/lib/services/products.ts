@@ -5,7 +5,10 @@
 */
 import "server-only";
 
-import type { ProductInput } from "@/lib/dashboard/catalog";
+import { MongoServerError } from "mongodb";
+
+import { client } from "@/app/api/lib/auth";
+import type { Category, Product, ProductInput } from "@/lib/dashboard/catalog";
 import {
   deleteProduct,
   deleteProducts,
@@ -14,6 +17,28 @@ import {
   updateProductsStatus,
 } from "@/lib/models/catalog";
 import { invalidatePublicProductCatalogCache } from "@/lib/products/server";
+const products = () => client.db().collection<Product>("products");
+const categories = () => client.db().collection<Category>("categories");
+export const serializeProduct = (item: Product) => ({
+  ...item,
+  createdAt: item.createdAt.toISOString(),
+  updatedAt: item.updatedAt.toISOString(),
+});
+export async function ensureProductIndexes() {
+  await Promise.all([
+    products().createIndex({ slug: 1 }, { name: "product_slug_unique", unique: true }),
+    products().createIndex({ sku: 1 }, { name: "product_sku_unique", unique: true }),
+    products().createIndex({ categories: 1 }, { name: "product_categories_index" }),
+  ]);
+}
+export async function validateProductCategories(categoryIds: string[]) {
+  const found = await categories().countDocuments({ id: { $in: categoryIds } });
+  return found === categoryIds.length;
+}
+export function duplicateProductError(error: unknown) {
+  if (!(error instanceof MongoServerError) || error.code !== 11000) return null;
+  return error.keyPattern?.sku ? "That SKU already exists." : "That product slug already exists.";
+}
 export async function updateProductForApi(id: string, data: ProductInput, updateStock = true) {
   const fields: Omit<ProductInput, "stock"> & { stock?: number } = { ...data };
   if (!updateStock) delete fields.stock;

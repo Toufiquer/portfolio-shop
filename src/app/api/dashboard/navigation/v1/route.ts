@@ -25,7 +25,7 @@ export type NavigationData = {
   user: NavigationStyle & { enabled: boolean; iconCount: 4 | 5; hiddenPaths: string[]; items: NavigationItem[] };
   dashboard: NavigationStyle & { items: NavigationItem[] };
 };
-export const defaults: NavigationData = {
+const defaults: NavigationData = {
   user: {
     enabled: true,
     iconCount: 4,

@@ -15,6 +15,8 @@ import {
   isLeadKind,
   leadClaimFilter,
   leadIds,
+  leadCan,
+  leadIsManager,
   leadOwnershipFilter,
   normalizeLeadEmail,
   normalizeLeadMobile,
@@ -25,6 +27,7 @@ import {
   type LeadKind,
   type LeadOverview,
 } from "@/lib/dashboard/leads";
+import type { DashboardOperation } from "@/lib/dashboard/permissions";
 import { ensureLeadIndexes, leadActivitiesCollection, leadsCollection, type LeadDocument } from "@/lib/models/leads";
 
 export class LeadError extends Error {
@@ -61,14 +64,57 @@ export function selectedIds(raw: unknown) {
 }
 export async function requireActiveCouncilor(actor: LeadActor) {
   if (
+    !actor.bypassed &&
     actor.role === "councilor" &&
     !(await leadsCollection("councilors").findOne({ email: actor.email, status: "active" }))
   )
     throw new LeadError("An Admin must add your email as an active councilor before you can use Leads.", 403);
 }
 function requireAdmin(actor: LeadActor, kind: LeadKind) {
-  if (kind !== "customers" && actor.role !== "admin")
-    throw new LeadError("Only an Admin can manage funnels and councilors.", 403);
+  if (kind !== "customers" && !leadIsManager(actor))
+    throw new LeadError("Only a Developer or Admin can manage funnels and councilors.", 403);
+}
+function requirePermission(actor: LeadActor, area: string, operation: DashboardOperation) {
+  if (!leadCan(actor, area, operation))
+    throw new LeadError(`You do not have ${operation} permission for this Leads area.`, 403);
+}
+const areaFor = (kind: LeadKind, mine: boolean) => (mine && kind === "customers" ? "my-leads" : kind);
+
+export async function leadOptions(actor: LeadActor, query: URLSearchParams) {
+  const kind = leadKind(query.get("lookup"));
+  if (kind === "customers") throw new LeadError("Choose funnels or councilors.");
+  const area = query.get("area") === "my-leads" ? "my-leads" : "customers";
+  if (!["read", "create", "update"].some((operation) => leadCan(actor, area, operation as DashboardOperation)))
+    throw new LeadError("You cannot use options for this Leads area.", 403);
+  const search = query.get("search")?.trim() ?? "";
+  if (search.length > 160) throw new LeadError("Search must contain at most 160 characters.");
+  const filter: Filter<LeadDocument> = {
+    ...(query.get("status") === "active" ? { status: "active" } : {}),
+    ...(kind === "councilors" && !leadIsManager(actor) ? { email: actor.email } : {}),
+    ...(search ? { name: { $regex: escapeRegex(search), $options: "i" } } : {}),
+  };
+  const pageSize = [10, 25, 50, 100].includes(Number(query.get("pageSize"))) ? Number(query.get("pageSize")) : 10;
+  const requestedPage = Number(query.get("page"));
+  const page = Math.max(1, Math.floor(Number.isFinite(requestedPage) ? requestedPage : 1));
+  const collection = leadsCollection(kind);
+  const [rows, total] = await Promise.all([
+    collection
+      .find(filter, { projection: { id: 1, name: 1, email: 1 } })
+      .sort({ name: 1 })
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .toArray(),
+    collection.countDocuments(filter),
+  ]);
+  return {
+    items: rows.map((row) => ({
+      value: row.kind === "councilors" || kind === "councilors" ? (row as { email: string }).email : row.id,
+      name: row.name,
+    })),
+    total,
+    page,
+    pageSize,
+  };
 }
 async function validateReferences(data: LeadInput, existing?: LeadDocument | null) {
   if (data.kind !== "customers") return;
@@ -109,6 +155,7 @@ export function leadListFilter(actor: LeadActor, query: URLSearchParams) {
   return { kind, filter };
 }
 export async function listLeads(actor: LeadActor, query: URLSearchParams) {
+  requirePermission(actor, areaFor(leadKind(query.get("kind")), query.get("mine") === "true"), "read");
   const { kind, filter } = leadListFilter(actor, query);
   const requestedSize = Number(query.get("pageSize")) || 10;
   const pageSize = [10, 25, 50, 100].includes(requestedSize) ? requestedSize : 10;
@@ -146,12 +193,13 @@ export async function listLeads(actor: LeadActor, query: URLSearchParams) {
   return { items: serialized, total, page, pageSize, actor };
 }
 export async function createLead(actor: LeadActor, kind: LeadKind, raw: unknown, mine: boolean) {
+  requirePermission(actor, areaFor(kind, mine), "create");
   requireAdmin(actor, kind);
   const data = input(kind, raw);
   await validateReferences(data);
   await ensureLeadIndexes();
   const now = new Date();
-  const assignedTo = kind === "customers" && (mine || actor.role === "councilor") ? actor.email : null;
+  const assignedTo = kind === "customers" && (mine || !leadIsManager(actor)) ? actor.email : null;
   const item: LeadDocument = {
     ...data,
     id: randomUUID(),
@@ -169,6 +217,7 @@ async function logActivity(customerId: string, councilor: string, type: "assigne
   await leadActivitiesCollection().insertOne({ id: randomUUID(), customerId, councilor, type, createdAt });
 }
 export async function updateLead(actor: LeadActor, kind: LeadKind, id: string, raw: unknown, mine: boolean) {
+  requirePermission(actor, areaFor(kind, mine), "update");
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new LeadError("Enter valid details.");
   const body = raw as Record<string, unknown>;
   const collection = leadsCollection(kind);
@@ -178,7 +227,7 @@ export async function updateLead(actor: LeadActor, kind: LeadKind, id: string, r
     if (Object.keys(body).some((key) => !["action", "assignedTo"].includes(key)))
       throw new LeadError("Unsupported action fields.");
     if (body.action === "claim") {
-      if (actor.role !== "councilor" || mine)
+      if ((!actor.bypassed && actor.role !== "councilor") || mine)
         throw new LeadError("Claim an unassigned customer from Customers as a councilor.", 403);
       const item = await collection.findOneAndUpdate(
         leadClaimFilter(id),
@@ -194,7 +243,7 @@ export async function updateLead(actor: LeadActor, kind: LeadKind, id: string, r
       return { item: serialize(item) };
     }
     if (body.action === "assign") {
-      if (actor.role !== "admin" || mine)
+      if (!leadIsManager(actor) || mine)
         throw new LeadError("Only an Admin can assign or change councilors from Customers.", 403);
       if (body.assignedTo !== null && typeof body.assignedTo !== "string")
         throw new LeadError("Choose a councilor or unassigned.");
@@ -245,6 +294,7 @@ export async function updateLead(actor: LeadActor, kind: LeadKind, id: string, r
   return { item: serialize(item) };
 }
 export async function bulkLeads(actor: LeadActor, kind: LeadKind, ids: string[], mine: boolean, status?: unknown) {
+  requirePermission(actor, areaFor(kind, mine), status === undefined ? "delete" : "update");
   requireAdmin(actor, kind);
   const collection = leadsCollection(kind);
   const filter: Filter<LeadDocument> = {
@@ -281,6 +331,7 @@ export function leadErrorResponse(error: unknown) {
 }
 
 export async function importLeads(actor: LeadActor, kind: LeadKind, raw: unknown, mine: boolean) {
+  requirePermission(actor, areaFor(kind, mine), "create");
   requireAdmin(actor, kind);
   if (kind === "funnels") throw new LeadError("Excel import supports customers and councilors.");
   if (!Array.isArray(raw) || !raw.length || raw.length > 100)
@@ -301,6 +352,7 @@ export async function importLeads(actor: LeadActor, kind: LeadKind, raw: unknown
 }
 
 export async function leadsOverview(actor: LeadActor): Promise<LeadOverview> {
+  requirePermission(actor, "overview", "read");
   const now = new Date();
   const localNow = new Date(now.getTime() + 6 * 60 * 60_000);
   const monthKeys = Array.from({ length: 12 }, (_, index) =>
@@ -308,6 +360,8 @@ export async function leadsOverview(actor: LeadActor): Promise<LeadOverview> {
   );
   const since = new Date(`${monthKeys[0]}-01T00:00:00+06:00`);
   const customers = leadsCollection("customers");
+  const scope = leadOwnershipFilter(actor, false);
+  const activityScope = leadIsManager(actor) ? {} : { councilor: actor.email };
   const [
     all,
     new30Days,
@@ -321,15 +375,19 @@ export async function leadsOverview(actor: LeadActor): Promise<LeadOverview> {
     cohortRows,
     monthlyActivities,
   ] = await Promise.all([
-    customers.countDocuments({}),
-    customers.countDocuments({ createdAt: { $gte: new Date(now.getTime() - 30 * 86400_000) } }),
-    customers.countDocuments({ status: "active" }),
-    customers.countDocuments({ status: "inactive" }),
+    customers.countDocuments(scope),
+    customers.countDocuments({ ...scope, createdAt: { $gte: new Date(now.getTime() - 30 * 86400_000) } }),
+    customers.countDocuments({ ...scope, status: "active" }),
+    customers.countDocuments({ ...scope, status: "inactive" }),
     leadsCollection("funnels").find({}).sort({ position: 1 }).toArray(),
-    leadsCollection("councilors").find({}).sort({ name: 1 }).toArray(),
+    leadsCollection("councilors")
+      .find(leadIsManager(actor) ? {} : { email: actor.email })
+      .sort({ name: 1 })
+      .toArray(),
     customers.countDocuments({ assignedTo: actor.email }),
     customers
       .aggregate<{ _id: string | null; assigned: number; inactive: number }>([
+        { $match: scope },
         {
           $group: {
             _id: "$assignedTo",
@@ -341,13 +399,13 @@ export async function leadsOverview(actor: LeadActor): Promise<LeadOverview> {
       .toArray(),
     leadActivitiesCollection()
       .aggregate<{ _id: string; count: number }>([
-        { $match: { type: "counselled", createdAt: { $gte: new Date(now.getTime() - 86400_000) } } },
+        { $match: { ...activityScope, type: "counselled", createdAt: { $gte: new Date(now.getTime() - 86400_000) } } },
         { $group: { _id: "$councilor", count: { $sum: 1 } } },
       ])
       .toArray(),
     customers
       .aggregate<{ _id: { month: string; funnelId: string; status: string; blocked: boolean }; count: number }>([
-        { $match: { createdAt: { $gte: since } } },
+        { $match: { ...scope, createdAt: { $gte: since } } },
         {
           $group: {
             _id: {
@@ -363,7 +421,7 @@ export async function leadsOverview(actor: LeadActor): Promise<LeadOverview> {
       .toArray(),
     leadActivitiesCollection()
       .aggregate<{ _id: { month: string; type: string }; count: number }>([
-        { $match: { createdAt: { $gte: since } } },
+        { $match: { ...activityScope, createdAt: { $gte: since } } },
         {
           $group: {
             _id: {

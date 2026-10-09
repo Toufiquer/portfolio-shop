@@ -34,6 +34,20 @@ export const leadQueryString = (params: LeadListParams) => {
 };
 const leadsApi = apiSlice.enhanceEndpoints({ addTagTypes: ["Leads"] }).injectEndpoints({
   endpoints: (build) => ({
+    getLeadOptions: build.query<
+      { items: { value: string; name: string }[]; total: number; page: number; pageSize: number },
+      {
+        kind: Exclude<LeadKind, "customers">;
+        area?: string;
+        page: number;
+        pageSize: number;
+        search: string;
+        status?: string;
+      }
+    >({
+      query: ({ kind, ...params }) => ({ url: "leads/v1", params: { ...params, lookup: kind } }),
+      providesTags: ["Leads"],
+    }),
     getLeads: build.query<LeadList, LeadListParams>({
       query: (params) => `leads/v1?${leadQueryString(params)}`,
       providesTags: ["Leads"],
@@ -64,4 +78,10 @@ const leadsApi = apiSlice.enhanceEndpoints({ addTagTypes: ["Leads"] }).injectEnd
     }),
   }),
 });
-export const { useGetLeadsQuery, useLazyGetLeadsQuery, useGetLeadsOverviewQuery, useMutateLeadsMutation } = leadsApi;
+export const {
+  useGetLeadOptionsQuery,
+  useGetLeadsQuery,
+  useLazyGetLeadsQuery,
+  useGetLeadsOverviewQuery,
+  useMutateLeadsMutation,
+} = leadsApi;

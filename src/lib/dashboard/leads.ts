@@ -5,9 +5,20 @@
 |-----------------------------------------
 */
 
+import type { DashboardOperation, DashboardPermission } from "./permissions";
+
 export type LeadKind = "funnels" | "customers" | "councilors";
 export type LeadStatus = "active" | "inactive";
-export type LeadActor = { email: string; role: "admin" | "councilor" };
+export type LeadActor = {
+  email: string;
+  role: "admin" | "developer" | "councilor" | "unrestricted";
+  bypassed?: boolean;
+  permissions?: Record<string, DashboardPermission>;
+};
+export const leadIsManager = (actor: LeadActor) =>
+  actor.bypassed === true || actor.role === "admin" || actor.role === "developer";
+export const leadCan = (actor: LeadActor | undefined, area: string, operation: DashboardOperation) =>
+  Boolean(actor && (actor.bypassed || actor.permissions?.[area]?.[operation]));
 type LeadBase = { id: string; name: string; status: LeadStatus; createdAt: string; updatedAt: string };
 export type LeadFunnel = LeadBase & { kind: "funnels"; position: number; description: string };
 export type LeadCouncilor = LeadBase & { kind: "councilors"; mobile: string; email: string };
@@ -80,7 +91,7 @@ export const isLeadKind = (kind: unknown): kind is LeadKind =>
 export const normalizeLeadEmail = (email: string) => email.trim().toLowerCase();
 export function leadRole(name: string | null | undefined): LeadActor["role"] | null {
   const role = name?.trim().toLowerCase();
-  if (role === "admin") return "admin";
+  if (role === "admin" || role === "developer") return role;
   return ["councilor", "counselor", "councillor", "counsellor"].includes(role ?? "") ? "councilor" : null;
 }
 export function normalizeLeadMobile(value: string) {
@@ -132,7 +143,8 @@ export function parseLeadInput(kind: LeadKind, raw: unknown): LeadInput {
 
 /** This predicate is also applied to every item and bulk mutation. */
 export function leadOwnershipFilter(actor: LeadActor, mine: boolean, mutation = false) {
-  return mine || (mutation && actor.role === "councilor") ? { assignedTo: actor.email } : {};
+  if (mine || (mutation && !leadIsManager(actor))) return { assignedTo: actor.email };
+  return !leadIsManager(actor) ? { assignedTo: { $in: [actor.email, null] } } : {};
 }
 export const leadClaimFilter = (id: string) => ({ id, assignedTo: null, blocked: false, status: "active" as const });
 export function leadIds(raw: unknown) {

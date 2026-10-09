@@ -136,6 +136,7 @@ export default function Mutation({
               <div className="grid gap-1 text-sm">
                 Funnel
                 <RecordSelect
+                  area={mine ? "my-leads" : "customers"}
                   kind="funnels"
                   label="Choose funnel"
                   selectedLabel={item?.kind === "customers" ? item.funnelName : undefined}

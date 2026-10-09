@@ -29,6 +29,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { authClient } from "@/app/api/lib/auth-client";
 import { useConfirmDelete } from "@/components/confirm-delete-provider";
 import { downloadAccessZip } from "@/lib/access-export";
+import { useDashboardPermissions } from "@/lib/dashboard/use-dashboard-permissions";
 import {
   useCreateAccessMutation,
   useDeleteAccessMutation,
@@ -46,6 +47,8 @@ const noItems: AccessItem[] = [];
 export default function AccessPage() {
   const confirmDelete = useConfirmDelete();
   const { data: session, isPending } = authClient.useSession();
+  const { can } = useDashboardPermissions("/dashboard/admin/access");
+  const [reviewMissing, setReviewMissing] = useState(false);
   const [createAccess, createState] = useCreateAccessMutation();
   const [updateAccess, updateState] = useUpdateAccessMutation();
   const [deleteAccess] = useDeleteAccessMutation();
@@ -65,8 +68,15 @@ export default function AccessPage() {
     [page, setPage] = useState(1),
     [pageSize, setPageSize] = useState(10);
   const { data, error, isLoading, refetch } = useGetAccessQuery(
-    { page, pageSize, search: search.trim() || undefined, roleId: selectedRole || undefined },
-    { skip: !session },
+    {
+      page,
+      pageSize,
+      search: search.trim() || undefined,
+      roleId: selectedRole || undefined,
+      missingRole: reviewMissing,
+      options: !can("read"),
+    },
+    { skip: !session || (!can("read") && !can("create") && !can("update")) },
   );
   const items = data?.items ?? noItems;
   const roles = data?.roles ?? [];
@@ -92,7 +102,9 @@ export default function AccessPage() {
   }
   function launch(item?: AccessItem) {
     setEditing(item ?? null);
-    setForm(item ? { email: item.email, roleId: item.roleId, blocked: item.blocked } : emptyForm);
+    setForm(
+      item ? { email: item.email, roleId: item.roleMissing ? "" : item.roleId, blocked: item.blocked } : emptyForm,
+    );
     setMessage("");
     setOpen(true);
   }
@@ -171,6 +183,26 @@ export default function AccessPage() {
         </div>
       )}
       <div className="mx-auto max-w-6xl">
+        {(data?.missingRoleCount ?? 0) > 0 && (
+          <div className="mb-4 rounded-sm border border-amber-300 bg-amber-50 p-4 text-sm" role="status">
+            <p>
+              {data?.missingRoleCount} users have a missing role. Review each assignment and choose a valid role before
+              enabling authorization.
+            </p>
+            <button
+              type="button"
+              className="mt-2 font-semibold text-amber-900 underline"
+              onClick={() => {
+                setReviewMissing(!reviewMissing);
+                setPage(1);
+                setSelected([]);
+                setSelectedItems({});
+              }}
+            >
+              {reviewMissing ? "Show all assignments" : "Review missing assignments"}
+            </button>
+          </div>
+        )}
         <section className="relative overflow-hidden rounded-sm border border-[#eadfca] bg-white p-5 shadow-[0_20px_60px_-35px_rgba(120,53,15,.32)] sm:p-7">
           <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-amber-200/50 blur-2xl" />
           <div className="relative flex flex-wrap items-center justify-between gap-3">
@@ -244,6 +276,7 @@ export default function AccessPage() {
               <button
                 className="inline-flex cursor-pointer items-center gap-1.5 rounded-sm bg-stone-900 px-2.5 py-1.5 text-xs font-semibold text-white transition duration-700 hover:-translate-y-0.5 hover:bg-amber-800"
                 onClick={() => launch()}
+                disabled={!can("create")}
                 type="button"
               >
                 <Plus className="h-4 w-4" />
@@ -266,6 +299,7 @@ export default function AccessPage() {
                 <button
                   className="inline-flex cursor-pointer items-center gap-1 rounded-sm bg-red-700 px-2.5 py-1.5 font-semibold text-white"
                   onClick={() => void removeMany(selected)}
+                  disabled={!can("delete")}
                   type="button"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -334,7 +368,17 @@ export default function AccessPage() {
                     {item.email}
                   </p>
                 </div>
-                <p className="truncate text-sm text-stone-600">{item.roleName}</p>
+                <div>
+                  <p className="truncate text-sm text-stone-600">{item.roleName}</p>
+                  {item.roleMissing && (
+                    <p className="text-xs text-amber-800">
+                      Missing role ·{" "}
+                      {item.suggestedRoleName
+                        ? `Review suggested role: ${item.suggestedRoleName}`
+                        : "Choose a replacement role"}
+                    </p>
+                  )}
+                </div>
                 <span
                   className={`w-fit rounded-sm px-2 py-1 text-xs font-semibold ${item.blocked ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}
                 >
@@ -344,10 +388,10 @@ export default function AccessPage() {
                   <Action label="View" onClick={() => setViewing(item)}>
                     <Eye className="h-4 w-4" />
                   </Action>
-                  <Action label="Edit" onClick={() => launch(item)}>
+                  <Action label="Edit" onClick={() => launch(item)} disabled={!can("update")}>
                     <Pencil className="h-4 w-4" />
                   </Action>
-                  <Action danger label="Delete" onClick={() => void remove(item.id)}>
+                  <Action danger label="Delete" onClick={() => void remove(item.id)} disabled={!can("delete")}>
                     <Trash2 className="h-4 w-4" />
                   </Action>
                 </div>

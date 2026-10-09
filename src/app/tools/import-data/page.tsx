@@ -12,45 +12,40 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { authClient } from "@/app/api/lib/auth-client";
-import { pageDefaults, sidebarDefaults } from "@/lib/defaults/import-data";
-import { useImportDataMutation } from "@/app/tools/import-data/importData";
+import { useGetImportStatusQuery, useImportDataMutation } from "@/app/tools/import-data/importData";
 import { iconMap } from "@/components/all-icons/all-icons";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Toast } from "@/components/ui/toast";
-import { useGetPagesQuery } from "@/redux/features/dashboard/pages/pagesSlice";
-import { useGetSidebarsQuery } from "@/redux/features/dashboard/sidebars/sidebarSlice";
+import { pageDefaults, sidebarDefaults } from "@/lib/defaults/import-data";
 
 const defaultPaths = sidebarDefaults.flatMap((group) => [group.url, ...(group.children ?? []).map((item) => item.url)]);
 
 export default function ImportDataPage() {
   const { data: session, isPending } = authClient.useSession();
   const {
-    data: sidebarData,
+    data: inventory,
     isLoading: sidebarsLoading,
-    refetch: refetchSidebars,
-  } = useGetSidebarsQuery(undefined, { skip: !session });
-  const {
-    data: pageData,
-    isLoading: pagesLoading,
-    refetch: refetchPages,
-  } = useGetPagesQuery(undefined, { skip: !session });
+    error: inventoryError,
+    refetch: refetchInventory,
+  } = useGetImportStatusQuery(undefined, { skip: !session });
+  const pagesLoading = sidebarsLoading;
   const [importData, { isLoading: importing }] = useImportDataMutation();
   const [toast, setToast] = useState<{ error?: boolean; message: string } | null>(null);
   const [refreshRemaining, setRefreshRemaining] = useState(0);
   const [selectedSidebarUrls, setSelectedSidebarUrls] = useState(() => new Set(defaultPaths));
   const [selectedPagePaths, setSelectedPagePaths] = useState(() => new Set(pageDefaults.map((page) => page.path)));
 
-  const savedSidebarPaths = useMemo(
-    () => new Set(sidebarData?.items.map((item) => item.url) ?? []),
-    [sidebarData?.items],
-  );
-  const savedPagePaths = useMemo(() => new Set(pageData?.items.map((item) => item.path) ?? []), [pageData?.items]);
+  const savedSidebarPaths = useMemo(() => new Set(inventory?.sidebarUrls ?? []), [inventory?.sidebarUrls]);
+  const savedPagePaths = useMemo(() => new Set(inventory?.pagePaths ?? []), [inventory?.pagePaths]);
   const sidebarReady = [...selectedSidebarUrls].every((path) => savedSidebarPaths.has(path));
   const pagesReady = [...selectedPagePaths].every((path) => savedPagePaths.has(path));
   const ready = sidebarReady && pagesReady;
-  const hasSelection = selectedSidebarUrls.size > 0 || selectedPagePaths.size > 0;
+  const hasSelection = Boolean(
+    (inventory?.canImportSidebars && selectedSidebarUrls.size > 0) ||
+    (inventory?.canImportPages && selectedPagePaths.size > 0),
+  );
 
   useEffect(() => {
     if (!refreshRemaining) return;
@@ -61,8 +56,8 @@ export default function ImportDataPage() {
   async function handleImport() {
     try {
       const result = await importData({
-        sidebarUrls: [...selectedSidebarUrls],
-        pagePaths: [...selectedPagePaths],
+        sidebarUrls: inventory?.canImportSidebars ? [...selectedSidebarUrls] : [],
+        pagePaths: inventory?.canImportPages ? [...selectedPagePaths] : [],
       }).unwrap();
       setToast({
         message: `Import complete: ${result.inserted} added, ${result.updated} sidebar records aligned, ${result.pagesInserted} pages created.`,
@@ -103,7 +98,7 @@ export default function ImportDataPage() {
   async function handleRefresh() {
     if (refreshRemaining) return;
     try {
-      await Promise.all([refetchSidebars().unwrap(), refetchPages().unwrap()]);
+      await refetchInventory().unwrap();
       setRefreshRemaining(60);
       setToast({ message: "Import status refreshed." });
     } catch {
@@ -163,56 +158,70 @@ export default function ImportDataPage() {
         </div>
 
         <div className="relative mt-6 grid gap-4 lg:grid-cols-2">
-          <ImportGroup
-            complete={sidebarReady}
-            count={sidebarData?.items.length ?? 0}
-            loading={sidebarsLoading}
-            title="Sidebar"
-          >
-            {sidebarDefaults.map((group) => (
-              <div className="rounded-sm border border-[#eadfca] bg-white p-3" key={group.url}>
-                <ImportRow
-                  checked={selectedSidebarUrls.has(group.url)}
-                  complete={savedSidebarPaths.has(group.url)}
-                  icon={group.icon}
-                  label={group.name}
-                  onCheckedChange={(checked) => toggleSidebar(group.url, checked)}
-                />
-                <div className="mt-2 grid gap-1 border-l border-[#eadfca] pl-3">
-                  {(group.children ?? []).map((child) => (
-                    <ImportRow
-                      complete={savedSidebarPaths.has(child.url)}
-                      checked={selectedSidebarUrls.has(child.url)}
-                      icon={child.icon}
-                      key={child.url}
-                      label={child.name}
-                      onCheckedChange={(checked) => toggleSidebar(child.url, checked)}
-                    />
-                  ))}
+          {inventoryError && (
+            <p role="alert" className="text-sm text-red-700">
+              Could not load import status. Use Refresh to try again.
+            </p>
+          )}
+          <fieldset disabled={!inventory?.canImportSidebars} className="min-w-0 disabled:opacity-60">
+            <ImportGroup
+              complete={sidebarReady}
+              count={inventory?.sidebarUrls.length ?? 0}
+              loading={sidebarsLoading}
+              title="Sidebar"
+            >
+              {sidebarDefaults.map((group) => (
+                <div className="rounded-sm border border-[#eadfca] bg-white p-3" key={group.url}>
+                  <ImportRow
+                    checked={selectedSidebarUrls.has(group.url)}
+                    complete={savedSidebarPaths.has(group.url)}
+                    icon={group.icon}
+                    label={group.name}
+                    onCheckedChange={(checked) => toggleSidebar(group.url, checked)}
+                  />
+                  <div className="mt-2 grid gap-1 border-l border-[#eadfca] pl-3">
+                    {(group.children ?? []).map((child) => (
+                      <ImportRow
+                        complete={savedSidebarPaths.has(child.url)}
+                        checked={selectedSidebarUrls.has(child.url)}
+                        icon={child.icon}
+                        key={child.url}
+                        label={child.name}
+                        onCheckedChange={(checked) => toggleSidebar(child.url, checked)}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </ImportGroup>
-          <ImportGroup complete={pagesReady} count={pageData?.items.length ?? 0} loading={pagesLoading} title="Pages">
-            {pageDefaults.map((page) => (
-              <ImportRow
-                complete={savedPagePaths.has(page.path)}
-                checked={selectedPagePaths.has(page.path)}
-                icon="FileText"
-                key={page.path}
-                label={page.title}
-                path={page.path}
-                onCheckedChange={(checked) =>
-                  setSelectedPagePaths((current) => {
-                    const next = new Set(current);
-                    if (checked) next.add(page.path);
-                    else next.delete(page.path);
-                    return next;
-                  })
-                }
-              />
-            ))}
-          </ImportGroup>
+              ))}
+            </ImportGroup>
+          </fieldset>
+          <fieldset disabled={!inventory?.canImportPages} className="min-w-0 disabled:opacity-60">
+            <ImportGroup
+              complete={pagesReady}
+              count={inventory?.pagePaths.length ?? 0}
+              loading={pagesLoading}
+              title="Pages"
+            >
+              {pageDefaults.map((page) => (
+                <ImportRow
+                  complete={savedPagePaths.has(page.path)}
+                  checked={selectedPagePaths.has(page.path)}
+                  icon="FileText"
+                  key={page.path}
+                  label={page.title}
+                  path={page.path}
+                  onCheckedChange={(checked) =>
+                    setSelectedPagePaths((current) => {
+                      const next = new Set(current);
+                      if (checked) next.add(page.path);
+                      else next.delete(page.path);
+                      return next;
+                    })
+                  }
+                />
+              ))}
+            </ImportGroup>
+          </fieldset>
         </div>
       </section>
     </main>

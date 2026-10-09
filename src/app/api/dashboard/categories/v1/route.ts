@@ -6,29 +6,11 @@
 |-----------------------------------------
 */
 
-import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
-import { auth } from "@/app/api/lib/auth";
-import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
+import { authorizeCategoryRequest } from "@/app/api/lib/catalog-authorization";
 import { parseCategoryInput } from "@/lib/dashboard/catalog";
-import {
-  createCategoryForApi,
-  ensureCategoryIndexes,
-  listCategoriesForApi,
-  serializeCategory,
-} from "@/lib/services/categories";
+import { createCategoryForApi, listCategoriesForApi, serializeCategory } from "@/lib/services/categories";
 
 const pageSizes = [10, 25, 50, 100];
-export { ensureCategoryIndexes, serializeCategory };
-export async function authorizeCategoryRequest(request: Request, method: "GET" | "POST" | "PATCH" | "DELETE") {
-  const limited = await rateLimitDistributed(request, "dashboard-categories-api", 60, 60_000);
-  if (limited) return { error: limited };
-  const session = await auth.api.getSession({ headers: request.headers });
-  if (!session) return { error: Response.json({ error: "Sign in required." }, { status: 401 }) };
-  const allowed = await authorizeDashboardRequest(session, "/api/dashboard/categories/v1", method);
-  return allowed.allowed
-    ? {}
-    : { error: Response.json({ error: allowed.state.message ?? "Unauthorized." }, { status: 403 }) };
-}
 export async function GET(request: Request) {
   const access = await authorizeCategoryRequest(request, "GET");
   if ("error" in access) return access.error;

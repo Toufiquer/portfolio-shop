@@ -6,24 +6,9 @@
 |-----------------------------------------
 */
 
-import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
-import { auth } from "@/app/api/lib/auth";
-import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
+import { authorizeCouponRequest } from "@/app/api/lib/catalog-authorization";
 import { parseCouponInput, serializeCoupon } from "@/lib/dashboard/coupons";
-import { createCouponForApi, ensureCouponIndexes, listCouponsForApi } from "@/lib/services/coupons";
-
-export async function authorizeCouponRequest(request: Request, method: "GET" | "POST" | "PATCH" | "DELETE") {
-  const limited = await rateLimitDistributed(request, "dashboard-coupons-api", 60, 60_000);
-  if (limited) return { error: limited };
-  const session = await auth.api.getSession({ headers: request.headers });
-  if (!session) return { error: Response.json({ error: "Sign in required." }, { status: 401 }) };
-  const allowed = await authorizeDashboardRequest(session, "/api/dashboard/coupons/v1", method);
-  return allowed.allowed
-    ? {}
-    : { error: Response.json({ error: allowed.state.message ?? "Unauthorized." }, { status: 403 }) };
-}
-
-export { ensureCouponIndexes };
+import { createCouponForApi, listCouponsForApi } from "@/lib/services/coupons";
 
 export async function GET(request: Request) {
   const access = await authorizeCouponRequest(request, "GET");

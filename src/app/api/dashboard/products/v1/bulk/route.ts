@@ -6,10 +6,9 @@
 |-----------------------------------------
 */
 
+import { authorizeProductRequest } from "@/app/api/lib/catalog-authorization";
 import { productStatuses, type ProductStatus } from "@/lib/dashboard/catalog";
 import { removeProducts, updateProductStatuses } from "@/lib/services/products";
-
-import { authorizeProductRequest } from "../route";
 
 function idsFrom(body: unknown) {
   const ids = (body as { ids?: unknown } | null)?.ids;

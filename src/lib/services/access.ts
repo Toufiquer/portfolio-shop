@@ -29,14 +29,21 @@ export async function listAccess({
   pageSize,
   search,
   roleId,
+  missingRole = false,
 }: {
   page: number;
   pageSize: number;
   search: string;
   roleId: string;
+  missingRole?: boolean;
 }) {
+  const roles = await rolesCollection<Role>()
+    .find({}, { projection: { id: 1, name: 1 } })
+    .sort({ name: 1 })
+    .toArray();
+  const roleIds = roles.map((role) => role.id);
   const query = {
-    ...(roleId ? { roleId } : {}),
+    ...(missingRole ? { roleId: { $nin: roleIds } } : roleId ? { roleId } : {}),
     ...(search
       ? {
           $or: [
@@ -46,7 +53,7 @@ export async function listAccess({
         }
       : {}),
   };
-  const [items, total, roles, roleCounts] = await Promise.all([
+  const [items, total, missingRoleCount, roleCounts] = await Promise.all([
     accessesCollection<Access>()
       .find(query)
       .sort({ createdAt: -1 })
@@ -54,15 +61,27 @@ export async function listAccess({
       .limit(pageSize)
       .toArray(),
     accessesCollection<Access>().countDocuments(query),
-    rolesCollection<Role>()
-      .find({}, { projection: { id: 1, name: 1 } })
-      .sort({ name: 1 })
-      .toArray(),
+    accessesCollection().countDocuments({ roleId: { $nin: roleIds } }),
     accessesCollection<Access>()
       .aggregate<{ _id: string; count: number }>([{ $group: { _id: "$roleId", count: { $sum: 1 } } }])
       .toArray(),
   ]);
-  return { items, total, roles, roleCounts };
+  return {
+    items: items.map((item) => {
+      const role = roles.find((role) => role.id === item.roleId);
+      const candidates = roles.filter((role) => role.name.trim().toLowerCase() === item.roleName?.trim().toLowerCase());
+      return {
+        ...item,
+        roleName: role?.name ?? item.roleName,
+        roleMissing: !role,
+        suggestedRoleName: !role && candidates.length === 1 ? candidates[0].name : null,
+      };
+    }),
+    total,
+    roles,
+    roleCounts,
+    missingRoleCount,
+  };
 }
 
 export async function createAccess(input: { email: string; roleId: string; blocked: boolean }) {
@@ -91,7 +110,10 @@ export async function createAccess(input: { email: string; roleId: string; block
 
 async function revokeUserSessions(email: string) {
   const user = await usersCollection<{ id: string }>().findOne({ email }, { projection: { id: 1 } });
-  if (user?.id) await sessionsCollection().deleteMany({ userId: user.id });
+  if (user)
+    await sessionsCollection().deleteMany({
+      userId: { $in: [user.id, user._id, user._id.toString()].filter(Boolean) },
+    });
 }
 
 export async function updateAccess(input: {
@@ -133,7 +155,11 @@ export async function deleteAccess(input: { id: string; actorEmail?: string | nu
 }
 
 export async function deleteAccesses(ids: string[]) {
+  const records = await accessesCollection<Access>()
+    .find({ id: { $in: ids } })
+    .toArray();
   const result = await accessesCollection().deleteMany({ id: { $in: ids } });
+  await Promise.all(records.map((record) => revokeUserSessions(record.email)));
   await invalidateDashboardCache(redisKeys.access);
   return result.deletedCount;
 }

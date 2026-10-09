@@ -16,11 +16,14 @@ import { toast } from "@/components/ui/global-toast";
 import { Input } from "@/components/ui/input";
 import {
   normalizeLeadMobile,
+  leadCan,
+  leadIsManager,
   type LeadCustomer,
   type LeadItem,
   type LeadKind,
   type LeadListParams,
 } from "@/lib/dashboard/leads";
+import { useDashboardPermissions } from "@/lib/dashboard/use-dashboard-permissions";
 import {
   useGetLeadsQuery,
   useLazyGetLeadsQuery,
@@ -71,16 +74,21 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
     [errorPageSize, setErrorPageSize] = useState(10);
   const fileInput = useRef<HTMLInputElement>(null);
   const params: LeadListParams = { kind, mine, page, pageSize, search, status, funnelId, assignment, councilor };
-  const { data, currentData, isLoading, isFetching, error, refetch } = useGetLeadsQuery(params);
+  const area = mine && kind === "customers" ? "my-leads" : kind;
+  const { data: permissionData } = useDashboardPermissions(`/dashboard/leads/${area}`);
+  const actor = permissionData?.leadsActor ?? undefined;
+  const canRead = leadCan(actor, area, "read");
+  const canUpdate = leadCan(actor, area, "update");
+  const canRemove = leadCan(actor, area, "delete");
+  const { currentData, isLoading, isFetching, error, refetch } = useGetLeadsQuery(params, { skip: !canRead });
   // Never show another page/filter's rows while the new scoped query is pending.
   const result = currentData;
   const [load] = useLazyGetLeadsQuery();
   const [mutate, { isLoading: mutating }] = useMutateLeadsMutation();
   const cooldown = useRefreshCooldown();
-  const actor = data?.actor;
-  const isAdmin = actor?.role === "admin";
+  const isAdmin = Boolean(actor && leadIsManager(actor));
   const canManage = (item: LeadItem) => isAdmin || (item.kind === "customers" && item.assignedTo === actor?.email);
-  const canCreate = Boolean(actor) && (isAdmin || kind === "customers");
+  const canCreate = leadCan(actor, area, "create") && (isAdmin || kind === "customers");
   const busy = mutating || workingFile;
   const term = text.trim().toLowerCase();
   const mobileTerm = normalizeLeadMobile(text);
@@ -93,7 +101,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
       ].some((value) => value.toLowerCase().includes(term)) ||
       (item.kind !== "funnels" && mobileTerm && item.mobile === mobileTerm),
   );
-  const manageable = items.filter(canManage);
+  const manageable = items.filter((item) => canManage(item) && (canUpdate || canRemove));
   const activeSelection = selected.filter((id) => manageable.some((item) => item.id === id));
   const title = mine ? "My Leads" : kind === "funnels" ? "Funnels" : kind === "councilors" ? "Councilors" : "Customers";
   function resetPage() {
@@ -181,7 +189,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Action onClick={refresh} disabled={Boolean(cooldown.remaining) || isFetching || busy}>
+          <Action onClick={refresh} disabled={!canRead || Boolean(cooldown.remaining) || isFetching || busy}>
             <Icon name="RefreshCw" className={isFetching ? "animate-spin" : ""} />
             {cooldown.remaining ? `Refresh (${cooldown.remaining}s)` : "Refresh"}
           </Action>
@@ -225,7 +233,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
           />
           {kind !== "funnels" && (
             <>
-              <Action disabled={busy || isFetching || !actor} onClick={exportExcel}>
+              <Action disabled={!canRead || busy || isFetching || !actor} onClick={exportExcel}>
                 <Icon name="Download" />
                 Export Excel
               </Action>
@@ -319,7 +327,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
         <div className="flex flex-wrap items-center gap-2 border-b border-[#eadfca] bg-amber-50 p-3 text-sm">
           <span>{activeSelection.length} selected</span>
           <Action
-            disabled={busy || isFetching}
+            disabled={!canUpdate || busy || isFetching}
             tone="save"
             onClick={() =>
               void run({ operation: "status", ids: activeSelection, status: "active" }, "Selected records activated.")
@@ -328,7 +336,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
             Set active
           </Action>
           <Action
-            disabled={busy || isFetching}
+            disabled={!canUpdate || busy || isFetching}
             onClick={() =>
               void run(
                 { operation: "status", ids: activeSelection, status: "inactive" },
@@ -338,7 +346,11 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
           >
             Set inactive
           </Action>
-          <Action tone="delete" disabled={busy || isFetching} onClick={() => setDeleting(activeSelection)}>
+          <Action
+            tone="delete"
+            disabled={!canRemove || busy || isFetching}
+            onClick={() => setDeleting(activeSelection)}
+          >
             <Icon name="Trash2" />
             Delete selected
           </Action>
@@ -347,7 +359,9 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
           </Action>
         </div>
       )}
-      {error ? (
+      {!canRead ? (
+        <p className="p-3 text-sm text-stone-500">Read permission is required to display existing records.</p>
+      ) : error ? (
         <div className="p-3 text-sm text-red-700" role="alert">
           {errorMessage(error)}
         </div>
@@ -397,7 +411,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                       <Checkbox
                         aria-label={`Select ${item.name}`}
                         checked={activeSelection.includes(item.id)}
-                        disabled={busy || !canManage(item)}
+                        disabled={busy || !canManage(item) || (!canUpdate && !canRemove)}
                         onCheckedChange={(checked) =>
                           setSelected((previous) =>
                             checked ? [...new Set([...previous, item.id])] : previous.filter((id) => id !== item.id),
@@ -443,7 +457,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                           <>
                             <Action
                               aria-label={`Edit ${item.name}`}
-                              disabled={busy}
+                              disabled={!canUpdate || busy}
                               onClick={() => setEditor({ item })}
                             >
                               <Icon name="Edit2" />
@@ -452,14 +466,14 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                             <Action
                               tone="delete"
                               aria-label={`Delete ${item.name}`}
-                              disabled={busy}
+                              disabled={!canRemove || busy}
                               onClick={() => setDeleting([item.id])}
                             >
                               <Icon name="Trash2" />
                             </Action>
                           </>
                         )}
-                        {item.kind === "customers" && isAdmin && !mine && (
+                        {item.kind === "customers" && isAdmin && canUpdate && !mine && (
                           <Action
                             disabled={busy}
                             onClick={() => {
@@ -472,6 +486,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                         )}
                         {item.kind === "customers" &&
                           actor?.role === "councilor" &&
+                          canUpdate &&
                           !mine &&
                           !item.assignedTo &&
                           !item.blocked &&
@@ -486,6 +501,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                           )}
                         {item.kind === "customers" &&
                           item.assignedTo === actor?.email &&
+                          canUpdate &&
                           !item.blocked &&
                           item.status === "active" && (
                             <Action

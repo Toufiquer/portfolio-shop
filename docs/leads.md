@@ -2,34 +2,44 @@
 
 `/dashboard/leads` contains five navigation cards. Its subpages are Overview,
 Funnels, Customers, Councilors, and My Leads. Existing installations receive
-role-filtered navigation immediately; `/tools/import-data` also includes the
-permanent sidebar defaults.
+permission-filtered navigation from persisted sidebar records. `/tools/import-data`
+includes the permanent sidebar defaults and preserves existing IDs when syncing.
 
 ## Access and assignment
 
-Leads recognizes Admin and Councilor roles from the existing Access and Role
-records. Counselor/Councillor/Counsellor spellings are accepted for existing
-roles. These checks remain active when `AuthorizationEnable=false`.
+With `AuthorizationEnable=true`, Leads recognizes Developer, Admin, and Councilor
+roles from the existing Access and Role records. Counselor/Councillor/Counsellor
+spellings are accepted. Each operation also requires its configured dashboard-path
+CRUD permission; an explicit Leads child entry controls that area's permissions.
+Developer has the same management workflow as Admin.
 
-An Admin creates an active councilor contact using the person's login email,
+With `AuthorizationEnable=false`, signed-in users need no role to perform CRUD,
+import, or assignment operations. Blocked access still fails. My Leads remains
+scoped to the authenticated session email in both modes.
+
+An Admin or Developer creates an active councilor contact using the person's login email,
 then assigns their Councilor role through the existing Admin Access editor.
-Adding a contact does not grant an account a role. Inactive councilor contacts
-and blocked Access records cannot use the Leads API.
+Adding a contact does not grant an account a role. With roles enabled, inactive
+councilor contacts cannot use the Leads API. Blocked Access records are denied in both modes.
 
-| Action                                        | Admin                                 | Councilor                             |
-| --------------------------------------------- | ------------------------------------- | ------------------------------------- |
-| Read overview, funnels, councilors, customers | Yes                                   | Yes                                   |
-| Manage funnels and councilors                 | Yes                                   | No                                    |
-| Add/import customers                          | Yes                                   | Yes, assigned to themselves           |
-| Edit/delete/bulk-update customers             | All                                   | Their own assignments                 |
-| Assign, reassign, or unassign                 | Customers page                        | No                                    |
-| Take an unassigned active, unblocked customer | Use Assign                            | Atomic claim                          |
-| Record counselling                            | Their own active, unblocked customers | Their own active, unblocked customers |
-| My Leads reads and writes                     | Their own assignments                 | Their own assignments                 |
+| Action                                        | Admin / Developer                     | Councilor                                                   |
+| --------------------------------------------- | ------------------------------------- | ----------------------------------------------------------- |
+| Read overview, funnels, councilors, customers | Yes                                   | Customers: own plus unassigned; overview follows that scope |
+| Manage funnels and councilors                 | Yes                                   | No                                                          |
+| Add/import customers                          | Yes                                   | Yes, assigned to themselves                                 |
+| Edit/delete/bulk-update customers             | All                                   | Their own assignments                                       |
+| Assign, reassign, or unassign                 | Customers page                        | No                                                          |
+| Take an unassigned active, unblocked customer | Use Assign                            | Atomic claim                                                |
+| Record counselling                            | Their own active, unblocked customers | Their own active, unblocked customers                       |
+| My Leads reads and writes                     | Their own assignments                 | Their own assignments                                       |
 
 My Leads uses the normalized authenticated session email for reads, writes,
 imports, and exports. Its assignment filters only narrow that scope. Supplying
 another email or removing `mine` never expands a Councilor's mutation rights.
+Councilor customer lists, search, filters, and Excel exports exclude customers
+assigned to another councilor. Read-only reference options expose only names and
+IDs (or assignee email), allowing permitted customer creation without granting
+access to full funnel/contact records.
 
 ## Records
 
@@ -63,7 +73,7 @@ failures; successful rows stay saved. Reimport only corrected failed rows.
 
 ## Metrics
 
-Summary counts come from all stored customers. New in 30 days and counselling
+Summary counts come from customers the actor can access. New in 30 days and counselling
 in the last 24 hours use rolling server-time windows. Counselling counts sessions
 created through Mark counselled, rather than generic customer edits.
 
@@ -76,14 +86,18 @@ No revenue figures are inferred from customer records.
 ## Verification
 
 `npm run test:leads` creates a random disposable MongoDB database, seeds synthetic
-accounts, starts an isolated app at `http://127.0.0.1:3001`, exercises the real
-authenticated HTTP handlers, and removes its server/database. It never writes
+accounts, starts a temporary copy of the app at `http://127.0.0.1:3001`, exercises
+the real authenticated HTTP handlers, and removes its server/database/copy. It never writes
 to the application's configured database. Redis, email delivery, and OAuth are
-disabled in this test process. Stop any existing `next dev` first because Next
-shares its local development lock.
+disabled in this test process. The application's running development server,
+Next cache, generated types, and `.env.local` are left intact.
 
 Use `node scripts/test-leads.cjs --authorization-disabled` to repeat the same
-ownership checks with general dashboard authorization disabled. `--keep-open`
+role-free CRUD and personal ownership checks with authorization disabled. `--keep-open`
 leaves the disposable app available for browser QA until Ctrl+C. Synthetic
-accounts are `qa-admin@example.test`, `qa-councilor-a@example.test`, and
+accounts include `qa-admin@example.test`, `qa-developer@example.test`, `qa-councilor-a@example.test`, and
 `qa-councilor-b@example.test`, with password `Leads-QA-only-2026!`.
+
+`npm run test:dashboard-authorization` checks flag behavior, role metadata,
+create-only page entry, parent navigation, independent CRUD grants, missing roles,
+and Councilor scope without connecting to or modifying any database.
