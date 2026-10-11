@@ -9,29 +9,121 @@
 
 import { useEffect, useId, useRef, useState, type ComponentProps, type ReactNode } from "react";
 
+import { cn } from "@/app/api/lib/utils";
 import { Icon } from "@/components/all-icons/all-icons";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { LeadKind } from "@/lib/dashboard/leads";
+import type { LeadKind, LeadStatus } from "@/lib/dashboard/leads";
 import { useGetLeadOptionsQuery } from "@/redux/features/dashboard/leads/leadsSlice";
 
+import { leadPanel } from "./presentation";
+
 export const normalButton =
-  "cursor-pointer rounded-sm border-[#eadfca] bg-amber-100 text-amber-900 transition duration-700 hover:bg-amber-200";
+  "h-9 cursor-pointer gap-1.5 rounded-sm border-[#eadfca] bg-white px-3 text-xs font-semibold text-stone-600 shadow-xs transition duration-300 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-900 focus-visible:ring-amber-300 motion-reduce:transition-none";
 export function Action({
   tone = "normal",
   className = "",
   ...props
-}: ComponentProps<typeof Button> & { tone?: "normal" | "save" | "delete" }) {
+}: ComponentProps<typeof Button> & { tone?: "normal" | "primary" | "save" | "delete" }) {
   return (
     <Button
       {...props}
-      className={`${normalButton} ${tone === "save" ? "bg-green-100 text-green-900 hover:bg-green-200" : tone === "delete" ? "bg-red-100 text-red-900 hover:bg-red-200" : ""} ${className}`}
+      className={`${normalButton} ${tone === "primary" ? "border-amber-800 bg-amber-900 text-white hover:border-amber-900 hover:bg-amber-950 hover:text-white" : tone === "save" ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100 hover:text-emerald-900" : tone === "delete" ? "border-red-200 bg-red-50 text-red-700 hover:border-red-300 hover:bg-red-100 hover:text-red-800" : ""} ${className}`}
       size="sm"
       variant="outline"
     />
+  );
+}
+export function PageHeading({
+  title,
+  description,
+  caption,
+  icon,
+  iconClass,
+  children,
+}: {
+  title: string;
+  description: string;
+  caption: string;
+  icon: string;
+  iconClass: string;
+  children?: ReactNode;
+}) {
+  return (
+    <header className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+        <span className={`grid size-12 shrink-0 place-items-center rounded-sm border ${iconClass}`}>
+          <Icon name={icon} className="size-6" />
+        </span>
+        <div className="min-w-0">
+          <p className="mb-1 text-[10px] font-semibold tracking-[0.12em] text-stone-500 uppercase">{caption}</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-stone-900">{title}</h1>
+          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-stone-500">{description}</p>
+        </div>
+      </div>
+      {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
+    </header>
+  );
+}
+export function LeadAvatar({ name, className = "" }: { name: string; className?: string }) {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase();
+  return (
+    <span
+      aria-hidden="true"
+      className={cn(
+        "grid size-9 shrink-0 place-items-center rounded-sm border border-[#eadfca] bg-[#fffaf0] text-xs font-semibold text-amber-800",
+        className,
+      )}
+    >
+      {initials || "—"}
+    </span>
+  );
+}
+export function StatusBadge({ status }: { status: LeadStatus }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-sm border px-2 py-1 text-[11px] font-medium capitalize ${status === "active" ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-stone-200 bg-stone-50 text-stone-500"}`}
+    >
+      <span
+        aria-hidden="true"
+        className={`size-1.5 rounded-full ${status === "active" ? "bg-emerald-500" : "bg-stone-400"}`}
+      />
+      {status}
+    </span>
+  );
+}
+export function EmptyState({
+  title,
+  description,
+  icon = "Search",
+  children,
+}: {
+  title: string;
+  description?: string;
+  icon?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="grid justify-items-center gap-3 px-5 py-12 text-center">
+      <span className="grid size-14 place-items-center rounded-sm border border-[#eadfca] bg-[#fffaf0] text-amber-700">
+        <Icon name={icon} className="size-6" />
+      </span>
+      <div className="max-w-sm">
+        <p className="text-sm font-semibold text-stone-800">{title}</p>
+        {description && <p className="mt-1.5 text-sm leading-6 text-stone-500">{description}</p>}
+      </div>
+      {children}
+    </div>
   );
 }
 export function LeadSelect({
@@ -48,21 +140,21 @@ export function LeadSelect({
   disabled?: boolean;
 }) {
   return (
-    <div className="min-w-0">
+    <div className="relative min-w-0">
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger
           aria-label={label}
-          className="h-8 cursor-pointer rounded-sm border border-[#eadfca] bg-white px-2 text-sm transition duration-700"
+          className="h-10 cursor-pointer gap-3 rounded-sm border border-[#eadfca] bg-white px-3 text-xs font-medium text-stone-600 outline-none transition duration-300 hover:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200 motion-reduce:transition-none"
           disabled={disabled}
         >
           <span className="truncate">{options.find((option) => option.value === value)?.label ?? label}</span>
           <Icon name="ChevronDown" className="size-3 shrink-0" />
         </SelectTrigger>
-        <SelectContent className="max-h-60 overflow-auto border border-[#eadfca] bg-white">
+        <SelectContent className="max-h-60 overflow-auto rounded-sm border border-[#eadfca] bg-white p-1 shadow-lg">
           {options.map((option) => (
             <SelectItem
               key={option.value}
-              className="cursor-pointer text-sm transition duration-700 hover:bg-amber-50"
+              className="cursor-pointer rounded-sm py-2 text-xs text-stone-600 transition duration-300 hover:bg-amber-50 aria-selected:bg-amber-50 aria-selected:font-semibold aria-selected:text-amber-900"
               value={option.value}
             >
               {option.label}
@@ -90,11 +182,13 @@ export function Pagination({
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[#eadfca] p-3 text-sm">
-      <span>
-        {total.toLocaleString()} records · Page {page} of {pages}
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#f1eadc] bg-[#fffdf9] px-4 py-3 text-xs text-stone-500 sm:px-5">
+      <span aria-live="polite">
+        <strong className="font-semibold text-stone-700">{total.toLocaleString()}</strong> records
+        <span className="mx-2 text-stone-300">/</span>
+        Page <strong className="font-semibold text-stone-700">{page}</strong> of {pages}
       </span>
-      <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
         <LeadSelect
           label="Items per page"
           value={String(pageSize)}
@@ -102,12 +196,25 @@ export function Pagination({
           onChange={(size) => onSize(Number(size))}
           disabled={disabled}
         />
-        <Action aria-label="Previous page" disabled={disabled || page <= 1} onClick={() => onPage(page - 1)}>
+        <Action
+          className="size-9 px-0"
+          title="Previous page"
+          aria-label="Previous page"
+          disabled={disabled || page <= 1}
+          onClick={() => onPage(page - 1)}
+        >
           <Icon name="ArrowLeft" />
-          Previous
         </Action>
-        <Action aria-label="Next page" disabled={disabled || page >= pages} onClick={() => onPage(page + 1)}>
-          Next
+        <span className="grid size-9 place-items-center rounded-sm border border-amber-200 bg-amber-50 font-semibold text-amber-900">
+          {page}
+        </span>
+        <Action
+          className="size-9 px-0"
+          title="Next page"
+          aria-label="Next page"
+          disabled={disabled || page >= pages}
+          onClick={() => onPage(page + 1)}
+        >
           <Icon name="ChevronRight" />
         </Action>
       </div>
@@ -124,10 +231,19 @@ export function useRefreshCooldown() {
 }
 export function LeadsSkeleton() {
   return (
-    <div aria-label="Loading Leads" className="grid gap-3 p-3" role="status">
-      {Array.from({ length: 5 }, (_, index) => (
-        <Skeleton key={index} className="h-12 w-full" />
-      ))}
+    <div aria-label="Loading Leads" className="grid gap-4 p-5" role="status">
+      <span className="sr-only">Loading Leads…</span>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {Array.from({ length: 4 }, (_, index) => (
+          <Skeleton key={index} className="h-24 w-full rounded-sm bg-stone-100" />
+        ))}
+      </div>
+      <div className={`${leadPanel} grid gap-4 p-4`}>
+        <Skeleton className="h-9 w-1/3 rounded-sm bg-stone-100" />
+        {Array.from({ length: 5 }, (_, index) => (
+          <Skeleton key={index} className="h-10 w-full rounded-sm bg-stone-100" />
+        ))}
+      </div>
     </div>
   );
 }
@@ -200,14 +316,14 @@ export function LeadsModal({
       <DialogContent
         aria-labelledby={titleId}
         aria-modal="true"
-        className="w-full max-w-xl rounded-sm border border-[#eadfca] bg-white shadow-xl"
+        className="w-full max-w-xl overflow-hidden rounded-sm border border-[#eadfca] bg-white text-stone-800 shadow-2xl"
       >
         <div ref={panel}>
-          <DialogHeader className="flex items-center justify-between gap-2 border-b border-[#eadfca] p-3">
-            <DialogTitle id={titleId} className="font-semibold">
+          <DialogHeader className="flex items-center justify-between gap-3 border-b border-[#eadfca] bg-[#fffdf7] px-5 py-4">
+            <DialogTitle id={titleId} className="text-lg font-semibold tracking-tight">
               {title}
             </DialogTitle>
-            <Action aria-label="Close dialog" disabled={busy} onClick={onClose}>
+            <Action className="size-8 px-0" aria-label="Close dialog" disabled={busy} onClick={onClose}>
               <Icon name="X" />
             </Action>
           </DialogHeader>
@@ -257,7 +373,7 @@ export function RecordSelect({
   if (value && !options.some((option) => option.value === value))
     options.unshift({ value, label: chosenLabel || value });
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-1 rounded-sm border border-[#eadfca] p-2">
+    <div className="grid min-w-0 grid-cols-1 gap-2 rounded-sm border border-[#eadfca] bg-[#fffdf9] p-2.5">
       <LeadSelect
         label={label}
         value={value}
@@ -268,10 +384,10 @@ export function RecordSelect({
         }}
         disabled={disabled || isFetching}
       />
-      <div className="flex gap-1">
+      <div className="flex gap-1.5">
         <input
           aria-label={`Search ${kind} options`}
-          className="h-7 min-w-0 flex-1 rounded-sm border border-[#eadfca] px-2 text-xs"
+          className="h-9 min-w-0 flex-1 rounded-sm border border-[#eadfca] bg-white px-2.5 text-xs outline-none placeholder:text-stone-500 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder={`Find ${kind}`}
@@ -285,6 +401,7 @@ export function RecordSelect({
             setPage(1);
           }}
         >
+          <Icon name={isFetching ? "RefreshCw" : "Search"} className={`size-3 ${isFetching ? "animate-spin" : ""}`} />
           {isFetching ? "Loading…" : "Find"}
         </Action>
       </div>

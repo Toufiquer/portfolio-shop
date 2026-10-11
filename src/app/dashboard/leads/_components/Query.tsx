@@ -33,14 +33,19 @@ import {
 
 import { exportLeadExcel, readLeadExcel } from "./excel";
 import Mutation from "./Mutation";
+import { leadInput, leadPanel, leadPresentation } from "./presentation";
 import {
   Action,
+  EmptyState,
   errorMessage,
+  LeadAvatar,
   LeadsModal,
   LeadSelect,
   LeadsSkeleton,
   Pagination,
+  PageHeading,
   RecordSelect,
+  StatusBadge,
   useRefreshCooldown,
 } from "./ui";
 
@@ -104,6 +109,8 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
   const manageable = items.filter((item) => canManage(item) && (canUpdate || canRemove));
   const activeSelection = selected.filter((id) => manageable.some((item) => item.id === id));
   const title = mine ? "My Leads" : kind === "funnels" ? "Funnels" : kind === "councilors" ? "Councilors" : "Customers";
+  const presentation = leadPresentation[area];
+  const recordName = kind === "funnels" ? "funnel" : kind === "councilors" ? "councilor" : "customer";
   function resetPage() {
     setPage(1);
     setSelected([]);
@@ -174,41 +181,48 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
     }
   }
   return (
-    <section className="custom-parent-border mx-auto min-w-0 w-full max-w-7xl rounded-sm bg-[#fffdf7] text-stone-800">
-      <header className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eadfca] p-3">
-        <div>
-          <h1 className="text-xl font-semibold">{title}</h1>
-          <p className="text-sm text-stone-500">
-            {mine
-              ? "Customers assigned to your signed-in account."
-              : kind === "funnels"
-                ? "Arrange your customer journey with unique positions."
-                : kind === "councilors"
-                  ? "Manage the councilors who support your customers."
-                  : "Manage customers, assignments, and counselling."}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Action onClick={refresh} disabled={!canRead || Boolean(cooldown.remaining) || isFetching || busy}>
-            <Icon name="RefreshCw" className={isFetching ? "animate-spin" : ""} />
-            {cooldown.remaining ? `Refresh (${cooldown.remaining}s)` : "Refresh"}
+    <section className="grid min-w-0 gap-5">
+      <PageHeading
+        title={title}
+        icon={mine ? "FileText" : kind === "funnels" ? "Filter" : kind === "councilors" ? "User" : "Users"}
+        iconClass={presentation.iconClass}
+        caption={presentation.caption}
+        description={
+          mine
+            ? "Customers assigned to your signed-in account."
+            : kind === "funnels"
+              ? "Arrange your customer journey with unique positions."
+              : kind === "councilors"
+                ? "Manage the councilors who support your customers."
+                : "Manage customers, assignments, and counselling."
+        }
+      >
+        <Action onClick={refresh} disabled={!canRead || Boolean(cooldown.remaining) || isFetching || busy}>
+          <Icon name="RefreshCw" className={isFetching ? "animate-spin" : ""} />
+          {cooldown.remaining ? `Refresh (${cooldown.remaining}s)` : "Refresh"}
+        </Action>
+        {canCreate && (
+          <Action tone="primary" onClick={() => setEditor({})} disabled={busy}>
+            <Icon name="Plus" />
+            Add {recordName}
           </Action>
-          {canCreate && (
-            <Action onClick={() => setEditor({})} disabled={busy}>
-              <Icon name="Plus" />
-              Add {kind === "funnels" ? "funnel" : kind === "councilors" ? "councilor" : "customer"}
-            </Action>
-          )}
+        )}
+      </PageHeading>
+      <div className={`${leadPanel} grid gap-4 p-4 sm:p-5`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-stone-800">
+            <Icon name="Filter" className="size-4 text-amber-700" />
+            Find and organize
+          </h2>
+          <span className="text-xs text-stone-500">Search, filter, and manage your {kind}</span>
         </div>
-      </header>
-      <div className="grid gap-2 border-b border-[#eadfca] p-3">
-        <div className="flex flex-wrap gap-2">
-          <div className="relative min-w-40 flex-1">
-            <Icon name="Search" className="absolute left-2 top-2 size-4 text-stone-400" />
+        <div className="flex flex-wrap items-start gap-2">
+          <div className="relative min-w-0 flex-1 basis-full sm:min-w-48 sm:basis-auto">
+            <Icon name="Search" className="pointer-events-none absolute top-3 left-3 size-4 text-stone-500" />
             <Input
               aria-label={`Search loaded ${title.toLowerCase()}`}
-              className="border-[#eadfca] pl-8"
-              placeholder="Search loaded records first…"
+              className={`${leadInput} pl-9`}
+              placeholder={`Search ${kind} by ${kind === "funnels" ? "name or position" : "name, mobile, or email"}…`}
               value={text}
               maxLength={160}
               onChange={(event) => {
@@ -233,22 +247,24 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
           />
           {kind !== "funnels" && (
             <>
-              <Action disabled={!canRead || busy || isFetching || !actor} onClick={exportExcel}>
+              <Action className="h-10" disabled={!canRead || busy || isFetching || !actor} onClick={exportExcel}>
                 <Icon name="Download" />
                 Export Excel
               </Action>
               {canCreate && (
                 <>
-                  <Action disabled={busy} onClick={() => fileInput.current?.click()}>
+                  <Action className="h-10" disabled={busy} onClick={() => fileInput.current?.click()}>
                     <Icon name="Upload" />
                     Import Excel
                   </Action>
                   <Action
+                    className="h-10"
                     disabled={busy}
                     onClick={() => {
                       void exportLeadExcel(kind, [], true).catch((failure) => toast.error(errorMessage(failure)));
                     }}
                   >
+                    <Icon name="FileText" />
                     Template
                   </Action>
                   <input
@@ -266,43 +282,53 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
           )}
         </div>
         {kind === "customers" && (
-          <div className="grid gap-2 sm:grid-cols-3">
-            <RecordSelect
-              kind="funnels"
-              label="All funnels"
-              value={funnelId}
-              onChange={(value) => {
-                setFunnelId(value);
-                resetPage();
-              }}
-              disabled={busy}
-            />
-            <div>
-              <LeadSelect
-                label="Filter by assignment"
-                value={assignment}
-                options={[
-                  { value: "", label: "All assignments" },
-                  { value: "assigned", label: "Assigned" },
-                  { value: "unassigned", label: "Unassigned" },
-                ]}
+          <div className="grid gap-3 border-t border-[#f1eadc] pt-4 sm:grid-cols-3">
+            <div className="grid content-start gap-2">
+              <p className="text-[11px] font-semibold tracking-wide text-stone-500">Funnel</p>
+              <RecordSelect
+                kind="funnels"
+                label="All funnels"
+                value={funnelId}
                 onChange={(value) => {
-                  setAssignment(value);
+                  setFunnelId(value);
                   resetPage();
                 }}
                 disabled={busy}
               />
             </div>
-            <RecordSelect
-              kind="councilors"
-              label="All councilors"
-              value={councilor}
-              onChange={(value) => {
-                setCouncilor(value);
-                resetPage();
-              }}
-              disabled={busy}
-            />
+            <div className="grid content-start gap-2">
+              <p className="text-[11px] font-semibold tracking-wide text-stone-500">Assignment</p>
+              <div className="rounded-sm border border-[#eadfca] bg-[#fffdf9] p-2.5">
+                <LeadSelect
+                  label="Filter by assignment"
+                  value={assignment}
+                  options={[
+                    { value: "", label: "All assignments" },
+                    { value: "assigned", label: "Assigned" },
+                    { value: "unassigned", label: "Unassigned" },
+                  ]}
+                  onChange={(value) => {
+                    setAssignment(value);
+                    resetPage();
+                  }}
+                  disabled={busy}
+                />
+                <p className="mt-2 text-[11px] leading-5 text-stone-500">Filter by assigned or unassigned customers.</p>
+              </div>
+            </div>
+            <div className="grid content-start gap-2">
+              <p className="text-[11px] font-semibold tracking-wide text-stone-500">Councilor</p>
+              <RecordSelect
+                kind="councilors"
+                label="All councilors"
+                value={councilor}
+                onChange={(value) => {
+                  setCouncilor(value);
+                  resetPage();
+                }}
+                disabled={busy}
+              />
+            </div>
           </div>
         )}
         {mine && (
@@ -312,253 +338,341 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
           </p>
         )}
         {kind !== "funnels" && canCreate && (
-          <p className="text-xs text-stone-500">
-            Excel: up to 100 rows per import. Keep Mobile cells as text. Customer imports require Funnel ID from a
-            funnel&apos;s View dialog. Assignment columns in exports are informational; My Leads imports assign to you.
-          </p>
+          <details className="rounded-sm border border-[#f1eadc] bg-[#fffdf7] px-3 py-2.5 text-xs text-stone-500">
+            <summary className="cursor-pointer font-medium text-stone-600">Excel import guidelines</summary>
+            <p className="pt-2 leading-5">
+              Excel: up to 100 rows per import. Keep Mobile cells as text. Customer imports require Funnel ID from a
+              funnel&apos;s View dialog. Assignment columns in exports are informational; My Leads imports assign to
+              you.
+            </p>
+          </details>
         )}
       </div>
       {busy && (
-        <p className="border-b border-[#eadfca] p-3 text-sm text-amber-800" role="status">
+        <p
+          className="flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"
+          role="status"
+        >
+          <Icon name="RefreshCw" className="size-4 animate-spin" />
           {fileProgress || "Saving changes…"}
         </p>
       )}
-      {activeSelection.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2 border-b border-[#eadfca] bg-amber-50 p-3 text-sm">
-          <span>{activeSelection.length} selected</span>
-          <Action
-            disabled={!canUpdate || busy || isFetching}
-            tone="save"
-            onClick={() =>
-              void run({ operation: "status", ids: activeSelection, status: "active" }, "Selected records activated.")
-            }
-          >
-            Set active
-          </Action>
-          <Action
-            disabled={!canUpdate || busy || isFetching}
-            onClick={() =>
-              void run(
-                { operation: "status", ids: activeSelection, status: "inactive" },
-                "Selected records deactivated.",
-              )
-            }
-          >
-            Set inactive
-          </Action>
-          <Action
-            tone="delete"
-            disabled={!canRemove || busy || isFetching}
-            onClick={() => setDeleting(activeSelection)}
-          >
-            <Icon name="Trash2" />
-            Delete selected
-          </Action>
-          <Action disabled={busy} onClick={() => setSelected([])}>
-            Clear
-          </Action>
+      <div className={leadPanel}>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#f1eadc] px-4 py-4 sm:px-5">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-semibold text-stone-900">{mine ? "Your customers" : `${title} directory`}</h2>
+            {canRead && result && (
+              <span className="rounded-sm border border-[#eadfca] bg-[#fffaf0] px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                {result.total.toLocaleString()}
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-stone-500">
+            {canRead && result ? `${items.length} shown on this page` : "Customer relationship management"}
+          </p>
         </div>
-      )}
-      {!canRead ? (
-        <p className="p-3 text-sm text-stone-500">Read permission is required to display existing records.</p>
-      ) : error ? (
-        <div className="p-3 text-sm text-red-700" role="alert">
-          {errorMessage(error)}
-        </div>
-      ) : isLoading || (isFetching && !result) ? (
-        <LeadsSkeleton />
-      ) : (
-        <>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-[#eadfca] bg-amber-50 text-xs uppercase text-stone-500">
-                <tr>
-                  <th className="w-10 p-3">
-                    <Checkbox
-                      aria-label="Select manageable records on this page"
-                      disabled={busy || !manageable.length}
-                      checked={manageable.length > 0 && activeSelection.length === manageable.length}
-                      onCheckedChange={(checked) => setSelected(checked ? manageable.map((item) => item.id) : [])}
-                    />
-                  </th>
-                  <th className="p-3">Name</th>
-                  {kind === "funnels" ? (
-                    <>
-                      <th className="p-3">Position</th>
-                      <th className="p-3">Description</th>
-                    </>
-                  ) : (
-                    <>
-                      <th className="p-3">Mobile</th>
-                      <th className="p-3">Email</th>
-                    </>
-                  )}
-                  {kind === "customers" && (
-                    <>
-                      <th className="p-3">Funnel</th>
-                      <th className="p-3">Councilor</th>
-                      <th className="p-3">Block</th>
-                    </>
-                  )}
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item) => (
-                  <tr key={item.id} className="border-b border-[#eadfca] bg-white last:border-0">
-                    <td className="p-3">
+        {activeSelection.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-3 text-xs sm:px-5">
+            <span className="mr-1 font-semibold text-amber-900">{activeSelection.length} selected</span>
+            <Action
+              disabled={!canUpdate || busy || isFetching}
+              tone="save"
+              onClick={() =>
+                void run({ operation: "status", ids: activeSelection, status: "active" }, "Selected records activated.")
+              }
+            >
+              Set active
+            </Action>
+            <Action
+              disabled={!canUpdate || busy || isFetching}
+              onClick={() =>
+                void run(
+                  { operation: "status", ids: activeSelection, status: "inactive" },
+                  "Selected records deactivated.",
+                )
+              }
+            >
+              Set inactive
+            </Action>
+            <Action
+              tone="delete"
+              disabled={!canRemove || busy || isFetching}
+              onClick={() => setDeleting(activeSelection)}
+            >
+              <Icon name="Trash2" />
+              Delete selected
+            </Action>
+            <Action disabled={busy} onClick={() => setSelected([])}>
+              Clear
+            </Action>
+          </div>
+        )}
+        {!canRead ? (
+          <EmptyState
+            icon="Lock"
+            title="Read access required"
+            description="Read permission is required to display existing records."
+          />
+        ) : error ? (
+          <div role="alert">
+            <EmptyState icon="AlertCircle" title="Could not load records" description={errorMessage(error)} />
+          </div>
+        ) : isLoading || (isFetching && !result) ? (
+          <LeadsSkeleton />
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm [&_td]:px-4 [&_td]:py-4 [&_th]:px-4 [&_th]:py-3 [&_th]:font-semibold [&_th]:whitespace-nowrap">
+                <thead className="border-b border-[#f1eadc] bg-[#fffdf9] text-[10px] tracking-wider text-stone-500 uppercase">
+                  <tr>
+                    <th className="w-10 p-3">
                       <Checkbox
-                        aria-label={`Select ${item.name}`}
-                        checked={activeSelection.includes(item.id)}
-                        disabled={busy || !canManage(item) || (!canUpdate && !canRemove)}
-                        onCheckedChange={(checked) =>
-                          setSelected((previous) =>
-                            checked ? [...new Set([...previous, item.id])] : previous.filter((id) => id !== item.id),
-                          )
-                        }
+                        aria-label="Select manageable records on this page"
+                        disabled={busy || !manageable.length}
+                        checked={manageable.length > 0 && activeSelection.length === manageable.length}
+                        onCheckedChange={(checked) => setSelected(checked ? manageable.map((item) => item.id) : [])}
                       />
-                    </td>
-                    <td className="max-w-40 truncate p-3 font-medium">{item.name}</td>
-                    {item.kind === "funnels" ? (
+                    </th>
+                    <th className="p-3">Name</th>
+                    {kind === "funnels" ? (
                       <>
-                        <td className="p-3">{item.position}</td>
-                        <td className="max-w-52 truncate p-3">{item.description || "—"}</td>
+                        <th className="p-3">Position</th>
+                        <th className="p-3">Description</th>
                       </>
                     ) : (
                       <>
-                        <td className="whitespace-nowrap p-3">{item.mobile}</td>
-                        <td className="max-w-44 truncate p-3">{item.email || "—"}</td>
+                        <th className="p-3">Mobile</th>
+                        <th className="p-3">Email</th>
                       </>
                     )}
-                    {item.kind === "customers" && (
+                    {kind === "customers" && (
                       <>
-                        <td className="max-w-40 truncate p-3">{item.funnelName ?? item.funnelId}</td>
-                        <td className="max-w-44 truncate p-3">
-                          {item.assignedName || item.assignedTo || "Unassigned"}
-                        </td>
-                        <td className="p-3">{item.blocked ? "Blocked" : "No"}</td>
+                        <th className="p-3">Funnel</th>
+                        <th className="p-3">Councilor</th>
+                        <th className="p-3">Block</th>
                       </>
                     )}
-                    <td className="p-3">
-                      <span
-                        className={`rounded-sm px-2 py-1 text-xs ${item.status === "active" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
-                      >
-                        {item.status}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <div className="flex flex-wrap gap-1">
-                        <Action aria-label={`View ${item.name}`} disabled={busy} onClick={() => setView(item)}>
-                          <Icon name="Eye" />
-                          View
-                        </Action>
-                        {canManage(item) && (
-                          <>
-                            <Action
-                              aria-label={`Edit ${item.name}`}
-                              disabled={!canUpdate || busy}
-                              onClick={() => setEditor({ item })}
-                            >
-                              <Icon name="Edit2" />
-                              Edit
-                            </Action>
-                            <Action
-                              tone="delete"
-                              aria-label={`Delete ${item.name}`}
-                              disabled={!canRemove || busy}
-                              onClick={() => setDeleting([item.id])}
-                            >
-                              <Icon name="Trash2" />
-                            </Action>
-                          </>
-                        )}
-                        {item.kind === "customers" && isAdmin && canUpdate && !mine && (
-                          <Action
-                            disabled={busy}
-                            onClick={() => {
-                              setAssigning(item);
-                              setAssignee(item.assignedTo ?? "");
-                            }}
-                          >
-                            Assign
-                          </Action>
-                        )}
-                        {item.kind === "customers" &&
-                          actor?.role === "councilor" &&
-                          canUpdate &&
-                          !mine &&
-                          !item.assignedTo &&
-                          !item.blocked &&
-                          item.status === "active" && (
-                            <Action
-                              tone="save"
-                              disabled={busy}
-                              onClick={() => void run({ operation: "claim", id: item.id }, "Customer assigned to you.")}
-                            >
-                              Take assignment
-                            </Action>
-                          )}
-                        {item.kind === "customers" &&
-                          item.assignedTo === actor?.email &&
-                          canUpdate &&
-                          !item.blocked &&
-                          item.status === "active" && (
-                            <Action
-                              tone="save"
-                              disabled={busy}
-                              onClick={() => void run({ operation: "counsel", id: item.id }, "Counselling recorded.")}
-                            >
-                              Mark counselled
-                            </Action>
-                          )}
-                      </div>
-                    </td>
+                    <th className="p-3">Status</th>
+                    <th className="p-3">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {!items.length && (
-            <div className="grid justify-items-center gap-2 p-6 text-sm text-stone-500">
-              <Icon name="Search" className="size-6" />
-              <p>{term ? "No matches in the loaded records." : "No records match these filters."}</p>
-              {term && search !== text.trim() && (
-                <Action
-                  disabled={isFetching || busy}
-                  onClick={() => {
-                    setSearch(text.trim());
-                    resetPage();
-                  }}
-                >
-                  <Icon name="Database" />
-                  Search database
-                </Action>
-              )}
-              {term && search === text.trim() && <p>Database search completed.</p>}
+                </thead>
+                <tbody>
+                  {items.map((item) => (
+                    <tr
+                      key={item.id}
+                      className={`border-b border-[#f1eadc] transition-colors duration-200 last:border-0 hover:bg-[#fffdf7] ${activeSelection.includes(item.id) ? "bg-amber-50/60" : "bg-white"}`}
+                    >
+                      <td className="p-3">
+                        <Checkbox
+                          aria-label={`Select ${item.name}`}
+                          checked={activeSelection.includes(item.id)}
+                          disabled={busy || !canManage(item) || (!canUpdate && !canRemove)}
+                          onCheckedChange={(checked) =>
+                            setSelected((previous) =>
+                              checked ? [...new Set([...previous, item.id])] : previous.filter((id) => id !== item.id),
+                            )
+                          }
+                        />
+                      </td>
+                      <td className="p-3">
+                        <div className="flex items-center gap-2.5">
+                          {item.kind === "funnels" ? (
+                            <span className="grid size-9 shrink-0 place-items-center rounded-sm border border-violet-100 bg-violet-50 text-violet-600">
+                              <Icon name="Filter" className="size-4" />
+                            </span>
+                          ) : (
+                            <LeadAvatar
+                              name={item.name}
+                              className={
+                                item.kind === "councilors" ? "border-emerald-100 bg-emerald-50 text-emerald-700" : ""
+                              }
+                            />
+                          )}
+                          <span className="max-w-40 truncate font-semibold text-stone-800" title={item.name}>
+                            {item.name}
+                          </span>
+                        </div>
+                      </td>
+                      {item.kind === "funnels" ? (
+                        <>
+                          <td className="p-3">
+                            <span className="inline-flex min-w-8 justify-center rounded-sm border border-violet-100 bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700">
+                              {item.position}
+                            </span>
+                          </td>
+                          <td className="max-w-52 truncate p-3 text-stone-500" title={item.description}>
+                            {item.description || "—"}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="whitespace-nowrap p-3 text-xs text-stone-600 tabular-nums">{item.mobile}</td>
+                          <td className="max-w-44 truncate p-3 text-xs text-stone-500" title={item.email}>
+                            {item.email || "—"}
+                          </td>
+                        </>
+                      )}
+                      {item.kind === "customers" && (
+                        <>
+                          <td
+                            className="max-w-40 truncate p-3 text-xs text-violet-700"
+                            title={item.funnelName ?? item.funnelId}
+                          >
+                            {item.funnelName ?? item.funnelId}
+                          </td>
+                          <td
+                            className="max-w-44 truncate p-3 text-xs text-stone-500"
+                            title={item.assignedName || item.assignedTo || "Unassigned"}
+                          >
+                            {item.assignedName || item.assignedTo || "Unassigned"}
+                          </td>
+                          <td className="p-3">
+                            <span
+                              className={`inline-flex items-center gap-1 text-xs ${item.blocked ? "text-red-600" : "text-stone-500"}`}
+                            >
+                              <Icon name={item.blocked ? "Lock" : "ShieldCheck"} className="size-3.5" />
+                              {item.blocked ? "Blocked" : "No"}
+                            </span>
+                          </td>
+                        </>
+                      )}
+                      <td className="p-3">
+                        <StatusBadge status={item.status} />
+                      </td>
+                      <td className="p-3">
+                        <div className="flex min-w-28 flex-wrap gap-1.5">
+                          <Action
+                            className="size-8 px-0"
+                            title={`View ${item.name}`}
+                            aria-label={`View ${item.name}`}
+                            disabled={busy}
+                            onClick={() => setView(item)}
+                          >
+                            <Icon name="Eye" />
+                          </Action>
+                          {canManage(item) && (
+                            <>
+                              <Action
+                                className="size-8 px-0"
+                                title={`Edit ${item.name}`}
+                                aria-label={`Edit ${item.name}`}
+                                disabled={!canUpdate || busy}
+                                onClick={() => setEditor({ item })}
+                              >
+                                <Icon name="Edit2" />
+                              </Action>
+                              <Action
+                                tone="delete"
+                                className="size-8 px-0"
+                                title={`Delete ${item.name}`}
+                                aria-label={`Delete ${item.name}`}
+                                disabled={!canRemove || busy}
+                                onClick={() => setDeleting([item.id])}
+                              >
+                                <Icon name="Trash2" />
+                              </Action>
+                            </>
+                          )}
+                          {item.kind === "customers" && isAdmin && canUpdate && !mine && (
+                            <Action
+                              disabled={busy}
+                              onClick={() => {
+                                setAssigning(item);
+                                setAssignee(item.assignedTo ?? "");
+                              }}
+                            >
+                              Assign
+                            </Action>
+                          )}
+                          {item.kind === "customers" &&
+                            actor?.role === "councilor" &&
+                            canUpdate &&
+                            !mine &&
+                            !item.assignedTo &&
+                            !item.blocked &&
+                            item.status === "active" && (
+                              <Action
+                                tone="save"
+                                disabled={busy}
+                                onClick={() =>
+                                  void run({ operation: "claim", id: item.id }, "Customer assigned to you.")
+                                }
+                              >
+                                Take assignment
+                              </Action>
+                            )}
+                          {item.kind === "customers" &&
+                            item.assignedTo === actor?.email &&
+                            canUpdate &&
+                            !item.blocked &&
+                            item.status === "active" && (
+                              <Action
+                                tone="save"
+                                disabled={busy}
+                                onClick={() => void run({ operation: "counsel", id: item.id }, "Counselling recorded.")}
+                              >
+                                Mark counselled
+                              </Action>
+                            )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
-          <Pagination
-            page={result?.page ?? page}
-            total={result?.total ?? 0}
-            pageSize={pageSize}
-            onPage={(next) => {
-              setPage(next);
-              setSelected([]);
-            }}
-            onSize={(size) => {
-              setPageSize(size);
-              resetPage();
-            }}
-            disabled={busy || isFetching}
-          />
-        </>
-      )}
-      {isFetching && (
-        <p role="status" className="p-3 text-sm text-amber-800">
-          Loading records…
-        </p>
-      )}
+            {!items.length && (
+              <EmptyState
+                icon={term ? "Search" : kind === "funnels" ? "Filter" : "Users"}
+                title={term ? "No matches in the loaded records" : "No records match these filters"}
+                description={
+                  term
+                    ? "Try another search term or search all records in the database."
+                    : `Your ${kind} will appear here. Adjust your filters${canCreate ? ` or add a ${recordName} to get started` : ""}.`
+                }
+              >
+                {term && search !== text.trim() && (
+                  <Action
+                    tone="primary"
+                    disabled={isFetching || busy}
+                    onClick={() => {
+                      setSearch(text.trim());
+                      resetPage();
+                    }}
+                  >
+                    <Icon name="Database" />
+                    Search database
+                  </Action>
+                )}
+                {term && search === text.trim() && <p className="text-xs text-stone-500">Database search completed.</p>}
+              </EmptyState>
+            )}
+            <Pagination
+              page={result?.page ?? page}
+              total={result?.total ?? 0}
+              pageSize={pageSize}
+              onPage={(next) => {
+                setPage(next);
+                setSelected([]);
+              }}
+              onSize={(size) => {
+                setPageSize(size);
+                resetPage();
+              }}
+              disabled={busy || isFetching}
+            />
+          </>
+        )}
+        {isFetching && (
+          <p
+            role="status"
+            className="flex items-center gap-2 border-t border-[#f1eadc] px-5 py-3 text-xs text-amber-800"
+          >
+            <Icon name="RefreshCw" className="size-3 animate-spin" />
+            Loading records…
+          </p>
+        )}
+      </div>
       {editor && (
         <Mutation
           key={editor.item?.id ?? "new"}
@@ -570,12 +684,15 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
       )}
       {view && (
         <LeadsModal title="Record details" onClose={() => setView(null)}>
-          <dl className="grid gap-2 p-3 text-sm">
+          <dl className="grid gap-1 p-5 text-sm">
             {Object.entries(view)
               .filter(([key]) => key !== "kind")
               .map(([key, value]) => (
-                <div key={key} className="grid gap-1 border-b border-[#eadfca] py-2 sm:grid-cols-[140px_1fr]">
-                  <dt className="font-medium text-stone-500">{key.replace(/([A-Z])/g, " $1")}</dt>
+                <div
+                  key={key}
+                  className="grid gap-1.5 border-b border-[#f1eadc] py-3 last:border-0 sm:grid-cols-[140px_1fr]"
+                >
+                  <dt className="text-xs font-medium text-stone-500 capitalize">{key.replace(/([A-Z])/g, " $1")}</dt>
                   <dd className="min-w-0 break-words whitespace-pre-wrap">
                     {typeof value === "boolean" ? (value ? "Yes" : "No") : value || "—"}
                   </dd>
@@ -586,8 +703,11 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
       )}
       {assigning && (
         <LeadsModal title="Assign councilor" busy={mutating} onClose={() => setAssigning(null)}>
-          <div className="grid gap-3 p-3">
-            <p className="break-words text-sm">{assigning.name}</p>
+          <div className="grid gap-4 p-5">
+            <div className="flex items-center gap-3 rounded-sm border border-[#eadfca] bg-[#fffdf7] p-3">
+              <LeadAvatar name={assigning.name} />
+              <p className="break-words text-sm font-semibold">{assigning.name}</p>
+            </div>
             <RecordSelect
               kind="councilors"
               value={assignee}
@@ -597,7 +717,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
               activeOnly
               disabled={mutating}
             />
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-2 border-t border-[#f1eadc] pt-4">
               <Action disabled={mutating} onClick={() => setAssigning(null)}>
                 Cancel
               </Action>
@@ -632,7 +752,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
       />
       {importResult && (
         <LeadsModal title="Import results" onClose={() => setImportResult(null)}>
-          <div className="grid gap-3 p-3 text-sm">
+          <div className="grid gap-3 p-5 text-sm">
             <p>
               {importResult.imported} imported · {importResult.errors.length} failed. Correct failed rows and import
               only those rows again.

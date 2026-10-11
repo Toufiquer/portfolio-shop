@@ -15,7 +15,32 @@ import { toast } from "@/components/ui/global-toast";
 import { useDashboardPermissions } from "@/lib/dashboard/use-dashboard-permissions";
 import { useGetLeadsOverviewQuery } from "@/redux/features/dashboard/leads/leadsSlice";
 
-import { Action, errorMessage, LeadSelect, LeadsSkeleton, Pagination, useRefreshCooldown } from "./ui";
+import { leadPanel, leadPresentation } from "./presentation";
+import {
+  Action,
+  EmptyState,
+  errorMessage,
+  LeadAvatar,
+  LeadSelect,
+  LeadsSkeleton,
+  PageHeading,
+  Pagination,
+  useRefreshCooldown,
+} from "./ui";
+
+function ChartHeading({ title, description, icon }: { title: string; description: string; icon: string }) {
+  return (
+    <div className="flex items-start gap-3 px-5 pt-5 pb-4">
+      <span className="grid size-9 shrink-0 place-items-center rounded-sm border border-[#eadfca] bg-[#fffaf0] text-amber-700">
+        <Icon name={icon} className="size-4" />
+      </span>
+      <div>
+        <h2 className="text-sm font-semibold text-stone-900">{title}</h2>
+        <p className="mt-1 text-xs leading-5 text-stone-500">{description}</p>
+      </div>
+    </div>
+  );
+}
 
 const monthLabel = (month: string) =>
   new Date(`${month}-01T00:00:00Z`).toLocaleDateString("en", {
@@ -34,36 +59,37 @@ function MonthlyChart({
 }) {
   const [valuePage, setValuePage] = useState(1);
   const [valueSize, setValueSize] = useState(10);
-  const max = Math.max(1, ...series.flatMap((entry) => entry.values));
+  const max = Math.ceil(Math.max(4, ...series.flatMap((entry) => entry.values)) / 4) * 4;
   const width = 660,
     height = 220,
-    left = 35,
+    left = 42,
     bottom = 30,
-    top = 12;
+    top = 16;
   const plotWidth = width - left - 10,
     plotHeight = height - bottom - top;
   const step = plotWidth / Math.max(1, months.length);
   return (
     <div>
-      <div className="flex flex-wrap gap-3 px-3 text-xs text-stone-500">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 px-5 pb-3 text-[11px] text-stone-500">
         {series.map((entry) => (
-          <span key={entry.label} className="flex items-center gap-1">
-            <span className="inline-block size-2 rounded-sm" style={{ background: entry.color }} />
+          <span key={entry.label} className="flex items-center gap-1.5">
+            <span className="inline-block size-2.5 rounded-sm" style={{ background: entry.color }} />
             {entry.label}
           </span>
         ))}
       </div>
-      <div className="overflow-x-auto">
-        <svg aria-label={title} role="img" viewBox={`0 0 ${width} ${height}`} className="min-w-[480px] w-full">
+      <div className="overflow-x-auto px-3 pb-3">
+        <svg aria-label={title} role="img" viewBox={`0 0 ${width} ${height}`} className="w-full min-w-[480px]">
           <title>{title}</title>
-          {[0, 0.5, 1].map((fraction) => (
+          {[0, 0.25, 0.5, 0.75, 1].map((fraction) => (
             <g key={fraction}>
               <line
                 x1={left}
                 x2={width - 10}
                 y1={top + (1 - fraction) * plotHeight}
                 y2={top + (1 - fraction) * plotHeight}
-                stroke="#eadfca"
+                stroke="#f1eadc"
+                strokeDasharray={fraction ? "4 4" : undefined}
               />
               <text
                 x={left - 5}
@@ -72,25 +98,26 @@ function MonthlyChart({
                 fontSize="10"
                 fill="#78716c"
               >
-                {Math.round(max * fraction)}
+                {Math.round(max * fraction).toLocaleString("en", { notation: "compact" })}
               </text>
             </g>
           ))}
           {months.map((month, index) => (
             <g key={month}>
               {series.map((entry, seriesIndex) => {
-                const barWidth = Math.max(2, (step - 8) / series.length),
+                const barWidth = Math.max(3, Math.min(24, (step - 12) / series.length)),
                   value = entry.values[index] ?? 0,
                   barHeight = (value / max) * plotHeight;
                 return (
                   <rect
                     key={entry.label}
-                    x={left + index * step + 4 + seriesIndex * barWidth}
+                    x={left + index * step + (step - barWidth * series.length) / 2 + seriesIndex * barWidth}
                     y={top + plotHeight - barHeight}
-                    width={barWidth - 1}
+                    width={barWidth - 2}
                     height={barHeight}
                     fill={entry.color}
-                    rx={1}
+                    rx={2}
+                    opacity={0.9}
                   >
                     <title>
                       {monthLabel(month)} · {entry.label}: {value}
@@ -105,10 +132,10 @@ function MonthlyChart({
           ))}
         </svg>
       </div>
-      <details className="border-t border-[#eadfca] p-3 text-xs">
-        <summary className="cursor-pointer">View chart values</summary>
+      <details className="border-t border-[#f1eadc] bg-[#fffdf9] px-5 py-3 text-xs text-stone-500">
+        <summary className="cursor-pointer font-medium hover:text-amber-800">View chart values</summary>
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="mt-2 w-full text-left [&_td]:py-2 [&_th]:py-2 [&_th]:font-medium">
             <thead>
               <tr>
                 <th className="py-2">Month</th>
@@ -119,7 +146,7 @@ function MonthlyChart({
             </thead>
             <tbody>
               {months.slice((valuePage - 1) * valueSize, valuePage * valueSize).map((month, index) => (
-                <tr key={month}>
+                <tr key={month} className="border-t border-[#f1eadc]">
                   <td className="py-1">{monthLabel(month)}</td>
                   {series.map((entry) => (
                     <td key={entry.label}>{entry.values[(valuePage - 1) * valueSize + index] ?? 0}</td>
@@ -159,7 +186,7 @@ export default function Overview() {
   const progress = data?.progress ?? [];
   const actualProgressPage = Math.min(progressPage, Math.max(1, Math.ceil(progress.length / progressSize)));
   const actualFunnelPage = Math.min(funnelPage, Math.max(1, Math.ceil((month?.funnels.length ?? 0) / funnelSize)));
-  const panel = "min-w-0 rounded-sm border border-[#eadfca] bg-white";
+  const panel = leadPanel;
   async function refresh() {
     cooldown.start();
     try {
@@ -170,65 +197,119 @@ export default function Overview() {
     }
   }
   return (
-    <section className="custom-parent-border mx-auto grid min-w-0 w-full max-w-7xl gap-3 rounded-sm bg-[#fffdf7] p-3 text-stone-800">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h1 className="text-xl font-semibold">Leads overview</h1>
-          <p className="text-sm text-stone-500">Customer relationships and councilor activity · Asia/Dhaka</p>
-        </div>
+    <section className="grid min-w-0 gap-5">
+      <PageHeading
+        title="Leads overview"
+        description="Customer relationships and councilor activity, all in one view."
+        caption={leadPresentation.overview.caption}
+        icon="BarChart"
+        iconClass={leadPresentation.overview.iconClass}
+      >
+        <span className="mr-1 hidden items-center gap-1.5 text-xs text-stone-500 sm:flex">
+          <Icon name="Clock" className="size-3.5" />
+          Asia/Dhaka
+        </span>
         <Action disabled={!can("read") || isFetching || Boolean(cooldown.remaining)} onClick={refresh}>
           <Icon name="RefreshCw" className={isFetching ? "animate-spin" : ""} />
           {cooldown.remaining ? `Refresh (${cooldown.remaining}s)` : "Refresh"}
         </Action>
-      </header>
+      </PageHeading>
       {!can("read") ? (
-        <p className="text-sm text-stone-500">Read permission is required to display the overview.</p>
+        <div className={panel}>
+          <EmptyState
+            icon="Lock"
+            title="Read access required"
+            description="Read permission is required to display the overview."
+          />
+        </div>
       ) : error ? (
-        <p className="text-sm text-red-700" role="alert">
-          {errorMessage(error)}
-        </p>
+        <div className={panel} role="alert">
+          <EmptyState icon="AlertCircle" title="Could not load overview" description={errorMessage(error)} />
+        </div>
       ) : isLoading || !data ? (
         <LeadsSkeleton />
       ) : (
         <>
           <section aria-label="Summary" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: "All customers", value: data.summary.all, icon: "Users" },
-              { label: "New in 30 days", value: data.summary.new30Days, icon: "Calendar" },
-              { label: "Active customers", value: data.summary.active, icon: "Activity" },
-              { label: "Inactive customers", value: data.summary.inactive, icon: "Clock" },
+              {
+                label: "All customers",
+                value: data.summary.all,
+                icon: "Users",
+                note: "Across your customer pipeline",
+                color: "border-sky-100 bg-sky-50 text-sky-700",
+              },
+              {
+                label: "New in 30 days",
+                value: data.summary.new30Days,
+                icon: "TrendingUp",
+                note: "Added in the last 30 days",
+                color: "border-amber-100 bg-amber-50 text-amber-700",
+              },
+              {
+                label: "Active customers",
+                value: data.summary.active,
+                icon: "Activity",
+                note: "Currently marked as active",
+                color: "border-emerald-100 bg-emerald-50 text-emerald-700",
+              },
+              {
+                label: "Inactive customers",
+                value: data.summary.inactive,
+                icon: "Clock",
+                note: "Currently marked as inactive",
+                color: "border-stone-200 bg-stone-50 text-stone-500",
+              },
             ].map((card) => (
-              <div key={card.label} className={`${panel} p-3`}>
-                <div className="flex items-center justify-between gap-2 text-sm text-stone-500">
-                  <span>{card.label}</span>
-                  <Icon name={card.icon} className="size-4 text-amber-600" />
+              <div key={card.label} className={`${panel} p-5`}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium text-stone-500">{card.label}</span>
+                  <span className={`grid size-9 shrink-0 place-items-center rounded-sm border ${card.color}`}>
+                    <Icon name={card.icon} className="size-4" />
+                  </span>
                 </div>
-                <p className="text-3xl font-semibold">{card.value.toLocaleString()}</p>
+                <p className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 tabular-nums">
+                  {card.value.toLocaleString()}
+                </p>
+                <p className="mt-2 text-[11px] leading-5 text-stone-500">{card.note}</p>
               </div>
             ))}
           </section>
-          <section aria-label="Overview navigation" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <section aria-label="Overview navigation" className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { label: "Funnels", path: "funnels", count: data.counts.funnels },
-              { label: "Customers", path: "customers", count: data.counts.customers },
-              { label: "Councilors", path: "councilors", count: data.counts.councilors },
-              { label: "My Customers", path: "my-leads", count: data.counts.mine },
+              { label: "Funnels", path: "funnels", icon: "Filter", count: data.counts.funnels },
+              { label: "Customers", path: "customers", icon: "Users", count: data.counts.customers },
+              { label: "Councilors", path: "councilors", icon: "User", count: data.counts.councilors },
+              { label: "My Leads", path: "my-leads", icon: "FileText", count: data.counts.mine },
             ].map((card) => (
               <Link
                 key={card.path}
                 href={`/dashboard/leads/${card.path}`}
-                className={`${panel} flex items-center justify-between gap-2 p-3 text-sm transition duration-700 hover:bg-amber-50`}
+                className="group flex items-center gap-3 rounded-sm border border-[#eadfca] bg-[#fffdf7] px-4 py-3 text-sm outline-none transition duration-300 hover:border-amber-300 hover:bg-amber-50 focus-visible:ring-2 focus-visible:ring-amber-500 motion-reduce:transition-none"
               >
-                <span>
-                  {card.label} <strong>{card.count.toLocaleString()}</strong>
+                <Icon name={card.icon} className="size-4 shrink-0 text-amber-700" />
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2 text-xs font-medium text-stone-600">
+                  {card.label}{" "}
+                  <strong className="text-sm text-stone-900 tabular-nums">{card.count.toLocaleString()}</strong>
                 </span>
-                <Icon name="ArrowRight" className="size-4 text-amber-700" />
+                <Icon
+                  name="ChevronRight"
+                  className="size-3.5 text-stone-500 transition-transform group-hover:translate-x-0.5"
+                />
               </Link>
             ))}
           </section>
           <section className={panel}>
-            <h2 className="border-b border-[#eadfca] p-3 font-semibold">Councilor progress</h2>
-            <div className="grid gap-2 border-b border-[#eadfca] p-3 sm:grid-cols-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#f1eadc] px-5 py-4">
+              <div>
+                <h2 className="text-sm font-semibold text-stone-900">Councilor progress</h2>
+                <p className="mt-1 text-xs text-stone-500">Assignments and recent counselling across your team</p>
+              </div>
+              <span className="rounded-sm border border-emerald-100 bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-700">
+                Team activity
+              </span>
+            </div>
+            <div className="grid gap-4 border-b border-[#f1eadc] bg-[#fffdf9] p-5 sm:grid-cols-3">
               {[
                 { label: "Total assigned customers", value: progress.reduce((sum, row) => sum + row.assigned, 0) },
                 {
@@ -240,15 +321,17 @@ export default function Overview() {
                   value: progress.reduce((sum, row) => sum + row.inactive, 0),
                 },
               ].map((card) => (
-                <div key={card.label}>
-                  <p className="text-xs text-stone-500">{card.label}</p>
-                  <p className="text-xl font-semibold">{card.value.toLocaleString()}</p>
+                <div key={card.label} className="border-l-2 border-amber-200 pl-3">
+                  <p className="text-[11px] leading-5 text-stone-500">{card.label}</p>
+                  <p className="mt-1 text-xl font-semibold text-stone-900 tabular-nums">
+                    {card.value.toLocaleString()}
+                  </p>
                 </div>
               ))}
             </div>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-amber-50 text-xs text-stone-500">
+              <table className="w-full text-left text-sm [&_td]:px-5 [&_td]:py-4 [&_th]:px-5 [&_th]:py-3 [&_th]:font-semibold [&_th]:whitespace-nowrap">
+                <thead className="bg-[#fffdf9] text-[10px] tracking-wider text-stone-500 uppercase">
                   <tr>
                     <th className="p-3">Councilor</th>
                     <th className="p-3">Assigned</th>
@@ -260,19 +343,37 @@ export default function Overview() {
                   {progress
                     .slice((actualProgressPage - 1) * progressSize, actualProgressPage * progressSize)
                     .map((row) => (
-                      <tr key={row.email} className="border-t border-[#eadfca]">
-                        <td className="max-w-56 truncate p-3" title={`${row.name} · ${row.email}`}>
-                          {row.name}
+                      <tr key={row.email} className="border-t border-[#f1eadc] transition-colors hover:bg-[#fffdf7]">
+                        <td className="p-3">
+                          <div className="flex items-center gap-3">
+                            <LeadAvatar name={row.name} />
+                            <div className="min-w-0">
+                              <p className="max-w-48 truncate font-semibold text-stone-700" title={row.name}>
+                                {row.name}
+                              </p>
+                              <p className="mt-0.5 max-w-48 truncate text-xs text-stone-500" title={row.email}>
+                                {row.email}
+                              </p>
+                            </div>
+                          </div>
                         </td>
-                        <td className="p-3">{row.assigned}</td>
-                        <td className="p-3">{row.counselling24Hours}</td>
-                        <td className="p-3">{row.inactive}</td>
+                        <td className="p-3 font-medium text-stone-700 tabular-nums">{row.assigned.toLocaleString()}</td>
+                        <td className="p-3">
+                          <span className="rounded-sm bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 tabular-nums">
+                            {row.counselling24Hours.toLocaleString()}
+                          </span>
+                        </td>
+                        <td className="p-3 text-stone-500 tabular-nums">{row.inactive.toLocaleString()}</td>
                       </tr>
                     ))}
                 </tbody>
               </table>
               {!progress.length && (
-                <p className="p-3 text-sm text-stone-500">Add a councilor and assign customers to see progress.</p>
+                <EmptyState
+                  icon="Users"
+                  title="Your team activity starts here"
+                  description="Add a councilor and assign customers to see progress."
+                />
               )}
             </div>
             <Pagination
@@ -286,9 +387,13 @@ export default function Overview() {
               }}
             />
           </section>
-          <div className="grid gap-3 lg:grid-cols-2">
+          <div className="grid gap-5 lg:grid-cols-2">
             <section className={panel}>
-              <h2 className="p-3 font-semibold">Customer growth</h2>
+              <ChartHeading
+                title="Customer growth"
+                description="New relationships added each month"
+                icon="TrendingUp"
+              />
               <MonthlyChart
                 title="New customers per month"
                 months={months}
@@ -298,7 +403,11 @@ export default function Overview() {
               />
             </section>
             <section className={panel}>
-              <h2 className="p-3 font-semibold">Business facts</h2>
+              <ChartHeading
+                title="Business facts"
+                description="Customer growth, assignments, and counselling"
+                icon="BarChart"
+              />
               <MonthlyChart
                 title="Monthly customer and counselling activity"
                 months={months}
@@ -314,8 +423,11 @@ export default function Overview() {
               />
             </section>
             <section className={panel}>
-              <h2 className="p-3 font-semibold">Customer distribution</h2>
-              <p className="px-3 pb-2 text-xs text-stone-500">Current status of customers added in each month.</p>
+              <ChartHeading
+                title="Customer distribution"
+                description="Current status of customers added in each month"
+                icon="PieChart"
+              />
               <MonthlyChart
                 title="Active and inactive customers by creation month"
                 months={months}
@@ -326,8 +438,13 @@ export default function Overview() {
               />
             </section>
             <section className={panel}>
-              <div className="flex flex-wrap items-center justify-between gap-2 p-3">
-                <h2 className="font-semibold">Customers by funnels</h2>
+              <div className="flex flex-wrap items-start justify-between gap-2 px-5 pt-5 pb-4">
+                <div className="flex items-center gap-3">
+                  <span className="grid size-9 place-items-center rounded-sm border border-violet-100 bg-violet-50 text-violet-700">
+                    <Icon name="Filter" className="size-4" />
+                  </span>
+                  <h2 className="text-sm font-semibold text-stone-900">Customers by funnels</h2>
+                </div>
                 <LeadSelect
                   label="Choose month"
                   value={month?.month ?? ""}
@@ -338,25 +455,25 @@ export default function Overview() {
                   }}
                 />
               </div>
-              <p className="px-3 pb-3 text-xs text-stone-500">
+              <p className="px-5 pb-2 text-xs leading-5 text-stone-500">
                 Current funnel of customers added in {month ? monthLabel(month.month) : "this month"}.
               </p>
-              <div className="grid gap-3 p-3">
+              <div className="grid gap-4 p-5">
                 {month?.funnels
                   .slice((actualFunnelPage - 1) * funnelSize, actualFunnelPage * funnelSize)
                   .map((funnel, index) => (
-                    <div key={`${funnel.name}-${index}`} className="grid gap-1 text-sm">
+                    <div key={`${funnel.name}-${index}`} className="grid gap-2 text-xs">
                       <div className="flex min-w-0 justify-between gap-2">
-                        <span className="truncate" title={funnel.name}>
+                        <span className="truncate font-medium text-stone-600" title={funnel.name}>
                           {funnel.name}
                         </span>
-                        <strong>{funnel.count}</strong>
+                        <strong className="text-violet-700 tabular-nums">{funnel.count.toLocaleString()}</strong>
                       </div>
-                      <div className="h-3 overflow-hidden rounded-sm bg-amber-50">
+                      <div className="h-2 overflow-hidden rounded-sm bg-violet-50">
                         <div
                           aria-label={`${funnel.name}: ${funnel.count} customers`}
                           role="img"
-                          className="h-full bg-amber-400 transition-all duration-700"
+                          className="h-full rounded-sm bg-linear-to-r from-violet-400 to-violet-500 transition-all duration-700 motion-reduce:transition-none"
                           style={{
                             width: `${(funnel.count / Math.max(1, ...(month?.funnels.map((item) => item.count) ?? []))) * 100}%`,
                           }}
@@ -364,7 +481,13 @@ export default function Overview() {
                       </div>
                     </div>
                   ))}
-                {!month?.funnels.length && <p className="text-sm text-stone-500">No funnels yet.</p>}
+                {!month?.funnels.length && (
+                  <EmptyState
+                    icon="Filter"
+                    title="No funnel activity yet"
+                    description="Customers added in the selected month will appear here."
+                  />
+                )}
               </div>
               <Pagination
                 page={actualFunnelPage}
@@ -381,7 +504,8 @@ export default function Overview() {
         </>
       )}
       {isFetching && !isLoading && (
-        <p role="status" className="text-sm text-amber-800">
+        <p role="status" className="flex items-center gap-2 text-xs text-amber-800">
+          <Icon name="RefreshCw" className="size-3 animate-spin" />
           Refreshing overview…
         </p>
       )}

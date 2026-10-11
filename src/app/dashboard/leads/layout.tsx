@@ -11,7 +11,10 @@ import Navigation from "./_components/Navigation";
 
 export default function LeadsLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="grid min-w-0 w-full gap-3">
+    <div
+      className="mx-auto grid min-w-0 w-full max-w-7xl gap-5 p-3 text-stone-800 sm:p-5 lg:gap-6 lg:p-6"
+      style={{ fontFamily: "var(--font-geist-sans, Arial), sans-serif" }}
+    >
       <Navigation />
       {children}
     </div>
