@@ -22,7 +22,7 @@ import { useGetLeadOptionsQuery } from "@/redux/features/dashboard/leads/leadsSl
 import { leadPanel } from "./presentation";
 
 export const normalButton =
-  "h-9 cursor-pointer gap-1.5 rounded-sm border-[#eadfca] bg-white px-3 text-xs font-semibold text-stone-600 shadow-xs transition duration-300 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-900 focus-visible:ring-amber-300 motion-reduce:transition-none";
+  "h-9 cursor-pointer gap-1.5 rounded-sm border-[#eadfca] bg-white px-3 text-xs font-semibold text-stone-600 shadow-xs transition duration-700 hover:border-amber-300 hover:bg-amber-50 hover:text-amber-900 focus-visible:ring-amber-300 motion-reduce:transition-none";
 export function Action({
   tone = "normal",
   className = "",
@@ -31,7 +31,7 @@ export function Action({
   return (
     <Button
       {...props}
-      className={`${normalButton} ${tone === "primary" ? "border-amber-800 bg-amber-900 text-white hover:border-amber-900 hover:bg-amber-950 hover:text-white" : tone === "save" ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100 hover:text-emerald-900" : tone === "delete" ? "border-red-200 bg-red-50 text-red-700 hover:border-red-300 hover:bg-red-100 hover:text-red-800" : ""} ${className}`}
+      className={`${normalButton} ${tone === "primary" ? "border-amber-600 bg-amber-600 text-white shadow-md shadow-amber-200 hover:border-amber-700 hover:bg-amber-700 hover:text-white" : tone === "save" ? "border-emerald-200 bg-emerald-50 text-emerald-800 hover:border-emerald-300 hover:bg-emerald-100 hover:text-emerald-900" : tone === "delete" ? "border-red-200 bg-red-50 text-red-700 hover:border-red-300 hover:bg-red-100 hover:text-red-800" : ""} ${className}`}
       size="sm"
       variant="outline"
     />
@@ -53,15 +53,15 @@ export function PageHeading({
   children?: ReactNode;
 }) {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-4">
+    <header className="flex flex-wrap items-center justify-between gap-4 px-1">
       <div className="flex min-w-0 items-start gap-3 sm:gap-4">
         <span className={`grid size-12 shrink-0 place-items-center rounded-sm border ${iconClass}`}>
           <Icon name={icon} className="size-6" />
         </span>
         <div className="min-w-0">
-          <p className="mb-1 text-[10px] font-semibold tracking-[0.12em] text-stone-500 uppercase">{caption}</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-stone-900">{title}</h1>
-          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-stone-500">{description}</p>
+          <p className="mb-1 text-[10px] font-bold tracking-[0.14em] text-slate-400 uppercase">{caption}</p>
+          <h1 className="text-2xl font-semibold tracking-[-0.03em] text-slate-950 sm:text-3xl">{title}</h1>
+          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500">{description}</p>
         </div>
       </div>
       {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
@@ -81,7 +81,7 @@ export function LeadAvatar({ name, className = "" }: { name: string; className?:
     <span
       aria-hidden="true"
       className={cn(
-        "grid size-9 shrink-0 place-items-center rounded-sm border border-[#eadfca] bg-[#fffaf0] text-xs font-semibold text-amber-800",
+        "grid size-9 shrink-0 place-items-center rounded-sm border border-amber-100 bg-amber-50 text-xs font-bold text-amber-700",
         className,
       )}
     >
@@ -92,7 +92,7 @@ export function LeadAvatar({ name, className = "" }: { name: string; className?:
 export function StatusBadge({ status }: { status: LeadStatus }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-sm border px-2 py-1 text-[11px] font-medium capitalize ${status === "active" ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-stone-200 bg-stone-50 text-stone-500"}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold capitalize ${status === "active" ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-[#eadfca] bg-slate-50 text-slate-500"}`}
     >
       <span
         aria-hidden="true"
@@ -115,12 +115,12 @@ export function EmptyState({
 }) {
   return (
     <div className="grid justify-items-center gap-3 px-5 py-12 text-center">
-      <span className="grid size-14 place-items-center rounded-sm border border-[#eadfca] bg-[#fffaf0] text-amber-700">
+      <span className="grid size-14 place-items-center rounded-sm border border-amber-100 bg-amber-50 text-amber-700 shadow-sm">
         <Icon name={icon} className="size-6" />
       </span>
       <div className="max-w-sm">
-        <p className="text-sm font-semibold text-stone-800">{title}</p>
-        {description && <p className="mt-1.5 text-sm leading-6 text-stone-500">{description}</p>}
+        <p className="text-sm font-semibold text-slate-800">{title}</p>
+        {description && <p className="mt-1.5 text-sm leading-6 text-slate-500">{description}</p>}
       </div>
       {children}
     </div>
@@ -144,17 +144,17 @@ export function LeadSelect({
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger
           aria-label={label}
-          className="h-10 cursor-pointer gap-3 rounded-sm border border-[#eadfca] bg-white px-3 text-xs font-medium text-stone-600 outline-none transition duration-300 hover:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-200 motion-reduce:transition-none"
+          className="h-10 cursor-pointer gap-3 rounded-sm border border-[#eadfca] bg-white px-3 text-xs font-medium text-stone-600 outline-none transition duration-700 hover:border-amber-300 focus-visible:ring-2 focus-visible:ring-amber-100 motion-reduce:transition-none"
           disabled={disabled}
         >
           <span className="truncate">{options.find((option) => option.value === value)?.label ?? label}</span>
           <Icon name="ChevronDown" className="size-3 shrink-0" />
         </SelectTrigger>
-        <SelectContent className="max-h-60 overflow-auto rounded-sm border border-[#eadfca] bg-white p-1 shadow-lg">
+        <SelectContent className="max-h-60 overflow-auto rounded-sm border border-[#eadfca] bg-white p-1 shadow-xl shadow-slate-200/60">
           {options.map((option) => (
             <SelectItem
               key={option.value}
-              className="cursor-pointer rounded-sm py-2 text-xs text-stone-600 transition duration-300 hover:bg-amber-50 aria-selected:bg-amber-50 aria-selected:font-semibold aria-selected:text-amber-900"
+              className="cursor-pointer rounded-sm py-2 text-xs text-stone-600 transition duration-700 hover:bg-amber-50 aria-selected:bg-amber-50 aria-selected:font-semibold aria-selected:text-amber-900"
               value={option.value}
             >
               {option.label}
@@ -182,11 +182,11 @@ export function Pagination({
 }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#f1eadc] bg-[#fffdf9] px-4 py-3 text-xs text-stone-500 sm:px-5">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#eadfca] bg-[#fffdf7] px-4 py-3 text-xs text-slate-500 sm:px-5">
       <span aria-live="polite">
-        <strong className="font-semibold text-stone-700">{total.toLocaleString()}</strong> records
-        <span className="mx-2 text-stone-300">/</span>
-        Page <strong className="font-semibold text-stone-700">{page}</strong> of {pages}
+        <strong className="font-semibold text-slate-700">{total.toLocaleString()}</strong> records
+        <span className="mx-2 text-slate-300">/</span>
+        Page <strong className="font-semibold text-slate-700">{page}</strong> of {pages}
       </span>
       <div className="flex min-w-0 flex-wrap items-center gap-1.5">
         <LeadSelect
@@ -235,13 +235,13 @@ export function LeadsSkeleton() {
       <span className="sr-only">Loading Leads…</span>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {Array.from({ length: 4 }, (_, index) => (
-          <Skeleton key={index} className="h-24 w-full rounded-sm bg-stone-100" />
+          <Skeleton key={index} className="h-24 w-full rounded-sm bg-slate-100" />
         ))}
       </div>
       <div className={`${leadPanel} grid gap-4 p-4`}>
-        <Skeleton className="h-9 w-1/3 rounded-sm bg-stone-100" />
+        <Skeleton className="h-9 w-1/3 rounded-sm bg-slate-100" />
         {Array.from({ length: 5 }, (_, index) => (
-          <Skeleton key={index} className="h-10 w-full rounded-sm bg-stone-100" />
+          <Skeleton key={index} className="h-10 w-full rounded-sm bg-slate-100" />
         ))}
       </div>
     </div>
@@ -316,11 +316,11 @@ export function LeadsModal({
       <DialogContent
         aria-labelledby={titleId}
         aria-modal="true"
-        className="w-full max-w-xl overflow-hidden rounded-sm border border-[#eadfca] bg-white text-stone-800 shadow-2xl"
+        className="w-full max-w-xl overflow-hidden rounded-sm border border-[#eadfca] bg-white text-slate-800 shadow-2xl shadow-slate-900/15"
       >
         <div ref={panel}>
-          <DialogHeader className="flex items-center justify-between gap-3 border-b border-[#eadfca] bg-[#fffdf7] px-5 py-4">
-            <DialogTitle id={titleId} className="text-lg font-semibold tracking-tight">
+          <DialogHeader className="flex items-center justify-between gap-3 border-b border-[#eadfca] bg-[#fffdf9] px-5 py-4">
+            <DialogTitle id={titleId} className="text-lg font-semibold tracking-tight text-slate-950">
               {title}
             </DialogTitle>
             <Action className="size-8 px-0" aria-label="Close dialog" disabled={busy} onClick={onClose}>
@@ -373,7 +373,7 @@ export function RecordSelect({
   if (value && !options.some((option) => option.value === value))
     options.unshift({ value, label: chosenLabel || value });
   return (
-    <div className="grid min-w-0 grid-cols-1 gap-2 rounded-sm border border-[#eadfca] bg-[#fffdf9] p-2.5">
+    <div className="grid min-w-0 grid-cols-1 gap-2 rounded-sm border border-[#eadfca] bg-[#fffdf7] p-2.5">
       <LeadSelect
         label={label}
         value={value}
@@ -387,7 +387,7 @@ export function RecordSelect({
       <div className="flex gap-1.5">
         <input
           aria-label={`Search ${kind} options`}
-          className="h-9 min-w-0 flex-1 rounded-sm border border-[#eadfca] bg-white px-2.5 text-xs outline-none placeholder:text-stone-500 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+          className="h-9 min-w-0 flex-1 rounded-sm border border-[#eadfca] bg-white px-2.5 text-xs outline-none placeholder:text-slate-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder={`Find ${kind}`}

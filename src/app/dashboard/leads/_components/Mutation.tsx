@@ -66,14 +66,14 @@ export default function Mutation({
       busy={isLoading}
       onClose={onClose}
     >
-      <form className="grid gap-5 p-5" onSubmit={submit}>
-        <p className="text-xs leading-5 text-stone-500">
+      <form className="custom-parent-border grid gap-5 bg-white p-5" onSubmit={submit}>
+        <p className="rounded-sm border border-amber-100 bg-amber-50/60 p-3 text-xs leading-5 text-amber-900/80">
           {item
             ? "Update the details below to keep your records current."
             : "Add the details below to create a new record in your workspace."}
         </p>
         <fieldset className="grid min-w-0 gap-4 sm:grid-cols-2" disabled={isLoading}>
-          <label className="grid gap-2 text-xs font-medium text-stone-600 sm:col-span-2">
+          <label className="grid gap-2 text-xs font-semibold text-slate-600 sm:col-span-2">
             Name
             <Input
               value={name}
@@ -87,7 +87,7 @@ export default function Mutation({
           </label>
           {kind === "funnels" ? (
             <>
-              <label className="grid gap-2 text-xs font-medium text-stone-600 sm:col-span-2">
+              <label className="grid gap-2 text-xs font-semibold text-slate-600 sm:col-span-2">
                 Unique position
                 <Input
                   type="number"
@@ -100,23 +100,23 @@ export default function Mutation({
                   className={leadInput}
                 />
               </label>
-              <p className="-mt-2 text-xs leading-5 text-stone-500 sm:col-span-2">
+              <p className="-mt-2 text-xs leading-5 text-slate-500 sm:col-span-2">
                 Choose an unused position. Funnels are sorted by this number.
               </p>
-              <label className="grid gap-2 text-xs font-medium text-stone-600 sm:col-span-2">
+              <label className="grid gap-2 text-xs font-semibold text-slate-600 sm:col-span-2">
                 Description
                 <Textarea
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                   maxLength={2000}
-                  className="min-h-28 border-[#eadfca] bg-white p-3 text-sm font-normal focus:border-amber-500 focus:ring-amber-100"
+                  className="min-h-28 rounded-sm border-[#eadfca] bg-white p-3 text-sm font-normal text-slate-700 focus:border-amber-500 focus:ring-amber-100"
                   placeholder="Describe this stage of the customer journey…"
                 />
               </label>
             </>
           ) : (
             <>
-              <label className="grid gap-2 text-xs font-medium text-stone-600">
+              <label className="grid gap-2 text-xs font-semibold text-slate-600">
                 Mobile
                 <Input
                   type="tel"
@@ -129,7 +129,7 @@ export default function Mutation({
                   autoComplete="tel"
                 />
               </label>
-              <label className="grid gap-2 text-xs font-medium text-stone-600">
+              <label className="grid gap-2 text-xs font-semibold text-slate-600">
                 Email{kind === "customers" ? " (optional)" : ""}
                 <Input
                   type="email"
@@ -146,7 +146,7 @@ export default function Mutation({
           )}
           {kind === "customers" && (
             <>
-              <div className="grid gap-2 text-xs font-medium text-stone-600 sm:col-span-2">
+              <div className="grid gap-2 text-xs font-semibold text-slate-600 sm:col-span-2">
                 Funnel
                 <RecordSelect
                   area={mine ? "my-leads" : "customers"}
@@ -159,13 +159,13 @@ export default function Mutation({
                   disabled={isLoading}
                 />
               </div>
-              <label className="flex items-center gap-2.5 rounded-sm border border-[#eadfca] bg-[#fffdf7] p-3 text-xs font-medium text-stone-600 sm:col-span-2">
+              <label className="flex items-center gap-2.5 rounded-sm border border-[#eadfca] bg-[#fffdf7] p-3 text-xs font-semibold text-slate-600 sm:col-span-2">
                 <Checkbox checked={blocked} onCheckedChange={setBlocked} disabled={isLoading} />
                 Block customer
               </label>
             </>
           )}
-          <div className="grid gap-2 text-xs font-medium text-stone-600 sm:col-span-2">
+          <div className="grid gap-2 text-xs font-semibold text-slate-600 sm:col-span-2">
             Status
             <LeadSelect
               label="Status"
@@ -195,7 +195,7 @@ export default function Mutation({
             {error}
           </p>
         )}
-        <div className="flex justify-end gap-2 border-t border-[#f1eadc] pt-4">
+        <div className="flex justify-end gap-2 border-t border-[#eadfca] pt-4">
           <Action disabled={isLoading} onClick={onClose}>
             Cancel
           </Action>

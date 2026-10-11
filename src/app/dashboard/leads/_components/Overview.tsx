@@ -31,12 +31,12 @@ import {
 function ChartHeading({ title, description, icon }: { title: string; description: string; icon: string }) {
   return (
     <div className="flex items-start gap-3 px-5 pt-5 pb-4">
-      <span className="grid size-9 shrink-0 place-items-center rounded-sm border border-[#eadfca] bg-[#fffaf0] text-amber-700">
+      <span className="grid size-9 shrink-0 place-items-center rounded-sm border border-amber-100 bg-amber-50 text-amber-700">
         <Icon name={icon} className="size-4" />
       </span>
       <div>
-        <h2 className="text-sm font-semibold text-stone-900">{title}</h2>
-        <p className="mt-1 text-xs leading-5 text-stone-500">{description}</p>
+        <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
+        <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
       </div>
     </div>
   );
@@ -70,7 +70,7 @@ function MonthlyChart({
   const step = plotWidth / Math.max(1, months.length);
   return (
     <div>
-      <div className="flex flex-wrap gap-x-4 gap-y-2 px-5 pb-3 text-[11px] text-stone-500">
+      <div className="flex flex-wrap gap-x-4 gap-y-2 px-5 pb-3 text-[11px] text-slate-500">
         {series.map((entry) => (
           <span key={entry.label} className="flex items-center gap-1.5">
             <span className="inline-block size-2.5 rounded-sm" style={{ background: entry.color }} />
@@ -96,7 +96,7 @@ function MonthlyChart({
                 y={top + (1 - fraction) * plotHeight + 4}
                 textAnchor="end"
                 fontSize="10"
-                fill="#78716c"
+                fill="#64748b"
               >
                 {Math.round(max * fraction).toLocaleString("en", { notation: "compact" })}
               </text>
@@ -125,15 +125,15 @@ function MonthlyChart({
                   </rect>
                 );
               })}
-              <text x={left + (index + 0.5) * step} y={height - 10} textAnchor="middle" fontSize="9" fill="#78716c">
+              <text x={left + (index + 0.5) * step} y={height - 10} textAnchor="middle" fontSize="9" fill="#64748b">
                 {monthLabel(month)}
               </text>
             </g>
           ))}
         </svg>
       </div>
-      <details className="border-t border-[#f1eadc] bg-[#fffdf9] px-5 py-3 text-xs text-stone-500">
-        <summary className="cursor-pointer font-medium hover:text-amber-800">View chart values</summary>
+      <details className="border-t border-[#eadfca] bg-[#fffdf7] px-5 py-3 text-xs text-slate-500">
+        <summary className="cursor-pointer font-semibold hover:text-amber-800">View chart values</summary>
         <div className="overflow-x-auto">
           <table className="mt-2 w-full text-left [&_td]:py-2 [&_th]:py-2 [&_th]:font-medium">
             <thead>
@@ -146,7 +146,7 @@ function MonthlyChart({
             </thead>
             <tbody>
               {months.slice((valuePage - 1) * valueSize, valuePage * valueSize).map((month, index) => (
-                <tr key={month} className="border-t border-[#f1eadc]">
+                <tr key={month} className="border-t border-[#eadfca]">
                   <td className="py-1">{monthLabel(month)}</td>
                   {series.map((entry) => (
                     <td key={entry.label}>{entry.values[(valuePage - 1) * valueSize + index] ?? 0}</td>
@@ -261,17 +261,18 @@ export default function Overview() {
                 color: "border-stone-200 bg-stone-50 text-stone-500",
               },
             ].map((card) => (
-              <div key={card.label} className={`${panel} p-5`}>
+              <div key={card.label} className={`${panel} group relative overflow-hidden p-5`}>
+                <span aria-hidden="true" className="absolute -right-5 -bottom-6 size-20 rounded-full bg-amber-50" />
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-xs font-medium text-stone-500">{card.label}</span>
-                  <span className={`grid size-9 shrink-0 place-items-center rounded-sm border ${card.color}`}>
+                  <span className="relative text-xs font-semibold text-slate-500">{card.label}</span>
+                  <span className={`relative grid size-10 shrink-0 place-items-center rounded-sm border ${card.color}`}>
                     <Icon name={card.icon} className="size-4" />
                   </span>
                 </div>
-                <p className="mt-3 text-3xl font-semibold tracking-tight text-stone-900 tabular-nums">
+                <p className="relative mt-3 text-3xl font-semibold tracking-tight text-slate-950 tabular-nums">
                   {card.value.toLocaleString()}
                 </p>
-                <p className="mt-2 text-[11px] leading-5 text-stone-500">{card.note}</p>
+                <p className="relative mt-2 text-[11px] leading-5 text-slate-500">{card.note}</p>
               </div>
             ))}
           </section>
@@ -285,31 +286,31 @@ export default function Overview() {
               <Link
                 key={card.path}
                 href={`/dashboard/leads/${card.path}`}
-                className="group flex items-center gap-3 rounded-sm border border-[#eadfca] bg-[#fffdf7] px-4 py-3 text-sm outline-none transition duration-300 hover:border-amber-300 hover:bg-amber-50 focus-visible:ring-2 focus-visible:ring-amber-500 motion-reduce:transition-none"
+                className="group flex items-center gap-3 rounded-sm border border-[#eadfca] bg-white px-4 py-3 text-sm outline-none transition duration-700 hover:-translate-y-0.5 hover:border-amber-200 hover:bg-amber-50/60 hover:shadow-sm focus-visible:ring-2 focus-visible:ring-amber-500 motion-reduce:transition-none"
               >
                 <Icon name={card.icon} className="size-4 shrink-0 text-amber-700" />
-                <span className="flex min-w-0 flex-1 items-center justify-between gap-2 text-xs font-medium text-stone-600">
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2 text-xs font-semibold text-slate-600">
                   {card.label}{" "}
-                  <strong className="text-sm text-stone-900 tabular-nums">{card.count.toLocaleString()}</strong>
+                  <strong className="text-sm text-slate-900 tabular-nums">{card.count.toLocaleString()}</strong>
                 </span>
                 <Icon
                   name="ChevronRight"
-                  className="size-3.5 text-stone-500 transition-transform group-hover:translate-x-0.5"
+                  className="size-3.5 text-slate-400 transition-transform group-hover:translate-x-0.5"
                 />
               </Link>
             ))}
           </section>
           <section className={panel}>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#f1eadc] px-5 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eadfca] px-5 py-4">
               <div>
-                <h2 className="text-sm font-semibold text-stone-900">Councilor progress</h2>
-                <p className="mt-1 text-xs text-stone-500">Assignments and recent counselling across your team</p>
+                <h2 className="text-sm font-semibold text-slate-900">Councilor progress</h2>
+                <p className="mt-1 text-xs text-slate-500">Assignments and recent counselling across your team</p>
               </div>
-              <span className="rounded-sm border border-emerald-100 bg-emerald-50 px-2 py-1 text-[10px] font-medium text-emerald-700">
+              <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
                 Team activity
               </span>
             </div>
-            <div className="grid gap-4 border-b border-[#f1eadc] bg-[#fffdf9] p-5 sm:grid-cols-3">
+            <div className="grid gap-4 border-b border-[#eadfca] bg-[#fffdf7] p-5 sm:grid-cols-3">
               {[
                 { label: "Total assigned customers", value: progress.reduce((sum, row) => sum + row.assigned, 0) },
                 {
@@ -321,9 +322,9 @@ export default function Overview() {
                   value: progress.reduce((sum, row) => sum + row.inactive, 0),
                 },
               ].map((card) => (
-                <div key={card.label} className="border-l-2 border-amber-200 pl-3">
-                  <p className="text-[11px] leading-5 text-stone-500">{card.label}</p>
-                  <p className="mt-1 text-xl font-semibold text-stone-900 tabular-nums">
+                <div key={card.label} className="border-l-2 border-amber-300 pl-3">
+                  <p className="text-[11px] leading-5 text-slate-500">{card.label}</p>
+                  <p className="mt-1 text-xl font-semibold text-slate-900 tabular-nums">
                     {card.value.toLocaleString()}
                   </p>
                 </div>
@@ -331,7 +332,7 @@ export default function Overview() {
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm [&_td]:px-5 [&_td]:py-4 [&_th]:px-5 [&_th]:py-3 [&_th]:font-semibold [&_th]:whitespace-nowrap">
-                <thead className="bg-[#fffdf9] text-[10px] tracking-wider text-stone-500 uppercase">
+                <thead className="bg-[#fffdf9] text-[10px] tracking-wider text-slate-500 uppercase">
                   <tr>
                     <th className="p-3">Councilor</th>
                     <th className="p-3">Assigned</th>
@@ -343,27 +344,27 @@ export default function Overview() {
                   {progress
                     .slice((actualProgressPage - 1) * progressSize, actualProgressPage * progressSize)
                     .map((row) => (
-                      <tr key={row.email} className="border-t border-[#f1eadc] transition-colors hover:bg-[#fffdf7]">
+                      <tr key={row.email} className="border-t border-[#eadfca] transition-colors hover:bg-amber-50/45">
                         <td className="p-3">
                           <div className="flex items-center gap-3">
                             <LeadAvatar name={row.name} />
                             <div className="min-w-0">
-                              <p className="max-w-48 truncate font-semibold text-stone-700" title={row.name}>
+                              <p className="max-w-48 truncate font-semibold text-slate-700" title={row.name}>
                                 {row.name}
                               </p>
-                              <p className="mt-0.5 max-w-48 truncate text-xs text-stone-500" title={row.email}>
+                              <p className="mt-0.5 max-w-48 truncate text-xs text-slate-500" title={row.email}>
                                 {row.email}
                               </p>
                             </div>
                           </div>
                         </td>
-                        <td className="p-3 font-medium text-stone-700 tabular-nums">{row.assigned.toLocaleString()}</td>
+                        <td className="p-3 font-medium text-slate-700 tabular-nums">{row.assigned.toLocaleString()}</td>
                         <td className="p-3">
-                          <span className="rounded-sm bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 tabular-nums">
+                          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 tabular-nums">
                             {row.counselling24Hours.toLocaleString()}
                           </span>
                         </td>
-                        <td className="p-3 text-stone-500 tabular-nums">{row.inactive.toLocaleString()}</td>
+                        <td className="p-3 text-slate-500 tabular-nums">{row.inactive.toLocaleString()}</td>
                       </tr>
                     ))}
                 </tbody>
@@ -443,7 +444,7 @@ export default function Overview() {
                   <span className="grid size-9 place-items-center rounded-sm border border-violet-100 bg-violet-50 text-violet-700">
                     <Icon name="Filter" className="size-4" />
                   </span>
-                  <h2 className="text-sm font-semibold text-stone-900">Customers by funnels</h2>
+                  <h2 className="text-sm font-semibold text-slate-900">Customers by funnels</h2>
                 </div>
                 <LeadSelect
                   label="Choose month"
@@ -455,7 +456,7 @@ export default function Overview() {
                   }}
                 />
               </div>
-              <p className="px-5 pb-2 text-xs leading-5 text-stone-500">
+              <p className="px-5 pb-2 text-xs leading-5 text-slate-500">
                 Current funnel of customers added in {month ? monthLabel(month.month) : "this month"}.
               </p>
               <div className="grid gap-4 p-5">
@@ -464,16 +465,16 @@ export default function Overview() {
                   .map((funnel, index) => (
                     <div key={`${funnel.name}-${index}`} className="grid gap-2 text-xs">
                       <div className="flex min-w-0 justify-between gap-2">
-                        <span className="truncate font-medium text-stone-600" title={funnel.name}>
+                        <span className="truncate font-medium text-slate-600" title={funnel.name}>
                           {funnel.name}
                         </span>
                         <strong className="text-violet-700 tabular-nums">{funnel.count.toLocaleString()}</strong>
                       </div>
-                      <div className="h-2 overflow-hidden rounded-sm bg-violet-50">
+                      <div className="h-2 overflow-hidden rounded-full bg-violet-50">
                         <div
                           aria-label={`${funnel.name}: ${funnel.count} customers`}
                           role="img"
-                          className="h-full rounded-sm bg-linear-to-r from-violet-400 to-violet-500 transition-all duration-700 motion-reduce:transition-none"
+                          className="h-full rounded-full bg-linear-to-r from-violet-400 to-amber-500 transition-all duration-700 motion-reduce:transition-none"
                           style={{
                             width: `${(funnel.count / Math.max(1, ...(month?.funnels.map((item) => item.count) ?? []))) * 100}%`,
                           }}

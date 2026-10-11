@@ -39,4 +39,4 @@ export const leadPresentation = {
 } as const;
 
 export const leadPanel = "min-w-0 rounded-sm border border-[#eadfca] bg-white shadow-[0_2px_8px_rgba(120,80,30,0.035)]";
-export const leadInput = "h-10 border-[#eadfca] bg-white px-3 focus:border-amber-500 focus:ring-amber-100";
+export const leadInput = "h-10 rounded-sm border-[#eadfca] bg-white px-3 focus:border-amber-500 focus:ring-amber-100";

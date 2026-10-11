@@ -181,7 +181,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
     }
   }
   return (
-    <section className="grid min-w-0 gap-5">
+    <section className="custom-parent-border grid min-w-0 gap-5 bg-[#fffdf7]">
       <PageHeading
         title={title}
         icon={mine ? "FileText" : kind === "funnels" ? "Filter" : kind === "councilors" ? "User" : "Users"}
@@ -208,17 +208,19 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
           </Action>
         )}
       </PageHeading>
-      <div className={`${leadPanel} grid gap-4 p-4 sm:p-5`}>
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-stone-800">
-            <Icon name="Filter" className="size-4 text-amber-700" />
+      <div className={`${leadPanel} grid gap-4 overflow-hidden p-4 sm:p-5`}>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eadfca] pb-4">
+          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+            <span className="grid size-8 place-items-center rounded-sm bg-amber-50 text-amber-700">
+              <Icon name="Filter" className="size-4" />
+            </span>
             Find and organize
           </h2>
-          <span className="text-xs text-stone-500">Search, filter, and manage your {kind}</span>
+          <span className="text-xs text-slate-500">Search, filter, and manage your {kind}</span>
         </div>
         <div className="flex flex-wrap items-start gap-2">
           <div className="relative min-w-0 flex-1 basis-full sm:min-w-48 sm:basis-auto">
-            <Icon name="Search" className="pointer-events-none absolute top-3 left-3 size-4 text-stone-500" />
+            <Icon name="Search" className="pointer-events-none absolute top-3.5 left-3.5 size-4 text-slate-400" />
             <Input
               aria-label={`Search loaded ${title.toLowerCase()}`}
               className={`${leadInput} pl-9`}
@@ -282,9 +284,9 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
           )}
         </div>
         {kind === "customers" && (
-          <div className="grid gap-3 border-t border-[#f1eadc] pt-4 sm:grid-cols-3">
+          <div className="grid gap-3 border-t border-[#eadfca] pt-4 sm:grid-cols-3">
             <div className="grid content-start gap-2">
-              <p className="text-[11px] font-semibold tracking-wide text-stone-500">Funnel</p>
+              <p className="text-[11px] font-bold tracking-wide text-slate-500">Funnel</p>
               <RecordSelect
                 kind="funnels"
                 label="All funnels"
@@ -297,8 +299,8 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
               />
             </div>
             <div className="grid content-start gap-2">
-              <p className="text-[11px] font-semibold tracking-wide text-stone-500">Assignment</p>
-              <div className="rounded-sm border border-[#eadfca] bg-[#fffdf9] p-2.5">
+              <p className="text-[11px] font-bold tracking-wide text-slate-500">Assignment</p>
+              <div className="rounded-sm border border-[#eadfca] bg-[#fffdf7] p-2.5">
                 <LeadSelect
                   label="Filter by assignment"
                   value={assignment}
@@ -313,11 +315,11 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                   }}
                   disabled={busy}
                 />
-                <p className="mt-2 text-[11px] leading-5 text-stone-500">Filter by assigned or unassigned customers.</p>
+                <p className="mt-2 text-[11px] leading-5 text-slate-500">Filter by assigned or unassigned customers.</p>
               </div>
             </div>
             <div className="grid content-start gap-2">
-              <p className="text-[11px] font-semibold tracking-wide text-stone-500">Councilor</p>
+              <p className="text-[11px] font-bold tracking-wide text-slate-500">Councilor</p>
               <RecordSelect
                 kind="councilors"
                 label="All councilors"
@@ -332,14 +334,14 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
           </div>
         )}
         {mine && (
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-slate-500">
             Assignment filters only narrow your own leads; other councilors and unassigned customers will have no
             matches.
           </p>
         )}
         {kind !== "funnels" && canCreate && (
-          <details className="rounded-sm border border-[#f1eadc] bg-[#fffdf7] px-3 py-2.5 text-xs text-stone-500">
-            <summary className="cursor-pointer font-medium text-stone-600">Excel import guidelines</summary>
+          <details className="rounded-sm border border-[#eadfca] bg-[#fffdf7] px-3 py-2.5 text-xs text-slate-500">
+            <summary className="cursor-pointer font-semibold text-slate-700">Excel import guidelines</summary>
             <p className="pt-2 leading-5">
               Excel: up to 100 rows per import. Keep Mobile cells as text. Customer imports require Funnel ID from a
               funnel&apos;s View dialog. Assignment columns in exports are informational; My Leads imports assign to
@@ -358,21 +360,21 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
         </p>
       )}
       <div className={leadPanel}>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#f1eadc] px-4 py-4 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eadfca] px-4 py-4 sm:px-5">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-semibold text-stone-900">{mine ? "Your customers" : `${title} directory`}</h2>
+            <h2 className="text-sm font-semibold text-slate-900">{mine ? "Your customers" : `${title} directory`}</h2>
             {canRead && result && (
-              <span className="rounded-sm border border-[#eadfca] bg-[#fffaf0] px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+              <span className="rounded-full border border-amber-100 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-700">
                 {result.total.toLocaleString()}
               </span>
             )}
           </div>
-          <p className="text-xs text-stone-500">
+          <p className="text-xs text-slate-500">
             {canRead && result ? `${items.length} shown on this page` : "Customer relationship management"}
           </p>
         </div>
         {activeSelection.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-3 text-xs sm:px-5">
+          <div className="flex flex-wrap items-center gap-2 border-b border-amber-100 bg-amber-50 px-4 py-3 text-xs sm:px-5">
             <span className="mr-1 font-semibold text-amber-900">{activeSelection.length} selected</span>
             <Action
               disabled={!canUpdate || busy || isFetching}
@@ -423,7 +425,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm [&_td]:px-4 [&_td]:py-4 [&_th]:px-4 [&_th]:py-3 [&_th]:font-semibold [&_th]:whitespace-nowrap">
-                <thead className="border-b border-[#f1eadc] bg-[#fffdf9] text-[10px] tracking-wider text-stone-500 uppercase">
+                <thead className="border-b border-[#eadfca] bg-[#fffdf9] text-[10px] tracking-wider text-slate-500 uppercase">
                   <tr>
                     <th className="w-10 p-3">
                       <Checkbox
@@ -460,7 +462,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                   {items.map((item) => (
                     <tr
                       key={item.id}
-                      className={`border-b border-[#f1eadc] transition-colors duration-200 last:border-0 hover:bg-[#fffdf7] ${activeSelection.includes(item.id) ? "bg-amber-50/60" : "bg-white"}`}
+                      className={`border-b border-[#eadfca] transition-colors duration-700 last:border-0 hover:bg-amber-50/45 ${activeSelection.includes(item.id) ? "bg-amber-50/80" : "bg-white"}`}
                     >
                       <td className="p-3">
                         <Checkbox
@@ -488,7 +490,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                               }
                             />
                           )}
-                          <span className="max-w-40 truncate font-semibold text-stone-800" title={item.name}>
+                          <span className="max-w-40 truncate font-semibold text-slate-800" title={item.name}>
                             {item.name}
                           </span>
                         </div>
@@ -500,14 +502,14 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                               {item.position}
                             </span>
                           </td>
-                          <td className="max-w-52 truncate p-3 text-stone-500" title={item.description}>
+                          <td className="max-w-52 truncate p-3 text-slate-500" title={item.description}>
                             {item.description || "—"}
                           </td>
                         </>
                       ) : (
                         <>
-                          <td className="whitespace-nowrap p-3 text-xs text-stone-600 tabular-nums">{item.mobile}</td>
-                          <td className="max-w-44 truncate p-3 text-xs text-stone-500" title={item.email}>
+                          <td className="whitespace-nowrap p-3 text-xs text-slate-600 tabular-nums">{item.mobile}</td>
+                          <td className="max-w-44 truncate p-3 text-xs text-slate-500" title={item.email}>
                             {item.email || "—"}
                           </td>
                         </>
@@ -521,14 +523,14 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                             {item.funnelName ?? item.funnelId}
                           </td>
                           <td
-                            className="max-w-44 truncate p-3 text-xs text-stone-500"
+                            className="max-w-44 truncate p-3 text-xs text-slate-500"
                             title={item.assignedName || item.assignedTo || "Unassigned"}
                           >
                             {item.assignedName || item.assignedTo || "Unassigned"}
                           </td>
                           <td className="p-3">
                             <span
-                              className={`inline-flex items-center gap-1 text-xs ${item.blocked ? "text-red-600" : "text-stone-500"}`}
+                              className={`inline-flex items-center gap-1 text-xs ${item.blocked ? "text-red-600" : "text-slate-500"}`}
                             >
                               <Icon name={item.blocked ? "Lock" : "ShieldCheck"} className="size-3.5" />
                               {item.blocked ? "Blocked" : "No"}
@@ -644,7 +646,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                     Search database
                   </Action>
                 )}
-                {term && search === text.trim() && <p className="text-xs text-stone-500">Database search completed.</p>}
+                {term && search === text.trim() && <p className="text-xs text-slate-500">Database search completed.</p>}
               </EmptyState>
             )}
             <Pagination
@@ -666,7 +668,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
         {isFetching && (
           <p
             role="status"
-            className="flex items-center gap-2 border-t border-[#f1eadc] px-5 py-3 text-xs text-amber-800"
+            className="flex items-center gap-2 border-t border-[#eadfca] px-5 py-3 text-xs text-amber-800"
           >
             <Icon name="RefreshCw" className="size-3 animate-spin" />
             Loading records…
@@ -690,9 +692,9 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
               .map(([key, value]) => (
                 <div
                   key={key}
-                  className="grid gap-1.5 border-b border-[#f1eadc] py-3 last:border-0 sm:grid-cols-[140px_1fr]"
+                  className="grid gap-1.5 border-b border-[#eadfca] py-3 last:border-0 sm:grid-cols-[140px_1fr]"
                 >
-                  <dt className="text-xs font-medium text-stone-500 capitalize">{key.replace(/([A-Z])/g, " $1")}</dt>
+                  <dt className="text-xs font-medium text-slate-500 capitalize">{key.replace(/([A-Z])/g, " $1")}</dt>
                   <dd className="min-w-0 break-words whitespace-pre-wrap">
                     {typeof value === "boolean" ? (value ? "Yes" : "No") : value || "—"}
                   </dd>
@@ -717,7 +719,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
               activeOnly
               disabled={mutating}
             />
-            <div className="flex justify-end gap-2 border-t border-[#f1eadc] pt-4">
+            <div className="flex justify-end gap-2 border-t border-[#eadfca] pt-4">
               <Action disabled={mutating} onClick={() => setAssigning(null)}>
                 Cancel
               </Action>
@@ -758,7 +760,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
               only those rows again.
             </p>
             {importResult.errors.slice((errorPage - 1) * errorPageSize, errorPage * errorPageSize).map((failure) => (
-              <p key={failure.row} className="break-words rounded-sm border border-[#eadfca] bg-red-50 p-2">
+              <p key={failure.row} className="break-words rounded-sm border border-red-200 bg-red-50 p-2">
                 Row {failure.row}: {failure.error}
               </p>
             ))}
