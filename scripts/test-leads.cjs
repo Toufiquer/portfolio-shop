@@ -499,6 +499,62 @@ function excelParser() {
       await expectStatus(path, method, body, user, 403);
     }
   });
+  await check("empty Leads workspaces can receive the exact guarded demo dataset", async () => {
+    await expectStatus(`${base}/demo`, "GET", undefined, undefined, 401);
+    await expectStatus(`${base}/demo`, "POST", undefined, admin, 415);
+    await expectStatus(`${base}/demo`, "POST", {}, councilorA, 403);
+    assert.equal((await expectStatus(`${base}/demo`, "GET", undefined, admin, 200)).available, true);
+    const seeded = await expectStatus(`${base}/demo`, "POST", {}, admin, 200);
+    assert.deepEqual(seeded, {
+      funnels: 5,
+      customers: 200,
+      councilors: 5,
+      assignments: 189,
+      notes: 200,
+      unassigned: 11,
+    });
+    assert.deepEqual(
+      await Promise.all(
+        ["leads-funnels", "leads-customers", "leads-councilors", "leads-activities"].map((collection) =>
+          db.collection(collection).countDocuments(),
+        ),
+      ),
+      [5, 200, 5, 389],
+    );
+    assert.equal(await db.collection("leads-activities").countDocuments({ type: "note" }), 200);
+    assert.equal((await db.collection("leads-activities").distinct("customerId", { type: "note" })).length, 200);
+    assert.equal(
+      await db.collection("leads-activities").countDocuments({
+        type: "note",
+        note: { $type: "string" },
+        authorName: { $type: "string" },
+      }),
+      200,
+    );
+    assert.deepEqual(
+      await db
+        .collection("leads-customers")
+        .aggregate([
+          { $match: { assignedTo: { $ne: null } } },
+          { $group: { _id: "$assignedTo", count: { $sum: 1 } } },
+          { $sort: { _id: 1 } },
+        ])
+        .toArray(),
+      [
+        { _id: "councilor1@gmail.com", count: 15 },
+        { _id: "councilor2@gmail.com", count: 25 },
+        { _id: "councilor3@gmail.com", count: 35 },
+        { _id: "councilor4@gmail.com", count: 55 },
+        { _id: "councilor5@gmail.com", count: 59 },
+      ],
+    );
+    await expectStatus(`${base}/demo`, "POST", {}, admin, 409);
+    await Promise.all(
+      ["leads-funnels", "leads-customers", "leads-councilors", "leads-activities"].map((collection) =>
+        db.collection(collection).deleteMany({}),
+      ),
+    );
+  });
   const funnelInput = {
     name: "QA New enquiries",
     position: 1,
@@ -613,6 +669,30 @@ function excelParser() {
       adminMine.items.map((item) => item.id),
       [adminOwn.id],
     );
+  });
+  await check("My Leads notes save the assigned councilor author and timestamp", async () => {
+    await expectStatus(
+      itemEndpoint(other.id, true),
+      "PATCH",
+      { action: "note", note: "Not my customer" },
+      councilorA,
+      403,
+    );
+    await expectStatus(itemEndpoint(own.id, true), "PATCH", { action: "note", note: "" }, councilorA, 400);
+    const saved = await expectStatus(
+      itemEndpoint(own.id, true),
+      "PATCH",
+      { action: "note", note: "Customer requested a follow-up call." },
+      councilorA,
+      200,
+    );
+    assert.equal(saved.note.note, "Customer requested a follow-up call.");
+    assert.equal(saved.note.authorEmail, "qa-councilor-a@example.test");
+    assert.equal(saved.note.authorName, "QA Councilor A");
+    assert.ok(!Number.isNaN(Date.parse(saved.note.createdAt)));
+    const mine = await expectStatus(endpoint("customers", true), "GET", undefined, councilorA, 200);
+    const notedCustomer = mine.items.find((item) => item.id === own.id);
+    assert.deepEqual(notedCustomer.notes, [saved.note]);
   });
   await check("Councilor list, search, exports, and overview exclude other assignments", async () => {
     const list = await expectStatus(endpoint("customers"), "GET", undefined, councilorA, 200);

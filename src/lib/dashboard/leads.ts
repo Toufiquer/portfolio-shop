@@ -22,6 +22,13 @@ export const leadCan = (actor: LeadActor | undefined, area: string, operation: D
 type LeadBase = { id: string; name: string; status: LeadStatus; createdAt: string; updatedAt: string };
 export type LeadFunnel = LeadBase & { kind: "funnels"; position: number; description: string };
 export type LeadCouncilor = LeadBase & { kind: "councilors"; mobile: string; email: string };
+export type LeadNote = {
+  id: string;
+  note: string;
+  authorEmail: string;
+  authorName: string;
+  createdAt: string;
+};
 export type LeadCustomer = LeadBase & {
   kind: "customers";
   mobile: string;
@@ -33,6 +40,7 @@ export type LeadCustomer = LeadBase & {
   lastCounselledAt: string | null;
   funnelName?: string;
   assignedName?: string;
+  notes?: LeadNote[];
 };
 export type LeadItem = LeadFunnel | LeadCouncilor | LeadCustomer;
 export type LeadInput =
@@ -48,6 +56,7 @@ export type LeadInput =
       | "lastCounselledAt"
       | "funnelName"
       | "assignedName"
+      | "notes"
     >;
 export type LeadListParams = {
   kind: LeadKind;

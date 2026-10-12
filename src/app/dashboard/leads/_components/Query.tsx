@@ -54,6 +54,15 @@ const statusOptions = [
   { value: "active", label: "Active" },
   { value: "inactive", label: "Inactive" },
 ];
+function noteDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return `${new Intl.DateTimeFormat("en-GB", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Asia/Dhaka",
+  }).format(date)} · Asia/Dhaka`;
+}
 export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: boolean }) {
   const [page, setPage] = useState(1),
     [pageSize, setPageSize] = useState(10);
@@ -68,6 +77,8 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
   const [view, setView] = useState<LeadItem | null>(null);
   const [assigning, setAssigning] = useState<LeadCustomer | null>(null);
   const [assignee, setAssignee] = useState("");
+  const [noting, setNoting] = useState<LeadCustomer | null>(null);
+  const [note, setNote] = useState("");
   const [deleting, setDeleting] = useState<string[] | null>(null);
   const [workingFile, setWorkingFile] = useState(false);
   const [fileProgress, setFileProgress] = useState("");
@@ -587,6 +598,23 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                             </Action>
                           )}
                           {item.kind === "customers" &&
+                            mine &&
+                            canUpdate &&
+                            item.assignedTo === actor?.email &&
+                            (actor?.bypassed || actor?.role === "councilor") && (
+                              <Action
+                                disabled={busy}
+                                title={`Add note for ${item.name}`}
+                                onClick={() => {
+                                  setNoting(item);
+                                  setNote("");
+                                }}
+                              >
+                                <Icon name="MessageSquare" />
+                                Add note
+                              </Action>
+                            )}
+                          {item.kind === "customers" &&
                             actor?.role === "councilor" &&
                             canUpdate &&
                             !mine &&
@@ -688,7 +716,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
         <LeadsModal title="Record details" onClose={() => setView(null)}>
           <dl className="grid gap-1 p-5 text-sm">
             {Object.entries(view)
-              .filter(([key]) => key !== "kind")
+              .filter(([key]) => key !== "kind" && key !== "notes")
               .map(([key, value]) => (
                 <div
                   key={key}
@@ -701,6 +729,88 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                 </div>
               ))}
           </dl>
+          {view.kind === "customers" && (
+            <section className="border-t border-[#eadfca] p-5">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-slate-800">Notes</h3>
+                <span className="text-xs text-slate-500">{view.notes?.length ?? 0}</span>
+              </div>
+              {view.notes?.length ? (
+                <div className="mt-3 grid gap-3">
+                  {view.notes.map((entry) => (
+                    <article key={entry.id} className="rounded-sm border border-[#eadfca] bg-[#fffdf7] p-3 text-sm">
+                      <p className="break-words whitespace-pre-wrap text-slate-700">{entry.note}</p>
+                      <p className="mt-2 break-words text-xs text-slate-500">
+                        {entry.authorName} · {entry.authorEmail} · {noteDate(entry.createdAt)}
+                      </p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-slate-500">No notes have been added yet.</p>
+              )}
+            </section>
+          )}
+        </LeadsModal>
+      )}
+      {noting && (
+        <LeadsModal
+          title={`Add note for ${noting.name}`}
+          busy={mutating}
+          onClose={() => {
+            setNoting(null);
+            setNote("");
+          }}
+        >
+          <form
+            className="grid gap-4 p-5"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void (async () => {
+                const response = await run({ operation: "note", id: noting.id, note: note.trim() }, "Note saved.");
+                if (response) {
+                  setNoting(null);
+                  setNote("");
+                }
+              })();
+            }}
+          >
+            <div className="rounded-sm border border-[#eadfca] bg-[#fffdf7] p-3">
+              <p className="text-sm font-semibold text-slate-800">{noting.name}</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Your councilor identity and the Bangladesh time are saved automatically.
+              </p>
+            </div>
+            <label className="grid gap-2 text-sm font-medium text-slate-700">
+              Note
+              <textarea
+                aria-label={`Note for ${noting.name}`}
+                className={`${leadInput} min-h-32 resize-y py-2.5`}
+                disabled={mutating}
+                maxLength={2000}
+                placeholder="Write the customer note…"
+                required
+                value={note}
+                onChange={(event) => setNote(event.target.value)}
+              />
+              <span className="text-right text-xs font-normal text-slate-500">{note.length}/2000</span>
+            </label>
+            <div className="flex justify-end gap-2 border-t border-[#eadfca] pt-4">
+              <Action
+                disabled={mutating}
+                onClick={() => {
+                  setNoting(null);
+                  setNote("");
+                }}
+                type="button"
+              >
+                Cancel
+              </Action>
+              <Action tone="save" disabled={mutating || !note.trim()} type="submit">
+                {mutating ? "Saving…" : "Save note"}
+              </Action>
+            </div>
+          </form>
         </LeadsModal>
       )}
       {assigning && (

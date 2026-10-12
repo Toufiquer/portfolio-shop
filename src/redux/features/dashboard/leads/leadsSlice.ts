@@ -9,7 +9,7 @@ import type { LeadInput, LeadKind, LeadList, LeadListParams, LeadOverview, LeadS
 import { apiSlice } from "@/redux/api/apiSlice";
 
 export type LeadMutation = {
-  operation: "create" | "update" | "delete" | "status" | "claim" | "assign" | "counsel" | "import";
+  operation: "create" | "update" | "delete" | "status" | "claim" | "assign" | "counsel" | "note" | "import";
   kind: LeadKind;
   mine?: boolean;
   id?: string;
@@ -18,12 +18,22 @@ export type LeadMutation = {
   rows?: LeadInput[];
   status?: LeadStatus;
   assignedTo?: string | null;
+  note?: string;
 };
 export type LeadMutationResult = {
   imported?: number;
   errors?: { row: number; error: string }[];
   updatedCount?: number;
   deletedCount?: number;
+};
+export type LeadDemoState = { available: boolean };
+export type LeadDemoResult = {
+  funnels: number;
+  customers: number;
+  councilors: number;
+  assignments: number;
+  notes: number;
+  unassigned: number;
 };
 export const leadQueryString = (params: LeadListParams) => {
   const query = new URLSearchParams();
@@ -56,8 +66,17 @@ const leadsApi = apiSlice.enhanceEndpoints({ addTagTypes: ["Leads"] }).injectEnd
       query: () => "leads/v1?overview=true",
       providesTags: ["Leads"],
     }),
+    getLeadsDemoState: build.query<LeadDemoState, void>({
+      query: () => "leads/v1/demo",
+      providesTags: ["Leads"],
+    }),
+    seedLeadsDemo: build.mutation<LeadDemoResult, void>({
+      // Cookie-authenticated POST requests use the shared JSON media-type guard.
+      query: () => ({ url: "leads/v1/demo", method: "POST", body: {} }),
+      invalidatesTags: ["Leads"],
+    }),
     mutateLeads: build.mutation<LeadMutationResult, LeadMutation>({
-      query: ({ operation, kind, mine, id, ids, data, rows, status, assignedTo }) => {
+      query: ({ operation, kind, mine, id, ids, data, rows, status, assignedTo, note }) => {
         const query = leadQueryString({ kind, mine });
         if (operation === "create") return { url: `leads/v1?${query}`, method: "POST", body: data };
         if (operation === "import") return { url: "leads/v1/import", method: "POST", body: { kind, mine, rows } };
@@ -71,7 +90,13 @@ const leadsApi = apiSlice.enhanceEndpoints({ addTagTypes: ["Leads"] }).injectEnd
           url: `leads/v1/${encodeURIComponent(id ?? "")}?${query}`,
           method: "PATCH",
           body:
-            operation === "update" ? data : { action: operation, ...(operation === "assign" ? { assignedTo } : {}) },
+            operation === "update"
+              ? data
+              : {
+                  action: operation,
+                  ...(operation === "assign" ? { assignedTo } : {}),
+                  ...(operation === "note" ? { note } : {}),
+                },
         };
       },
       invalidatesTags: ["Leads"],
@@ -83,5 +108,7 @@ export const {
   useGetLeadsQuery,
   useLazyGetLeadsQuery,
   useGetLeadsOverviewQuery,
+  useGetLeadsDemoStateQuery,
+  useSeedLeadsDemoMutation,
   useMutateLeadsMutation,
 } = leadsApi;

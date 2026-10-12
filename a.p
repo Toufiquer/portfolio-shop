@@ -1,1 +1,0 @@
-Look at the page 'src/app/dashboard/leads/...' Inside you found there is tabs and main page. Now please Update the design with Good Looking. Now Update all tabs and main page. 

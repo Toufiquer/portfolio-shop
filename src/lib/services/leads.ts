@@ -25,10 +25,18 @@ import {
   type LeadInput,
   type LeadItem,
   type LeadKind,
+  type LeadNote,
   type LeadOverview,
 } from "@/lib/dashboard/leads";
 import type { DashboardOperation } from "@/lib/dashboard/permissions";
-import { ensureLeadIndexes, leadActivitiesCollection, leadsCollection, type LeadDocument } from "@/lib/models/leads";
+import {
+  ensureLeadIndexes,
+  leadActivitiesCollection,
+  leadDemoLocksCollection,
+  leadsCollection,
+  type LeadActivity,
+  type LeadDocument,
+} from "@/lib/models/leads";
 
 export class LeadError extends Error {
   constructor(
@@ -79,6 +87,157 @@ function requirePermission(actor: LeadActor, area: string, operation: DashboardO
     throw new LeadError(`You do not have ${operation} permission for this Leads area.`, 403);
 }
 const areaFor = (kind: LeadKind, mine: boolean) => (mine && kind === "customers" ? "my-leads" : kind);
+
+type LeadDemoCounts = { funnels: number; customers: number; councilors: number; activities: number };
+const demoCouncilorEmails = [
+  "councilor1@gmail.com",
+  "councilor2@gmail.com",
+  "councilor3@gmail.com",
+  "councilor4@gmail.com",
+  "councilor5@gmail.com",
+] as const;
+const demoAssignmentSizes = [15, 25, 35, 55, 59] as const;
+
+function requireDemoManager(actor: LeadActor) {
+  if (!leadIsManager(actor)) throw new LeadError("Only a Developer or Admin can insert Leads demo data.", 403);
+  (["funnels", "customers", "councilors"] as const).forEach((area) => requirePermission(actor, area, "create"));
+}
+async function demoCounts(): Promise<LeadDemoCounts> {
+  const [funnels, customers, councilors, activities] = await Promise.all([
+    leadsCollection("funnels").countDocuments(),
+    leadsCollection("customers").countDocuments(),
+    leadsCollection("councilors").countDocuments(),
+    leadActivitiesCollection().countDocuments(),
+  ]);
+  return { funnels, customers, councilors, activities };
+}
+const isDemoEmpty = (counts: LeadDemoCounts) => Object.values(counts).every((count) => count === 0);
+
+/** Demo records can only be added to a completely unused Leads workspace. */
+export async function leadsDemoState(actor: LeadActor) {
+  requireDemoManager(actor);
+  const counts = await demoCounts();
+  return { available: isDemoEmpty(counts) };
+}
+
+export async function seedLeadsDemo(actor: LeadActor) {
+  requireDemoManager(actor);
+  const locks = leadDemoLocksCollection();
+  try {
+    await locks.insertOne({ _id: "initial-demo", createdAt: new Date() });
+  } catch (error) {
+    if (error instanceof MongoServerError && error.code === 11000)
+      throw new LeadError("Demo data is already being inserted. Please wait for it to finish.", 409);
+    throw error;
+  }
+  const now = new Date();
+  const inserted: { kind: LeadKind; ids: string[] }[] = [];
+  const activityIds: string[] = [];
+  try {
+    if (!isDemoEmpty(await demoCounts()))
+      throw new LeadError("Demo data is only available when every Leads tab is empty.", 409);
+    await ensureLeadIndexes();
+    const funnels: LeadDocument[] = [
+      ["New enquiries", "First contact and qualification"],
+      ["Discovery", "Understand the customer need"],
+      ["Proposal", "Share the recommended business solution"],
+      ["Decision", "Confirm next steps and approval"],
+      ["Customer success", "Onboarding and ongoing support"],
+    ].map(([name, description], index) => ({
+      id: randomUUID(),
+      kind: "funnels",
+      name,
+      description,
+      position: index + 1,
+      status: "active",
+      createdAt: now,
+      updatedAt: now,
+    }));
+    const councilors: LeadDocument[] = demoCouncilorEmails.map((email, index) => ({
+      id: randomUUID(),
+      kind: "councilors",
+      name: `Demo Councilor ${index + 1}`,
+      email,
+      mobile: `+880181000000${index + 1}`,
+      status: "active",
+      createdAt: now,
+      updatedAt: now,
+    }));
+    let assignmentIndex = 0;
+    const customers: LeadDocument[] = Array.from({ length: 200 }, (_, index) => {
+      while (
+        assignmentIndex < demoAssignmentSizes.length &&
+        index >= demoAssignmentSizes.slice(0, assignmentIndex + 1).reduce((sum, value) => sum + value, 0)
+      )
+        assignmentIndex++;
+      const assignedTo = demoCouncilorEmails[assignmentIndex] ?? null;
+      const number = String(index + 1).padStart(3, "0");
+      return {
+        id: randomUUID(),
+        kind: "customers",
+        name: `Demo Customer ${number}`,
+        email: `demo.customer${number}@example.com`,
+        mobile: `+88019${String(10000000 + index)}`,
+        funnelId: funnels[index % funnels.length].id,
+        blocked: false,
+        status: "active",
+        assignedTo,
+        assignedAt: assignedTo ? now.toISOString() : null,
+        lastCounselledAt: null,
+        createdAt: now,
+        updatedAt: now,
+      };
+    });
+    const assignments = customers.flatMap((customer) =>
+      customer.kind === "customers" && customer.assignedTo
+        ? [
+            {
+              id: randomUUID(),
+              customerId: customer.id,
+              councilor: customer.assignedTo,
+              type: "assigned" as const,
+              createdAt: now,
+            },
+          ]
+        : [],
+    );
+    const notes = customers.map((customer, index) => {
+      const councilorIndex = index % councilors.length;
+      return {
+        id: randomUUID(),
+        customerId: customer.id,
+        councilor: demoCouncilorEmails[councilorIndex],
+        authorName: councilors[councilorIndex].name,
+        type: "note" as const,
+        note: `Welcome note for ${customer.name}.`,
+        createdAt: now,
+      };
+    });
+    const activities = [...assignments, ...notes];
+    inserted.push({ kind: "funnels", ids: funnels.map((item) => item.id) });
+    await leadsCollection("funnels").insertMany(funnels);
+    inserted.push({ kind: "councilors", ids: councilors.map((item) => item.id) });
+    await leadsCollection("councilors").insertMany(councilors);
+    inserted.push({ kind: "customers", ids: customers.map((item) => item.id) });
+    await leadsCollection("customers").insertMany(customers);
+    activityIds.push(...activities.map((item) => item.id));
+    await leadActivitiesCollection().insertMany(activities);
+    return {
+      funnels: funnels.length,
+      customers: customers.length,
+      councilors: councilors.length,
+      assignments: assignments.length,
+      notes: notes.length,
+      unassigned: customers.length - assignments.length,
+    };
+  } catch (error) {
+    await Promise.all(inserted.map(({ kind, ids }) => leadsCollection(kind).deleteMany({ id: { $in: ids } })));
+    if (activityIds.length) await leadActivitiesCollection().deleteMany({ id: { $in: activityIds } });
+    throw error;
+  } finally {
+    await locks.deleteOne({ _id: "initial-demo" });
+  }
+}
 
 export async function leadOptions(actor: LeadActor, query: URLSearchParams) {
   const kind = leadKind(query.get("lookup"));
@@ -175,19 +334,36 @@ export async function listLeads(actor: LeadActor, query: URLSearchParams) {
   const serialized = items.map(serialize);
   if (kind === "customers") {
     const customerItems = serialized.filter((item) => item.kind === "customers");
-    const [funnels, councilors] = await Promise.all([
+    const [funnels, councilors, noteActivities] = await Promise.all([
       leadsCollection("funnels")
         .find({ id: { $in: customerItems.map((item) => item.funnelId) } })
         .toArray(),
       leadsCollection("councilors")
         .find({ email: { $in: customerItems.flatMap((item) => (item.assignedTo ? [item.assignedTo] : [])) } })
         .toArray(),
+      leadActivitiesCollection()
+        .find({ customerId: { $in: customerItems.map((item) => item.id) }, type: "note" })
+        .sort({ createdAt: -1 })
+        .toArray(),
     ]);
+    const notesByCustomer = new Map<string, LeadNote[]>();
+    noteActivities.forEach((activity) => {
+      const notes = notesByCustomer.get(activity.customerId) ?? [];
+      notes.push({
+        id: activity.id,
+        note: activity.note ?? "",
+        authorEmail: activity.councilor,
+        authorName: activity.authorName ?? activity.councilor,
+        createdAt: activity.createdAt.toISOString(),
+      });
+      notesByCustomer.set(activity.customerId, notes);
+    });
     customerItems.forEach((item) => {
       item.funnelName = funnels.find((funnel) => funnel.id === item.funnelId)?.name ?? "Unavailable funnel";
       item.assignedName = councilors.find(
         (councilor) => councilor.kind === "councilors" && councilor.email === item.assignedTo,
       )?.name;
+      item.notes = notesByCustomer.get(item.id) ?? [];
     });
   }
   return { items: serialized, total, page, pageSize, actor };
@@ -213,8 +389,16 @@ export async function createLead(actor: LeadActor, kind: LeadKind, raw: unknown,
   if (assignedTo) await logActivity(item.id, assignedTo, "assigned", now);
   return { item: serialize(item) };
 }
-async function logActivity(customerId: string, councilor: string, type: "assigned" | "counselled", createdAt: Date) {
-  await leadActivitiesCollection().insertOne({ id: randomUUID(), customerId, councilor, type, createdAt });
+async function logActivity(
+  customerId: string,
+  councilor: string,
+  type: LeadActivity["type"],
+  createdAt: Date,
+  detail?: Pick<LeadActivity, "note" | "authorName">,
+) {
+  const activity: LeadActivity = { id: randomUUID(), customerId, councilor, type, createdAt, ...detail };
+  await leadActivitiesCollection().insertOne(activity);
+  return activity;
 }
 export async function updateLead(actor: LeadActor, kind: LeadKind, id: string, raw: unknown, mine: boolean) {
   requirePermission(actor, areaFor(kind, mine), "update");
@@ -224,8 +408,9 @@ export async function updateLead(actor: LeadActor, kind: LeadKind, id: string, r
   const now = new Date();
   if (body.action) {
     if (kind !== "customers") throw new LeadError("This action requires a customer.");
-    if (Object.keys(body).some((key) => !["action", "assignedTo"].includes(key)))
-      throw new LeadError("Unsupported action fields.");
+    const actionFields =
+      body.action === "assign" ? ["action", "assignedTo"] : body.action === "note" ? ["action", "note"] : ["action"];
+    if (Object.keys(body).some((key) => !actionFields.includes(key))) throw new LeadError("Unsupported action fields.");
     if (body.action === "claim") {
       if ((!actor.bypassed && actor.role !== "councilor") || mine)
         throw new LeadError("Claim an unassigned customer from Customers as a councilor.", 403);
@@ -268,6 +453,30 @@ export async function updateLead(actor: LeadActor, kind: LeadKind, id: string, r
       if (!item) throw new LeadError("Only your active, unblocked customer can be marked counselled.", 403);
       await logActivity(id, actor.email, "counselled", now);
       return { item: serialize(item) };
+    }
+    if (body.action === "note") {
+      if (!mine || (!actor.bypassed && actor.role !== "councilor"))
+        throw new LeadError("Add notes only to your customers from My Leads.", 403);
+      const note = typeof body.note === "string" ? body.note.trim() : "";
+      if (!note || note.length > 2000) throw new LeadError("Note must contain 1–2000 characters.");
+      const item = await collection.findOneAndUpdate(
+        { id, assignedTo: actor.email },
+        { $set: { updatedAt: now } },
+        { returnDocument: "after" },
+      );
+      if (!item) throw new LeadError("Only your assigned customer can receive a note.", 403);
+      const councilor = await leadsCollection("councilors").findOne({ email: actor.email });
+      const authorName = councilor?.kind === "councilors" ? councilor.name : actor.email;
+      const activity = await logActivity(id, actor.email, "note", now, { note, authorName });
+      return {
+        note: {
+          id: activity.id,
+          note,
+          authorEmail: actor.email,
+          authorName,
+          createdAt: now.toISOString(),
+        },
+      };
     }
     throw new LeadError("Unknown customer action.");
   }
