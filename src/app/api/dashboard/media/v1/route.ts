@@ -32,7 +32,9 @@ export async function GET(request: Request) {
   if (!authorization.allowed)
     return Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 });
   const access = await getDashboardAccessState(session);
-  return Response.json({ items: await listMediaForApi(!mediaIsAdministrator(access.roleName), session.user.email) });
+  return Response.json({
+    items: await listMediaForApi(!(access.bypassed || mediaIsAdministrator(access.roleName)), session.user.email),
+  });
 }
 
 export async function POST(request: Request) {

@@ -6,16 +6,18 @@
 |-----------------------------------------
 */
 
+import { authorizeProductRequest } from "@/app/api/lib/catalog-authorization";
+import { parseProductInput, parseProductInventoryInput } from "@/lib/dashboard/catalog";
+import { findProductById } from "@/lib/models/catalog";
 import {
-  authorizeProductRequest,
   duplicateProductError,
   ensureProductIndexes,
   serializeProduct,
   validateProductCategories,
-} from "@/app/api/dashboard/products/v1/route";
-import { parseProductInput, parseProductInventoryInput } from "@/lib/dashboard/catalog";
-import { findProductById } from "@/lib/models/catalog";
-import { removeProduct, updateProductForApi, updateProductInventoryForApi } from "@/lib/services/products";
+  removeProduct,
+  updateProductForApi,
+  updateProductInventoryForApi,
+} from "@/lib/services/products";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const access = await authorizeProductRequest(request, "PATCH");

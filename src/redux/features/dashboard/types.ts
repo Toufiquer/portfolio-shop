@@ -24,6 +24,8 @@ export type RoleItem = {
   permissions: Record<string, Permission>;
 };
 export type AccessItem = {
+  roleMissing?: boolean;
+  suggestedRoleName?: string | null;
   id: string;
   email: string;
   roleId: string;

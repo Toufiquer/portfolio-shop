@@ -6,10 +6,9 @@
 |-----------------------------------------
 */
 
+import { authorizeCategoryRequest } from "@/app/api/lib/catalog-authorization";
 import { type Category } from "@/lib/dashboard/catalog";
 import { removeCategoriesForApi, updateCategoriesStatusForApi } from "@/lib/services/categories";
-
-import { authorizeCategoryRequest } from "../route";
 
 function idsFrom(body: unknown) {
   const ids = (body as { ids?: unknown } | null)?.ids;

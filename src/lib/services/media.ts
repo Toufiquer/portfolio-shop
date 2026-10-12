@@ -28,7 +28,8 @@ export const serializeMedia = (item: Media) => {
   delete safeItem.deleteUrl;
   return { ...safeItem, createdAt: new Date(item.createdAt).toISOString() };
 };
-export const mediaIsAdministrator = (roleName: string | null) => /^(admin|super admin)$/i.test(roleName?.trim() ?? "");
+export const mediaIsAdministrator = (roleName: string | null) =>
+  /^(admin|super admin|developer)$/i.test(roleName?.trim() ?? "");
 export async function listMediaForApi(ownerOnly: boolean, email: string) {
   return (await listMedia(ownerOnly ? email.trim().toLowerCase() : undefined)).map(serializeMedia);
 }

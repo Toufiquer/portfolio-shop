@@ -17,9 +17,13 @@ import {
   ShieldCheck,
   Users,
   Wrench,
-  Workflow,
 } from "lucide-react";
+import { headers } from "next/headers";
 import Link from "next/link";
+
+import { auth } from "@/app/api/lib/auth";
+import { getDashboardAccessState } from "@/app/api/lib/dashboard-authorization";
+import { dashboardCanEnter } from "@/lib/dashboard/permissions";
 
 type RoleHomeLink = { title: string; description: string; href: string; icon: LucideIcon };
 
@@ -120,52 +124,12 @@ const content = {
       },
     ] satisfies RoleHomeLink[],
   },
-  businessGrowth: {
-    eyebrow: "Business growth workspace",
-    title: "Turn customer activity into sustainable growth.",
-    description:
-      "Use these tools to understand customer journeys, organize funnels, monitor marketing spend, and keep follow-up work moving.",
-    accent: "bg-sky-100 text-sky-900",
-    primary: { label: "View overview", href: "/dashboard/business-growth/overview" },
-    secondary: { label: "Manage customers", href: "/dashboard/business-growth/customer" },
-    highlights: ["Customer journey visibility", "Funnel performance", "Customer support coordination"],
-    links: [
-      {
-        title: "Overview",
-        description: "Review customer, funnel, and return performance.",
-        href: "/dashboard/business-growth/overview",
-        icon: BarChart3,
-      },
-      {
-        title: "Funnels",
-        description: "Organize the stages of each customer journey.",
-        href: "/dashboard/business-growth/funnels",
-        icon: Workflow,
-      },
-      {
-        title: "Customers",
-        description: "Manage contacts, statuses, and funnel progress.",
-        href: "/dashboard/business-growth/customer",
-        icon: Users,
-      },
-      {
-        title: "Counselors",
-        description: "Manage customer support assignments.",
-        href: "/dashboard/business-growth/councillor",
-        icon: ShieldCheck,
-      },
-      {
-        title: "My Customer",
-        description: "Review customers assigned to your email and their follow-up work.",
-        href: "/dashboard/business-growth/my-customer",
-        icon: CheckCircle2,
-      },
-    ] satisfies RoleHomeLink[],
-  },
 } as const;
 
-export function RoleDashboardHome({ role }: { role: keyof typeof content }) {
+export async function RoleDashboardHome({ role }: { role: keyof typeof content }) {
   const data = content[role];
+  const session = await auth.api.getSession({ headers: await headers() });
+  const access = session ? await getDashboardAccessState(session) : undefined;
   return (
     <main className="min-h-[calc(100vh-65px)] flex-1 bg-[#fffaf0] px-4 py-6 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl">
@@ -182,13 +146,17 @@ export function RoleDashboardHome({ role }: { role: keyof typeof content }) {
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-600 sm:text-base">{data.description}</p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <Link className="primary-button" href={data.primary.href}>
-                  {data.primary.label}
-                  <ArrowUpRight className="h-4 w-4" />
-                </Link>
-                <Link className="secondary-button" href={data.secondary.href}>
-                  {data.secondary.label}
-                </Link>
+                {dashboardCanEnter(access, data.primary.href) && (
+                  <Link className="primary-button" href={data.primary.href}>
+                    {data.primary.label}
+                    <ArrowUpRight className="h-4 w-4" />
+                  </Link>
+                )}
+                {dashboardCanEnter(access, data.secondary.href) && (
+                  <Link className="secondary-button" href={data.secondary.href}>
+                    {data.secondary.label}
+                  </Link>
+                )}
               </div>
             </div>
             <aside className="rounded-sm border border-[#eadfca] bg-[#fffdfa] p-5">
@@ -212,22 +180,24 @@ export function RoleDashboardHome({ role }: { role: keyof typeof content }) {
             </div>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {data.links.map(({ title, description, href, icon: Icon }) => (
-              <Link
-                className="group rounded-sm border border-[#eadfca] bg-white p-5 transition duration-700 hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-50"
-                href={href}
-                key={href}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <span className="grid h-10 w-10 place-items-center rounded-sm bg-amber-100 text-amber-800">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <ArrowUpRight className="h-4 w-4 text-stone-400 transition group-hover:text-amber-800" />
-                </div>
-                <h3 className="mt-4 font-semibold text-stone-900">{title}</h3>
-                <p className="mt-1 text-sm leading-6 text-stone-600">{description}</p>
-              </Link>
-            ))}
+            {data.links
+              .filter((item) => dashboardCanEnter(access, item.href))
+              .map(({ title, description, href, icon: Icon }) => (
+                <Link
+                  className="group rounded-sm border border-[#eadfca] bg-white p-5 transition duration-700 hover:-translate-y-0.5 hover:border-amber-300 hover:bg-amber-50"
+                  href={href}
+                  key={href}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <span className="grid h-10 w-10 place-items-center rounded-sm bg-amber-100 text-amber-800">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <ArrowUpRight className="h-4 w-4 text-stone-400 transition group-hover:text-amber-800" />
+                  </div>
+                  <h3 className="mt-4 font-semibold text-stone-900">{title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-stone-600">{description}</p>
+                </Link>
+              ))}
           </div>
         </section>
       </div>

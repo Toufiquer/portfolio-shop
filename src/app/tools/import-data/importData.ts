@@ -16,11 +16,18 @@ export type ImportDataResult = { inserted: number; updated: number; pagesInserte
 
 const importDataApi = apiSlice.injectEndpoints({
   endpoints: (build) => ({
+    getImportStatus: build.query<
+      { sidebarUrls: string[]; pagePaths: string[]; canImportSidebars: boolean; canImportPages: boolean },
+      void
+    >({
+      query: () => "../tools/import-data/v1",
+      providesTags: ["Sidebar", "Page", "Role", "Access"],
+    }),
     importData: build.mutation<ImportDataResult, ImportDataRequest>({
       query: (body) => ({ url: "../tools/import-data/v1", method: "POST", body }),
-      invalidatesTags: ["Sidebar", "Page"],
+      invalidatesTags: ["Sidebar", "Role", "Access", "Leads", "Page"],
     }),
   }),
 });
 
-export const { useImportDataMutation } = importDataApi;
+export const { useGetImportStatusQuery, useImportDataMutation } = importDataApi;

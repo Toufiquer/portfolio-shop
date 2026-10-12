@@ -24,7 +24,11 @@ export async function DELETE(request: Request) {
     : [];
   if (!ids.length) return Response.json({ error: "Choose at least one media item." }, { status: 400 });
   const access = await getDashboardAccessState(session),
-    result = await removeMediaBulkForApi(ids, mediaIsAdministrator(access.roleName), session.user.email);
+    result = await removeMediaBulkForApi(
+      ids,
+      access.bypassed || mediaIsAdministrator(access.roleName),
+      session.user.email,
+    );
   if (result.kind === "forbidden")
     return Response.json({ error: "One or more media items could not be deleted." }, { status: 403 });
   if (result.kind === "remote-failed") return Response.json({ error: result.error }, { status: 502 });

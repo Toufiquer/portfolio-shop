@@ -51,8 +51,9 @@ function SidebarLink({
   pathname: string;
   onNavigate: () => void;
 }) {
-  const [childrenOpen, setChildrenOpen] = useState(false);
   const active = pathname === item.url || (item.url !== "/dashboard" && pathname.startsWith(`${item.url}/`));
+  const [manuallyOpen, setManuallyOpen] = useState<boolean | null>(null);
+  const childrenOpen = manuallyOpen ?? active;
   const hasChildren = item.children.length > 0;
   const icon = iconMap[item.icon] ?? <PanelLeft size={16} />;
 
@@ -74,8 +75,9 @@ function SidebarLink({
         {hasChildren && expanded && (
           <button
             aria-label={`Toggle ${item.name}`}
+            aria-expanded={childrenOpen}
             className="grid h-8 w-8 shrink-0 place-items-center rounded-sm text-stone-500 transition hover:bg-amber-100"
-            onClick={() => setChildrenOpen((value) => !value)}
+            onClick={() => setManuallyOpen(!childrenOpen)}
             type="button"
           >
             <ChevronDown
@@ -110,8 +112,8 @@ export function DashboardNav() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [hoverExpanded, setHoverExpanded] = useState(false);
-  const { data: session } = authClient.useSession();
-  const { data } = useGetSidebarsQuery(undefined, {
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const { data, isLoading, isError, refetch } = useGetSidebarsQuery(undefined, {
     skip: !session,
     refetchOnFocus: true,
     refetchOnMountOrArgChange: true,
@@ -119,6 +121,7 @@ export function DashboardNav() {
   });
   const items = useMemo(() => createTree(data?.items ?? []), [data?.items]);
   const expanded = !collapsed || hoverExpanded;
+  const navigationLoading = sessionPending || isLoading;
 
   useEffect(() => {
     const toggleMobileSidebar = () => setMobileOpen((open) => !open);
@@ -128,7 +131,7 @@ export function DashboardNav() {
 
   async function logout() {
     await authClient.signOut();
-    window.location.assign("/login");
+    window.location.reload();
   }
 
   return (
@@ -172,6 +175,19 @@ export function DashboardNav() {
           </div>
 
           <nav className="mt-5 min-h-0 flex-1 content-start grid gap-1 overflow-x-hidden overflow-y-auto">
+            {navigationLoading && (
+              <p role="status" className="px-3 text-sm text-stone-500">
+                Loading navigation…
+              </p>
+            )}
+            {isError && (
+              <button type="button" className="px-3 text-sm text-red-700" onClick={() => void refetch()}>
+                Navigation failed. Retry
+              </button>
+            )}
+            {!navigationLoading && !isError && !items.length && (
+              <p className="px-3 text-sm text-stone-500">No permitted sections.</p>
+            )}
             {items.map((item) => (
               <SidebarLink
                 depth={0}

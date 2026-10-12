@@ -27,6 +27,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { authClient } from "@/app/api/lib/auth-client";
 import { iconMap, iconOptions } from "@/components/all-icons/all-icons";
 import { useConfirmDelete } from "@/components/confirm-delete-provider";
+import { useDashboardPermissions } from "@/lib/dashboard/use-dashboard-permissions";
 import { downloadNavigationZip } from "@/lib/navigation-export";
 import {
   useCreateRoleMutation,
@@ -61,7 +62,11 @@ function orderedSidebars(items: SidebarItem[]) {
 export default function RolePage() {
   const confirmDelete = useConfirmDelete();
   const { data: session, isPending: sessionPending } = authClient.useSession();
-  const { data, error, isFetching, isLoading, refetch } = useGetRolesQuery(undefined, { skip: !session });
+  const { can } = useDashboardPermissions("/dashboard/admin/role");
+  const { data, error, isFetching, isLoading, refetch } = useGetRolesQuery(
+    can("read") ? undefined : { options: true },
+    { skip: !session || (!can("read") && !can("create") && !can("update")) },
+  );
   const [createRole, createState] = useCreateRoleMutation();
   const [updateRole, updateState] = useUpdateRoleMutation();
   const [deleteRole] = useDeleteRoleMutation();
@@ -235,6 +240,7 @@ export default function RolePage() {
               <button
                 className="inline-flex cursor-pointer items-center gap-1.5 rounded-sm bg-stone-900 px-2.5 py-1.5 text-xs font-semibold text-white transition duration-700 hover:-translate-y-0.5 hover:bg-amber-800"
                 onClick={() => launch()}
+                disabled={!can("create")}
                 type="button"
               >
                 <Plus className="h-4 w-4" />
@@ -262,6 +268,7 @@ export default function RolePage() {
                 <button
                   className="inline-flex cursor-pointer items-center gap-1 rounded-sm bg-red-700 px-2.5 py-1.5 font-semibold text-white"
                   onClick={() => void removeSelected()}
+                  disabled={!can("delete")}
                   type="button"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
@@ -311,10 +318,10 @@ export default function RolePage() {
                   <IconButton label="View role" onClick={() => setViewing(role)}>
                     <Eye className="h-4 w-4" />
                   </IconButton>
-                  <IconButton label="Edit role" onClick={() => launch(role)}>
+                  <IconButton label="Edit role" onClick={() => launch(role)} disabled={!can("update")}>
                     <Pencil className="h-4 w-4" />
                   </IconButton>
-                  <IconButton danger label="Delete role" onClick={() => void remove(role.id)}>
+                  <IconButton danger label="Delete role" onClick={() => void remove(role.id)} disabled={!can("delete")}>
                     <Trash2 className="h-4 w-4" />
                   </IconButton>
                 </div>
@@ -572,6 +579,10 @@ function RoleModal({
                 {full ? "Remove full permission" : "Full permission"}
               </button>
             </div>
+            <p className="px-3 pb-2 text-xs text-stone-500">
+              Councilor roles cannot manage account access or roles. Funnels and Councilors management requires a
+              Developer or Admin role.
+            </p>
             <div className="grid grid-cols-[minmax(0,1fr)_repeat(5,2rem)] gap-1 border-t border-stone-200 bg-white px-3 py-2 text-[10px] font-semibold uppercase text-stone-500">
               <span>Sidebar</span>
               <span>All</span>

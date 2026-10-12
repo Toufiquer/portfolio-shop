@@ -7,22 +7,14 @@
 
 "use client";
 
-import {
-  ArrowUpRight,
-  FileText,
-  ImageIcon,
-  Package,
-  PanelLeft,
-  ShoppingCart,
-  Users,
-} from "lucide-react";
+import { ArrowUpRight, FileText, ImageIcon, Package, PanelLeft, ShoppingCart } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 
 import { authClient } from "@/app/api/lib/auth-client";
 import { iconMap } from "@/components/all-icons/all-icons";
 import { LoadingState } from "@/components/ui/loading-state";
-import { useGetCustomerOverviewQuery } from "@/redux/features/dashboard/business-growth/businessGrowthSlice";
+import { dashboardCan } from "@/lib/dashboard/permissions";
 import { useGetCategoriesQuery } from "@/redux/features/dashboard/categories/categoriesSlice";
 import { useGetMediaQuery } from "@/redux/features/dashboard/media/mediaSlice";
 import { useGetOrdersQuery } from "@/redux/features/dashboard/orders/ordersSlice";
@@ -36,15 +28,10 @@ export default function DashboardHomePage() {
   const { data, isLoading, isError } = useGetSidebarsQuery(undefined, { skip: !session });
   const items = useMemo(() => data?.items ?? [], [data?.items]);
   const sidebarItemById = useMemo(() => new Map(items.map((item) => [item.id, item])), [items]);
-  const paths = useMemo(() => new Set(items.map((item) => item.url)), [items]);
-  const canReadBusinessGrowth = items.some((item) => item.url.startsWith("/dashboard/business-growth"));
-  const canReadMedia = paths.has("/dashboard/media");
-  const canReadProducts = paths.has("/dashboard/products");
-  const canReadCategories = paths.has("/dashboard/category");
-  const canReadOrders = paths.has("/dashboard/orders");
-  const { data: growthData, isLoading: growthLoading } = useGetCustomerOverviewQuery(undefined, {
-    skip: !canReadBusinessGrowth,
-  });
+  const canReadMedia = dashboardCan(data?.access, "/dashboard/media", "read");
+  const canReadProducts = dashboardCan(data?.access, "/dashboard/products", "read");
+  const canReadCategories = dashboardCan(data?.access, "/dashboard/category", "read");
+  const canReadOrders = dashboardCan(data?.access, "/dashboard/orders", "read");
   const { data: mediaData, isLoading: mediaLoading } = useGetMediaQuery(undefined, { skip: !canReadMedia });
   const { data: productsData, isLoading: productsLoading } = useGetProductsQuery(
     { limit: 1, page: 1 },
@@ -65,14 +52,6 @@ export default function DashboardHomePage() {
   }, {});
   const topMediaType = Object.entries(mediaTypes ?? {}).sort((a, b) => b[1] - a[1])[0];
   const liveSections = [
-    canReadBusinessGrowth && {
-      name: "Business Growth",
-      href: "/dashboard/business-growth/overview",
-      icon: Users,
-      color: "#8b5cf6",
-      value: growthLoading ? null : (growthData?.total ?? 0),
-      detail: `${growthData?.newLast30 ?? 0} new customers in 30 days`,
-    },
     canReadMedia && {
       name: "Media",
       href: "/dashboard/media",
@@ -116,7 +95,7 @@ export default function DashboardHomePage() {
   const profileDetails = [
     { label: "Name", value: session?.user.name?.trim() || "—" },
     { label: "Email", value: session?.user.email?.trim() || "—" },
-    { label: "Role", value: data?.roleName?.trim() || "—" },
+    { label: "Role", value: data?.roleName?.trim() || "Not assigned" },
   ];
   if (isPending || isLoading) return <LoadingState label="Loading dashboard" />;
   if (isError) return <DashboardError />;

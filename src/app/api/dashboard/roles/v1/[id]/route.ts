@@ -8,6 +8,8 @@ import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth, client } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { invalidateDashboardCache, redisKeys } from "@/app/api/lib/redis";
+import { leadRole } from "@/lib/dashboard/leads";
+import { councilorPermission } from "@/lib/dashboard/permissions";
 import { sanitizeRoleDescription } from "@/lib/security/role-description";
 
 type Permission = { read: boolean; create: boolean; update: boolean; delete: boolean };
@@ -19,7 +21,7 @@ type Role = {
   position: number;
   permissions: Record<string, Permission>;
 };
-type Sidebar = { id: string };
+type Sidebar = { id: string; url: string };
 
 async function allowed(request: Request, method: "PATCH" | "DELETE") {
   const limited = await rateLimitDistributed(request, "role-api");
@@ -32,17 +34,17 @@ async function allowed(request: Request, method: "PATCH" | "DELETE") {
     : { response: Response.json({ error: authorization.state.message ?? "Unauthorized." }, { status: 403 }) };
 }
 
-const clean = (input: Record<string, Partial<Permission>> | undefined, sidebars: Sidebar[]) =>
+const clean = (input: Record<string, Partial<Permission>> | undefined, sidebars: Sidebar[], name: string) =>
   Object.fromEntries(
-    sidebars.map((item) => [
-      item.id,
-      {
-        read: Boolean(input?.[item.id]?.read),
-        create: Boolean(input?.[item.id]?.create),
-        update: Boolean(input?.[item.id]?.update),
-        delete: Boolean(input?.[item.id]?.delete),
-      },
-    ]),
+    sidebars.map((item) => {
+      const grant = {
+        read: input?.[item.id]?.read === true,
+        create: input?.[item.id]?.create === true,
+        update: input?.[item.id]?.update === true,
+        delete: input?.[item.id]?.delete === true,
+      };
+      return [item.id, leadRole(name) === "councilor" ? councilorPermission(item.url, grant) : grant];
+    }),
   ) as Record<string, Permission>;
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -57,7 +59,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const database = client.db();
   const sidebars = await database
     .collection<Sidebar>("sidebar")
-    .find({}, { projection: { id: 1 } })
+    .find({}, { projection: { id: 1, url: 1 } })
     .toArray();
   const result = await database.collection<Role>("role").updateOne(
     { id },
@@ -67,12 +69,13 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
         responsible: sanitizeRoleDescription(body?.responsible),
         icon: body?.icon?.trim() || "ShieldCheck",
         position: typeof body?.position === "number" ? body.position : 0,
-        permissions: clean(body?.permissions, sidebars),
+        permissions: clean(body?.permissions, sidebars, name),
         updatedAt: new Date(),
       },
     },
   );
   if (!result.matchedCount) return Response.json({ error: "Role not found." }, { status: 404 });
+  await database.collection("access").updateMany({ roleId: id }, { $set: { roleName: name, updatedAt: new Date() } });
   await invalidateDashboardCache(redisKeys.roles, redisKeys.access);
   return Response.json({ success: true });
 }
@@ -82,6 +85,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   if (guard.response) return guard.response;
 
   const { id } = await params;
+  if (await client.db().collection("access").findOne({ roleId: id }))
+    return Response.json({ error: "Reassign users before deleting this role." }, { status: 409 });
   const result = await client.db().collection("role").deleteOne({ id });
   if (!result.deletedCount) return Response.json({ error: "Role not found." }, { status: 404 });
   await invalidateDashboardCache(redisKeys.roles, redisKeys.access);
