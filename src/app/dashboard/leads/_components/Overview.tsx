@@ -198,13 +198,7 @@ export default function Overview() {
   }
   return (
     <section className="grid min-w-0 gap-5">
-      <PageHeading
-        title="Leads overview"
-        description="Customer relationships and councilor activity, all in one view."
-        caption={leadPresentation.overview.caption}
-        icon="BarChart"
-        iconClass={leadPresentation.overview.iconClass}
-      >
+      <PageHeading title="Leads overview" icon="BarChart" iconClass={leadPresentation.overview.iconClass}>
         <span className="mr-1 hidden items-center gap-1.5 text-xs text-stone-500 sm:flex">
           <Icon name="Clock" className="size-3.5" />
           Asia/Dhaka

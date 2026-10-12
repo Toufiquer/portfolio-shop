@@ -197,16 +197,6 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
         title={title}
         icon={mine ? "FileText" : kind === "funnels" ? "Filter" : kind === "councilors" ? "User" : "Users"}
         iconClass={presentation.iconClass}
-        caption={presentation.caption}
-        description={
-          mine
-            ? "Customers assigned to your signed-in account."
-            : kind === "funnels"
-              ? "Arrange your customer journey with unique positions."
-              : kind === "councilors"
-                ? "Manage the councilors who support your customers."
-                : "Manage customers, assignments, and counselling."
-        }
       >
         <Action onClick={refresh} disabled={!canRead || Boolean(cooldown.remaining) || isFetching || busy}>
           <Icon name="RefreshCw" className={isFetching ? "animate-spin" : ""} />

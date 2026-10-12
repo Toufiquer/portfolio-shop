@@ -46,8 +46,8 @@ export function PageHeading({
   children,
 }: {
   title: string;
-  description: string;
-  caption: string;
+  description?: string;
+  caption?: string;
   icon: string;
   iconClass: string;
   children?: ReactNode;
@@ -59,9 +59,11 @@ export function PageHeading({
           <Icon name={icon} className="size-6" />
         </span>
         <div className="min-w-0">
-          <p className="mb-1 text-[10px] font-bold tracking-[0.14em] text-slate-400 uppercase">{caption}</p>
+          {caption && (
+            <p className="mb-1 text-[10px] font-bold tracking-[0.14em] text-slate-400 uppercase">{caption}</p>
+          )}
           <h1 className="text-2xl font-semibold tracking-[-0.03em] text-slate-950 sm:text-3xl">{title}</h1>
-          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500">{description}</p>
+          {description && <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-500">{description}</p>}
         </div>
       </div>
       {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
