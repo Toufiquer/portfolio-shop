@@ -192,7 +192,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
     }
   }
   return (
-    <section className="custom-parent-border grid min-w-0 gap-5 bg-[#fffdf7]">
+    <section className="grid min-w-0 gap-5 bg-transparent">
       <PageHeading
         title={title}
         icon={mine ? "FileText" : kind === "funnels" ? "Filter" : kind === "councilors" ? "User" : "Users"}
