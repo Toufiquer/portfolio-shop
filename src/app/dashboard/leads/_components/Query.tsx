@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 
 import { Icon } from "@/components/all-icons/all-icons";
 import { AlertDialog } from "@/components/ui/alert-dialog";
@@ -54,6 +54,34 @@ const statusOptions = [
   { value: "active", label: "Active" },
   { value: "inactive", label: "Inactive" },
 ];
+const customerColumnOptions = [
+  { id: "select", label: "Select" },
+  { id: "name", label: "Name" },
+  { id: "mobile", label: "Mobile" },
+  { id: "email", label: "Email" },
+  { id: "funnel", label: "Funnel" },
+  { id: "councilor", label: "Councilor" },
+  { id: "blocked", label: "Block" },
+  { id: "status", label: "Status" },
+  { id: "actions", label: "Actions" },
+] as const;
+type CustomerColumn = (typeof customerColumnOptions)[number]["id"];
+const customerColumnIds = customerColumnOptions.map(({ id }) => id);
+
+function savedCustomerColumns(value: string | null): CustomerColumn[] {
+  if (!value) return [...customerColumnIds];
+  try {
+    const stored = JSON.parse(value);
+    if (
+      Array.isArray(stored) &&
+      stored.every((column): column is CustomerColumn => customerColumnIds.includes(column as CustomerColumn))
+    )
+      return customerColumnIds.filter((column) => stored.includes(column));
+  } catch {
+    // Ignore invalid browser storage and preserve the default table layout.
+  }
+  return [...customerColumnIds];
+}
 function noteDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
@@ -88,9 +116,12 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
   } | null>(null);
   const [errorPage, setErrorPage] = useState(1),
     [errorPageSize, setErrorPageSize] = useState(10);
+  const [visibleCustomerColumns, setVisibleCustomerColumns] = useState<CustomerColumn[]>(customerColumnIds);
+  const [columnPickerOpen, setColumnPickerOpen] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const params: LeadListParams = { kind, mine, page, pageSize, search, status, funnelId, assignment, councilor };
   const area = mine && kind === "customers" ? "my-leads" : kind;
+  const customerColumnStorageKey = `shop-leads-${mine ? "my-leads" : "customers"}-columns-v1`;
   const { data: permissionData } = useDashboardPermissions(`/dashboard/leads/${area}`);
   const actor = permissionData?.leadsActor ?? undefined;
   const canRead = leadCan(actor, area, "read");
@@ -122,6 +153,26 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
   const title = mine ? "My Leads" : kind === "funnels" ? "Funnels" : kind === "councilors" ? "Councilors" : "Customers";
   const presentation = leadPresentation[area];
   const recordName = kind === "funnels" ? "funnel" : kind === "councilors" ? "councilor" : "customer";
+  const isCustomerColumnVisible = (column: CustomerColumn) =>
+    kind !== "customers" || visibleCustomerColumns.includes(column);
+  useEffect(() => {
+    if (kind !== "customers") return;
+    const savedColumns = savedCustomerColumns(window.localStorage.getItem(customerColumnStorageKey));
+    const restore = window.setTimeout(() => setVisibleCustomerColumns(savedColumns), 0);
+    return () => window.clearTimeout(restore);
+  }, [customerColumnStorageKey, kind]);
+
+  function setCustomerColumnVisibility(column: CustomerColumn, visible: boolean) {
+    const next = visible
+      ? customerColumnIds.filter((id) => visibleCustomerColumns.includes(id) || id === column)
+      : visibleCustomerColumns.filter((id) => id !== column);
+    setVisibleCustomerColumns(next);
+    window.localStorage.setItem(customerColumnStorageKey, JSON.stringify(next));
+  }
+  function resetCustomerColumnVisibility() {
+    setVisibleCustomerColumns([...customerColumnIds]);
+    window.localStorage.setItem(customerColumnStorageKey, JSON.stringify(customerColumnIds));
+  }
   function resetPage() {
     setPage(1);
     setSelected([]);
@@ -373,6 +424,49 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
           <p className="text-xs text-slate-500">
             {canRead && result ? `${items.length} shown on this page` : "Customer relationship management"}
           </p>
+          {kind === "customers" && (
+            <div className="relative">
+              <Action
+                aria-controls="customer-column-picker"
+                aria-expanded={columnPickerOpen}
+                onClick={() => setColumnPickerOpen((open) => !open)}
+              >
+                <Icon name="Settings" />
+                Columns
+              </Action>
+              {columnPickerOpen && (
+                <div
+                  id="customer-column-picker"
+                  className="absolute right-0 z-30 mt-2 w-56 rounded-sm border border-[#eadfca] bg-white p-3 shadow-lg shadow-stone-200/60"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold text-slate-800">Visible columns</p>
+                    <Action className="h-7 px-2 text-[11px]" onClick={resetCustomerColumnVisibility}>
+                      Reset
+                    </Action>
+                  </div>
+                  <div className="mt-2 grid gap-1 border-t border-[#eadfca] pt-2">
+                    {customerColumnOptions.map((column) => {
+                      const visible = isCustomerColumnVisible(column.id);
+                      return (
+                        <label
+                          key={column.id}
+                          className="flex cursor-pointer items-center justify-between gap-3 rounded-sm px-2 py-1.5 text-xs text-slate-600 hover:bg-amber-50"
+                        >
+                          <span>{column.label}</span>
+                          <Checkbox
+                            aria-label={`${visible ? "Hide" : "Show"} ${column.label} column`}
+                            checked={visible}
+                            onCheckedChange={(checked) => setCustomerColumnVisibility(column.id, checked)}
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
         {activeSelection.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-b border-amber-100 bg-amber-50 px-4 py-3 text-xs sm:px-5">
@@ -428,15 +522,17 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
               <table className="w-full text-left text-sm [&_td]:px-4 [&_td]:py-4 [&_th]:px-4 [&_th]:py-3 [&_th]:font-semibold [&_th]:whitespace-nowrap">
                 <thead className="border-b border-[#eadfca] bg-[#fffdf9] text-[10px] tracking-wider text-slate-500 uppercase">
                   <tr>
-                    <th className="w-10 p-3">
-                      <Checkbox
-                        aria-label="Select manageable records on this page"
-                        disabled={busy || !manageable.length}
-                        checked={manageable.length > 0 && activeSelection.length === manageable.length}
-                        onCheckedChange={(checked) => setSelected(checked ? manageable.map((item) => item.id) : [])}
-                      />
-                    </th>
-                    <th className="p-3">Name</th>
+                    {isCustomerColumnVisible("select") && (
+                      <th className="w-10 p-3">
+                        <Checkbox
+                          aria-label="Select manageable records on this page"
+                          disabled={busy || !manageable.length}
+                          checked={manageable.length > 0 && activeSelection.length === manageable.length}
+                          onCheckedChange={(checked) => setSelected(checked ? manageable.map((item) => item.id) : [])}
+                        />
+                      </th>
+                    )}
+                    {isCustomerColumnVisible("name") && <th className="p-3">Name</th>}
                     {kind === "funnels" ? (
                       <>
                         <th className="p-3">Position</th>
@@ -444,19 +540,19 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                       </>
                     ) : (
                       <>
-                        <th className="p-3">Mobile</th>
-                        <th className="p-3">Email</th>
+                        {isCustomerColumnVisible("mobile") && <th className="p-3">Mobile</th>}
+                        {isCustomerColumnVisible("email") && <th className="p-3">Email</th>}
                       </>
                     )}
                     {kind === "customers" && (
                       <>
-                        <th className="p-3">Funnel</th>
-                        <th className="p-3">Councilor</th>
-                        <th className="p-3">Block</th>
+                        {isCustomerColumnVisible("funnel") && <th className="p-3">Funnel</th>}
+                        {isCustomerColumnVisible("councilor") && <th className="p-3">Councilor</th>}
+                        {isCustomerColumnVisible("blocked") && <th className="p-3">Block</th>}
                       </>
                     )}
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Actions</th>
+                    {isCustomerColumnVisible("status") && <th className="p-3">Status</th>}
+                    {isCustomerColumnVisible("actions") && <th className="p-3">Actions</th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -465,37 +561,43 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                       key={item.id}
                       className={`border-b border-[#eadfca] transition-colors duration-700 last:border-0 hover:bg-amber-50/45 ${activeSelection.includes(item.id) ? "bg-amber-50/80" : "bg-white"}`}
                     >
-                      <td className="p-3">
-                        <Checkbox
-                          aria-label={`Select ${item.name}`}
-                          checked={activeSelection.includes(item.id)}
-                          disabled={busy || !canManage(item) || (!canUpdate && !canRemove)}
-                          onCheckedChange={(checked) =>
-                            setSelected((previous) =>
-                              checked ? [...new Set([...previous, item.id])] : previous.filter((id) => id !== item.id),
-                            )
-                          }
-                        />
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center gap-2.5">
-                          {item.kind === "funnels" ? (
-                            <span className="grid size-9 shrink-0 place-items-center rounded-sm border border-violet-100 bg-violet-50 text-violet-600">
-                              <Icon name="Filter" className="size-4" />
+                      {isCustomerColumnVisible("select") && (
+                        <td className="p-3">
+                          <Checkbox
+                            aria-label={`Select ${item.name}`}
+                            checked={activeSelection.includes(item.id)}
+                            disabled={busy || !canManage(item) || (!canUpdate && !canRemove)}
+                            onCheckedChange={(checked) =>
+                              setSelected((previous) =>
+                                checked
+                                  ? [...new Set([...previous, item.id])]
+                                  : previous.filter((id) => id !== item.id),
+                              )
+                            }
+                          />
+                        </td>
+                      )}
+                      {isCustomerColumnVisible("name") && (
+                        <td className="p-3">
+                          <div className="flex items-center gap-2.5">
+                            {item.kind === "funnels" ? (
+                              <span className="grid size-9 shrink-0 place-items-center rounded-sm border border-violet-100 bg-violet-50 text-violet-600">
+                                <Icon name="Filter" className="size-4" />
+                              </span>
+                            ) : (
+                              <LeadAvatar
+                                name={item.name}
+                                className={
+                                  item.kind === "councilors" ? "border-emerald-100 bg-emerald-50 text-emerald-700" : ""
+                                }
+                              />
+                            )}
+                            <span className="max-w-40 truncate font-semibold text-slate-800" title={item.name}>
+                              {item.name}
                             </span>
-                          ) : (
-                            <LeadAvatar
-                              name={item.name}
-                              className={
-                                item.kind === "councilors" ? "border-emerald-100 bg-emerald-50 text-emerald-700" : ""
-                              }
-                            />
-                          )}
-                          <span className="max-w-40 truncate font-semibold text-slate-800" title={item.name}>
-                            {item.name}
-                          </span>
-                        </div>
-                      </td>
+                          </div>
+                        </td>
+                      )}
                       {item.kind === "funnels" ? (
                         <>
                           <td className="p-3">
@@ -509,133 +611,149 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                         </>
                       ) : (
                         <>
-                          <td className="whitespace-nowrap p-3 text-xs text-slate-600 tabular-nums">{item.mobile}</td>
-                          <td className="max-w-44 truncate p-3 text-xs text-slate-500" title={item.email}>
-                            {item.email || "—"}
-                          </td>
+                          {isCustomerColumnVisible("mobile") && (
+                            <td className="whitespace-nowrap p-3 text-xs text-slate-600 tabular-nums">{item.mobile}</td>
+                          )}
+                          {isCustomerColumnVisible("email") && (
+                            <td className="max-w-44 truncate p-3 text-xs text-slate-500" title={item.email}>
+                              {item.email || "—"}
+                            </td>
+                          )}
                         </>
                       )}
                       {item.kind === "customers" && (
                         <>
-                          <td
-                            className="max-w-40 truncate p-3 text-xs text-violet-700"
-                            title={item.funnelName ?? item.funnelId}
-                          >
-                            {item.funnelName ?? item.funnelId}
-                          </td>
-                          <td
-                            className="max-w-44 truncate p-3 text-xs text-slate-500"
-                            title={item.assignedName || item.assignedTo || "Unassigned"}
-                          >
-                            {item.assignedName || item.assignedTo || "Unassigned"}
-                          </td>
-                          <td className="p-3">
-                            <span
-                              className={`inline-flex items-center gap-1 text-xs ${item.blocked ? "text-red-600" : "text-slate-500"}`}
+                          {isCustomerColumnVisible("funnel") && (
+                            <td
+                              className="max-w-40 truncate p-3 text-xs text-violet-700"
+                              title={item.funnelName ?? item.funnelId}
                             >
-                              <Icon name={item.blocked ? "Lock" : "ShieldCheck"} className="size-3.5" />
-                              {item.blocked ? "Blocked" : "No"}
-                            </span>
-                          </td>
+                              {item.funnelName ?? item.funnelId}
+                            </td>
+                          )}
+                          {isCustomerColumnVisible("councilor") && (
+                            <td
+                              className="max-w-44 truncate p-3 text-xs text-slate-500"
+                              title={item.assignedName || item.assignedTo || "Unassigned"}
+                            >
+                              {item.assignedName || item.assignedTo || "Unassigned"}
+                            </td>
+                          )}
+                          {isCustomerColumnVisible("blocked") && (
+                            <td className="p-3">
+                              <span
+                                className={`inline-flex items-center gap-1 text-xs ${item.blocked ? "text-red-600" : "text-slate-500"}`}
+                              >
+                                <Icon name={item.blocked ? "Lock" : "ShieldCheck"} className="size-3.5" />
+                                {item.blocked ? "Blocked" : "No"}
+                              </span>
+                            </td>
+                          )}
                         </>
                       )}
-                      <td className="p-3">
-                        <StatusBadge status={item.status} />
-                      </td>
-                      <td className="p-3">
-                        <div className="flex min-w-28 flex-wrap gap-1.5">
-                          <Action
-                            className="size-8 px-0"
-                            title={`View ${item.name}`}
-                            aria-label={`View ${item.name}`}
-                            disabled={busy}
-                            onClick={() => setView(item)}
-                          >
-                            <Icon name="Eye" />
-                          </Action>
-                          {canManage(item) && (
-                            <>
-                              <Action
-                                className="size-8 px-0"
-                                title={`Edit ${item.name}`}
-                                aria-label={`Edit ${item.name}`}
-                                disabled={!canUpdate || busy}
-                                onClick={() => setEditor({ item })}
-                              >
-                                <Icon name="Edit2" />
-                              </Action>
-                              <Action
-                                tone="delete"
-                                className="size-8 px-0"
-                                title={`Delete ${item.name}`}
-                                aria-label={`Delete ${item.name}`}
-                                disabled={!canRemove || busy}
-                                onClick={() => setDeleting([item.id])}
-                              >
-                                <Icon name="Trash2" />
-                              </Action>
-                            </>
-                          )}
-                          {item.kind === "customers" && isAdmin && canUpdate && !mine && (
+                      {isCustomerColumnVisible("status") && (
+                        <td className="p-3">
+                          <StatusBadge status={item.status} />
+                        </td>
+                      )}
+                      {isCustomerColumnVisible("actions") && (
+                        <td className="p-3">
+                          <div className="flex min-w-28 flex-wrap gap-1.5">
                             <Action
+                              className="size-8 px-0"
+                              title={`View ${item.name}`}
+                              aria-label={`View ${item.name}`}
                               disabled={busy}
-                              onClick={() => {
-                                setAssigning(item);
-                                setAssignee(item.assignedTo ?? "");
-                              }}
+                              onClick={() => setView(item)}
                             >
-                              Assign
+                              <Icon name="Eye" />
                             </Action>
-                          )}
-                          {item.kind === "customers" &&
-                            mine &&
-                            canUpdate &&
-                            item.assignedTo === actor?.email &&
-                            (actor?.bypassed || actor?.role === "councilor") && (
+                            {canManage(item) && (
+                              <>
+                                <Action
+                                  className="size-8 px-0"
+                                  title={`Edit ${item.name}`}
+                                  aria-label={`Edit ${item.name}`}
+                                  disabled={!canUpdate || busy}
+                                  onClick={() => setEditor({ item })}
+                                >
+                                  <Icon name="Edit2" />
+                                </Action>
+                                <Action
+                                  tone="delete"
+                                  className="size-8 px-0"
+                                  title={`Delete ${item.name}`}
+                                  aria-label={`Delete ${item.name}`}
+                                  disabled={!canRemove || busy}
+                                  onClick={() => setDeleting([item.id])}
+                                >
+                                  <Icon name="Trash2" />
+                                </Action>
+                              </>
+                            )}
+                            {item.kind === "customers" && isAdmin && canUpdate && !mine && (
                               <Action
                                 disabled={busy}
-                                title={`Add note for ${item.name}`}
                                 onClick={() => {
-                                  setNoting(item);
-                                  setNote("");
+                                  setAssigning(item);
+                                  setAssignee(item.assignedTo ?? "");
                                 }}
                               >
-                                <Icon name="MessageSquare" />
-                                Add note
+                                Assign
                               </Action>
                             )}
-                          {item.kind === "customers" &&
-                            actor?.role === "councilor" &&
-                            canUpdate &&
-                            !mine &&
-                            !item.assignedTo &&
-                            !item.blocked &&
-                            item.status === "active" && (
-                              <Action
-                                tone="save"
-                                disabled={busy}
-                                onClick={() =>
-                                  void run({ operation: "claim", id: item.id }, "Customer assigned to you.")
-                                }
-                              >
-                                Take assignment
-                              </Action>
-                            )}
-                          {item.kind === "customers" &&
-                            item.assignedTo === actor?.email &&
-                            canUpdate &&
-                            !item.blocked &&
-                            item.status === "active" && (
-                              <Action
-                                tone="save"
-                                disabled={busy}
-                                onClick={() => void run({ operation: "counsel", id: item.id }, "Counselling recorded.")}
-                              >
-                                Mark counselled
-                              </Action>
-                            )}
-                        </div>
-                      </td>
+                            {item.kind === "customers" &&
+                              mine &&
+                              canUpdate &&
+                              item.assignedTo === actor?.email &&
+                              (actor?.bypassed || actor?.role === "councilor") && (
+                                <Action
+                                  disabled={busy}
+                                  title={`Add note for ${item.name}`}
+                                  onClick={() => {
+                                    setNoting(item);
+                                    setNote("");
+                                  }}
+                                >
+                                  <Icon name="MessageSquare" />
+                                  Add note
+                                </Action>
+                              )}
+                            {item.kind === "customers" &&
+                              actor?.role === "councilor" &&
+                              canUpdate &&
+                              !mine &&
+                              !item.assignedTo &&
+                              !item.blocked &&
+                              item.status === "active" && (
+                                <Action
+                                  tone="save"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    void run({ operation: "claim", id: item.id }, "Customer assigned to you.")
+                                  }
+                                >
+                                  Take assignment
+                                </Action>
+                              )}
+                            {item.kind === "customers" &&
+                              item.assignedTo === actor?.email &&
+                              canUpdate &&
+                              !item.blocked &&
+                              item.status === "active" && (
+                                <Action
+                                  tone="save"
+                                  disabled={busy}
+                                  onClick={() =>
+                                    void run({ operation: "counsel", id: item.id }, "Counselling recorded.")
+                                  }
+                                >
+                                  Mark counselled
+                                </Action>
+                              )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
