@@ -152,14 +152,16 @@ export function LeadSelect({
           <span className="truncate">{options.find((option) => option.value === value)?.label ?? label}</span>
           <Icon name="ChevronDown" className="size-3 shrink-0" />
         </SelectTrigger>
-        <SelectContent className="max-h-60 overflow-auto rounded-sm border border-[#eadfca] bg-white p-1 shadow-xl shadow-slate-200/60">
+        <SelectContent className="absolute inset-x-0 top-full z-50 mt-1 max-h-60 overflow-auto rounded-sm border border-[#eadfca] bg-white p-1 shadow-xl shadow-slate-200/60">
           {options.map((option) => (
             <SelectItem
               key={option.value}
               className="cursor-pointer rounded-sm py-2 text-xs text-stone-600 transition duration-700 hover:bg-amber-50 aria-selected:bg-amber-50 aria-selected:font-semibold aria-selected:text-amber-900"
               value={option.value}
             >
-              {option.label}
+              <span className="block truncate" title={option.label}>
+                {option.label}
+              </span>
             </SelectItem>
           ))}
         </SelectContent>

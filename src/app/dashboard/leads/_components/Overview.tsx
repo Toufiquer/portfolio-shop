@@ -172,6 +172,78 @@ function MonthlyChart({
     </div>
   );
 }
+function CouncilorProgressChart({
+  rows,
+}: {
+  rows: { email: string; name: string; assigned: number; counselling24Hours: number; inactive: number }[];
+}) {
+  const metrics = [
+    { key: "assigned", label: "Assigned", color: "bg-amber-500" },
+    { key: "counselling24Hours", label: "Counselling · 24h", color: "bg-emerald-500" },
+    { key: "inactive", label: "Inactive", color: "bg-rose-500" },
+  ] as const;
+  const maximums = Object.fromEntries(
+    metrics.map(({ key }) => [key, Math.max(1, ...rows.map((row) => row[key]))]),
+  ) as Record<(typeof metrics)[number]["key"], number>;
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="min-w-[680px] divide-y divide-[#eadfca]">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 bg-[#fffdf7] px-5 py-3 text-[11px] text-slate-500">
+          {metrics.map((metric) => (
+            <span key={metric.key} className="flex items-center gap-1.5">
+              <span className={`inline-block size-2.5 rounded-sm ${metric.color}`} />
+              {metric.label}
+            </span>
+          ))}
+          <span className="ml-auto">Each measure is scaled to its team high.</span>
+        </div>
+        {rows.map((row) => (
+          <figure key={row.email} className="grid grid-cols-[12rem_minmax(0,1fr)] gap-5 px-5 py-4">
+            <figcaption className="flex min-w-0 items-center gap-3">
+              <LeadAvatar name={row.name} />
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-slate-700" title={row.name}>
+                  {row.name}
+                </p>
+                <p className="mt-0.5 truncate text-xs text-slate-500" title={row.email}>
+                  {row.email}
+                </p>
+              </div>
+            </figcaption>
+            <div className="grid gap-2.5">
+              {metrics.map((metric) => {
+                const value = row[metric.key];
+                const width = value ? Math.max(3, (value / maximums[metric.key]) * 100) : 0;
+                return (
+                  <div
+                    key={metric.key}
+                    className="grid grid-cols-[7.5rem_minmax(8rem,1fr)_2.5rem] items-center gap-3 text-xs"
+                  >
+                    <span className="truncate text-slate-500">{metric.label}</span>
+                    <div
+                      aria-label={`${row.name}: ${metric.label} ${value.toLocaleString()}`}
+                      role="img"
+                      className="h-2 overflow-hidden rounded-full bg-slate-100"
+                    >
+                      <div
+                        className={`h-full rounded-full ${metric.color} transition-[width] duration-700 motion-reduce:transition-none`}
+                        style={{ width: `${width}%` }}
+                      />
+                    </div>
+                    <strong className="text-right font-semibold text-slate-700 tabular-nums">
+                      {value.toLocaleString()}
+                    </strong>
+                  </div>
+                );
+              })}
+            </div>
+          </figure>
+        ))}
+      </div>
+    </div>
+  );
+}
 export default function Overview() {
   const { can } = useDashboardPermissions("/dashboard/leads/overview");
   const { data, isLoading, isFetching, error, refetch } = useGetLeadsOverviewQuery(undefined, { skip: !can("read") });
@@ -324,46 +396,12 @@ export default function Overview() {
                 </div>
               ))}
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm [&_td]:px-5 [&_td]:py-4 [&_th]:px-5 [&_th]:py-3 [&_th]:font-semibold [&_th]:whitespace-nowrap">
-                <thead className="bg-[#fffdf9] text-[10px] tracking-wider text-slate-500 uppercase">
-                  <tr>
-                    <th className="p-3">Councilor</th>
-                    <th className="p-3">Assigned</th>
-                    <th className="p-3">Counselling · last 24h</th>
-                    <th className="p-3">Inactive</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {progress
-                    .slice((actualProgressPage - 1) * progressSize, actualProgressPage * progressSize)
-                    .map((row) => (
-                      <tr key={row.email} className="border-t border-[#eadfca] transition-colors hover:bg-amber-50/45">
-                        <td className="p-3">
-                          <div className="flex items-center gap-3">
-                            <LeadAvatar name={row.name} />
-                            <div className="min-w-0">
-                              <p className="max-w-48 truncate font-semibold text-slate-700" title={row.name}>
-                                {row.name}
-                              </p>
-                              <p className="mt-0.5 max-w-48 truncate text-xs text-slate-500" title={row.email}>
-                                {row.email}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="p-3 font-medium text-slate-700 tabular-nums">{row.assigned.toLocaleString()}</td>
-                        <td className="p-3">
-                          <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 tabular-nums">
-                            {row.counselling24Hours.toLocaleString()}
-                          </span>
-                        </td>
-                        <td className="p-3 text-slate-500 tabular-nums">{row.inactive.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-              {!progress.length && (
+            <div className="border-b border-[#eadfca]">
+              {progress.length ? (
+                <CouncilorProgressChart
+                  rows={progress.slice((actualProgressPage - 1) * progressSize, actualProgressPage * progressSize)}
+                />
+              ) : (
                 <EmptyState
                   icon="Users"
                   title="Your team activity starts here"

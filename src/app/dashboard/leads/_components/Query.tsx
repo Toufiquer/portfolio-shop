@@ -260,7 +260,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
           </Action>
         )}
       </PageHeading>
-      <div className={`${leadPanel} grid gap-4 overflow-hidden p-4 sm:p-5`}>
+      <div className={`${leadPanel} grid gap-4 overflow-visible p-4 sm:p-5`}>
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eadfca] pb-4">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
             <span className="grid size-8 place-items-center rounded-sm bg-amber-50 text-amber-700">
@@ -519,7 +519,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
         ) : (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm [&_td]:px-4 [&_td]:py-4 [&_th]:px-4 [&_th]:py-3 [&_th]:font-semibold [&_th]:whitespace-nowrap">
+              <table className="w-full text-left text-sm lg:table-fixed [&_td]:px-4 [&_td]:py-4 [&_th]:px-4 [&_th]:py-3 [&_th]:font-semibold [&_th]:whitespace-nowrap">
                 <thead className="border-b border-[#eadfca] bg-[#fffdf9] text-[10px] tracking-wider text-slate-500 uppercase">
                   <tr>
                     {isCustomerColumnVisible("select") && (
@@ -552,7 +552,11 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                       </>
                     )}
                     {isCustomerColumnVisible("status") && <th className="p-3">Status</th>}
-                    {isCustomerColumnVisible("actions") && <th className="p-3">Actions</th>}
+                    {isCustomerColumnVisible("actions") && (
+                      <th className="w-56 p-3 lg:sticky lg:right-0 lg:z-20 lg:border-l lg:border-[#eadfca] lg:bg-[#fffdf9] lg:shadow-[-8px_0_12px_-10px_rgba(120,80,30,0.24)]">
+                        Actions
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody>
@@ -605,17 +609,22 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                               {item.position}
                             </span>
                           </td>
-                          <td className="max-w-52 truncate p-3 text-slate-500" title={item.description}>
+                          <td className="w-52 max-w-52 truncate p-3 text-slate-500" title={item.description}>
                             {item.description || "—"}
                           </td>
                         </>
                       ) : (
                         <>
                           {isCustomerColumnVisible("mobile") && (
-                            <td className="whitespace-nowrap p-3 text-xs text-slate-600 tabular-nums">{item.mobile}</td>
+                            <td
+                              className="w-36 max-w-36 truncate whitespace-nowrap p-3 text-xs text-slate-600 tabular-nums"
+                              title={item.mobile}
+                            >
+                              {item.mobile}
+                            </td>
                           )}
                           {isCustomerColumnVisible("email") && (
-                            <td className="max-w-44 truncate p-3 text-xs text-slate-500" title={item.email}>
+                            <td className="w-44 max-w-44 truncate p-3 text-xs text-slate-500" title={item.email}>
                               {item.email || "—"}
                             </td>
                           )}
@@ -625,7 +634,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                         <>
                           {isCustomerColumnVisible("funnel") && (
                             <td
-                              className="max-w-40 truncate p-3 text-xs text-violet-700"
+                              className="w-40 max-w-40 truncate p-3 text-xs text-violet-700"
                               title={item.funnelName ?? item.funnelId}
                             >
                               {item.funnelName ?? item.funnelId}
@@ -633,7 +642,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                           )}
                           {isCustomerColumnVisible("councilor") && (
                             <td
-                              className="max-w-44 truncate p-3 text-xs text-slate-500"
+                              className="w-44 max-w-44 truncate p-3 text-xs text-slate-500"
                               title={item.assignedName || item.assignedTo || "Unassigned"}
                             >
                               {item.assignedName || item.assignedTo || "Unassigned"}
@@ -657,8 +666,8 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                         </td>
                       )}
                       {isCustomerColumnVisible("actions") && (
-                        <td className="p-3">
-                          <div className="flex min-w-28 flex-wrap gap-1.5">
+                        <td className="w-56 p-3 lg:sticky lg:right-0 lg:z-10 lg:border-l lg:border-[#eadfca] lg:bg-inherit lg:shadow-[-8px_0_12px_-10px_rgba(120,80,30,0.24)]">
+                          <div className="flex min-w-max gap-1.5">
                             <Action
                               className="size-8 px-0"
                               title={`View ${item.name}`}
