@@ -28,7 +28,7 @@ import {
   useRefreshCooldown,
 } from "./ui";
 
-function ChartHeading({ title, description, icon }: { title: string; description: string; icon: string }) {
+function ChartHeading({ title, description, icon }: { title: string; description?: string; icon: string }) {
   return (
     <div className="flex items-start gap-3 px-5 pt-5 pb-4">
       <span className="grid size-9 shrink-0 place-items-center rounded-sm border border-amber-100 bg-amber-50 text-amber-700">
@@ -36,7 +36,7 @@ function ChartHeading({ title, description, icon }: { title: string; description
       </span>
       <div>
         <h2 className="text-sm font-semibold text-slate-900">{title}</h2>
-        <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
+        {description && <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>}
       </div>
     </div>
   );
@@ -196,7 +196,6 @@ function CouncilorProgressChart({
               {metric.label}
             </span>
           ))}
-          <span className="ml-auto">Each measure is scaled to its team high.</span>
         </div>
         {rows.map((row) => (
           <figure key={row.email} className="grid grid-cols-[12rem_minmax(0,1fr)] gap-5 px-5 py-4">
@@ -271,10 +270,6 @@ export default function Overview() {
   return (
     <section className="grid min-w-0 gap-5">
       <PageHeading title="Leads overview" icon="BarChart" iconClass={leadPresentation.overview.iconClass}>
-        <span className="mr-1 hidden items-center gap-1.5 text-xs text-stone-500 sm:flex">
-          <Icon name="Clock" className="size-3.5" />
-          Asia/Dhaka
-        </span>
         <Action disabled={!can("read") || isFetching || Boolean(cooldown.remaining)} onClick={refresh}>
           <Icon name="RefreshCw" className={isFetching ? "animate-spin" : ""} />
           {cooldown.remaining ? `Refresh (${cooldown.remaining}s)` : "Refresh"}
@@ -302,28 +297,24 @@ export default function Overview() {
                 label: "All customers",
                 value: data.summary.all,
                 icon: "Users",
-                note: "Across your customer pipeline",
                 color: "border-sky-100 bg-sky-50 text-sky-700",
               },
               {
                 label: "New in 30 days",
                 value: data.summary.new30Days,
                 icon: "TrendingUp",
-                note: "Added in the last 30 days",
                 color: "border-amber-100 bg-amber-50 text-amber-700",
               },
               {
                 label: "Active customers",
                 value: data.summary.active,
                 icon: "Activity",
-                note: "Currently marked as active",
                 color: "border-emerald-100 bg-emerald-50 text-emerald-700",
               },
               {
                 label: "Inactive customers",
                 value: data.summary.inactive,
                 icon: "Clock",
-                note: "Currently marked as inactive",
                 color: "border-stone-200 bg-stone-50 text-stone-500",
               },
             ].map((card) => (
@@ -338,7 +329,6 @@ export default function Overview() {
                 <p className="relative mt-3 text-3xl font-semibold tracking-tight text-slate-950 tabular-nums">
                   {card.value.toLocaleString()}
                 </p>
-                <p className="relative mt-2 text-[11px] leading-5 text-slate-500">{card.note}</p>
               </div>
             ))}
           </section>
@@ -370,7 +360,6 @@ export default function Overview() {
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eadfca] px-5 py-4">
               <div>
                 <h2 className="text-sm font-semibold text-slate-900">Councilor progress</h2>
-                <p className="mt-1 text-xs text-slate-500">Assignments and recent counselling across your team</p>
               </div>
               <span className="rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
                 Team activity
@@ -422,11 +411,7 @@ export default function Overview() {
           </section>
           <div className="grid gap-5 lg:grid-cols-2">
             <section className={panel}>
-              <ChartHeading
-                title="Customer growth"
-                description="New relationships added each month"
-                icon="TrendingUp"
-              />
+              <ChartHeading title="Customer growth" icon="TrendingUp" />
               <MonthlyChart
                 title="New customers per month"
                 months={months}
@@ -436,11 +421,7 @@ export default function Overview() {
               />
             </section>
             <section className={panel}>
-              <ChartHeading
-                title="Business facts"
-                description="Customer growth, assignments, and counselling"
-                icon="BarChart"
-              />
+              <ChartHeading title="Business facts" icon="BarChart" />
               <MonthlyChart
                 title="Monthly customer and counselling activity"
                 months={months}
@@ -456,11 +437,7 @@ export default function Overview() {
               />
             </section>
             <section className={panel}>
-              <ChartHeading
-                title="Customer distribution"
-                description="Current status of customers added in each month"
-                icon="PieChart"
-              />
+              <ChartHeading title="Customer distribution" icon="PieChart" />
               <MonthlyChart
                 title="Active and inactive customers by creation month"
                 months={months}
@@ -488,9 +465,6 @@ export default function Overview() {
                   }}
                 />
               </div>
-              <p className="px-5 pb-2 text-xs leading-5 text-slate-500">
-                Current funnel of customers added in {month ? monthLabel(month.month) : "this month"}.
-              </p>
               <div className="grid gap-4 p-5">
                 {month?.funnels
                   .slice((actualFunnelPage - 1) * funnelSize, actualFunnelPage * funnelSize)

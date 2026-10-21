@@ -268,7 +268,6 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
             </span>
             Find and organize
           </h2>
-          <span className="text-xs text-slate-500">Search, filter, and manage your {kind}</span>
         </div>
         <div className="flex flex-wrap items-start gap-2">
           <div className="relative min-w-0 flex-1 basis-full sm:min-w-48 sm:basis-auto">
@@ -310,16 +309,6 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                   <Action className="h-10" disabled={busy} onClick={() => fileInput.current?.click()}>
                     <Icon name="Upload" />
                     Import Excel
-                  </Action>
-                  <Action
-                    className="h-10"
-                    disabled={busy}
-                    onClick={() => {
-                      void exportLeadExcel(kind, [], true).catch((failure) => toast.error(errorMessage(failure)));
-                    }}
-                  >
-                    <Icon name="FileText" />
-                    Template
                   </Action>
                   <input
                     ref={fileInput}
@@ -367,7 +356,11 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                   }}
                   disabled={busy}
                 />
-                <p className="mt-2 text-[11px] leading-5 text-slate-500">Filter by assigned or unassigned customers.</p>
+                {!mine && (
+                  <p className="mt-2 text-[11px] leading-5 text-slate-500">
+                    Filter by assigned or unassigned customers.
+                  </p>
+                )}
               </div>
             </div>
             <div className="grid content-start gap-2">
@@ -385,13 +378,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
             </div>
           </div>
         )}
-        {mine && (
-          <p className="text-xs text-slate-500">
-            Assignment filters only narrow your own leads; other councilors and unassigned customers will have no
-            matches.
-          </p>
-        )}
-        {kind !== "funnels" && canCreate && (
+        {kind !== "funnels" && canCreate && !mine && (
           <details className="rounded-sm border border-[#eadfca] bg-[#fffdf7] px-3 py-2.5 text-xs text-slate-500">
             <summary className="cursor-pointer font-semibold text-slate-700">Excel import guidelines</summary>
             <p className="pt-2 leading-5">
@@ -421,9 +408,11 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
               </span>
             )}
           </div>
-          <p className="text-xs text-slate-500">
-            {canRead && result ? `${items.length} shown on this page` : "Customer relationship management"}
-          </p>
+          {(!canRead || !result || kind === "funnels") && (
+            <p className="text-xs text-slate-500">
+              {canRead && result ? `${items.length} shown on this page` : "Customer relationship management"}
+            </p>
+          )}
           {kind === "customers" && (
             <div className="relative">
               <Action

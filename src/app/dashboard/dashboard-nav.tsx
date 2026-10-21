@@ -149,7 +149,7 @@ export function DashboardNav() {
               className={`dashboard-brand text-xs font-bold tracking-[.22em] text-amber-900 ${expanded ? "dashboard-brand-open" : ""}`}
               href="/dashboard"
             >
-              SP BOX
+              Dashboard
             </Link>
             <button
               aria-label="Close dashboard navigation"

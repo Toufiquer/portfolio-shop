@@ -369,15 +369,7 @@ export default function AccessPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="truncate text-sm text-stone-600">{item.roleName}</p>
-                  {item.roleMissing && (
-                    <p className="text-xs text-amber-800">
-                      Missing role ·{" "}
-                      {item.suggestedRoleName
-                        ? `Review suggested role: ${item.suggestedRoleName}`
-                        : "Choose a replacement role"}
-                    </p>
-                  )}
+                  <p className="truncate text-sm text-stone-600">{item.roleMissing ? "--" : item.roleName}</p>
                 </div>
                 <span
                   className={`w-fit rounded-sm px-2 py-1 text-xs font-semibold ${item.blocked ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}
