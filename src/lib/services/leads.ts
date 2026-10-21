@@ -22,6 +22,7 @@ import {
   normalizeLeadMobile,
   parseLeadInput,
   type LeadActor,
+  type LeadCouncilorSummaries,
   type LeadInput,
   type LeadItem,
   type LeadKind,
@@ -368,6 +369,94 @@ export async function listLeads(actor: LeadActor, query: URLSearchParams) {
   }
   return { items: serialized, total, page, pageSize, actor };
 }
+export async function leadsCouncilorSummaries(actor: LeadActor): Promise<LeadCouncilorSummaries> {
+  requirePermission(actor, "councilors", "read");
+  if (!leadIsManager(actor)) throw new LeadError("Only a Developer or Admin can view all councilor summaries.", 403);
+
+  const [councilors, funnels] = await Promise.all([
+    leadsCollection("councilors").find({}).sort({ name: 1 }).toArray(),
+    leadsCollection("funnels").find({}).sort({ position: 1 }).toArray(),
+  ]);
+  const emails = councilors.flatMap((councilor) => (councilor.kind === "councilors" ? [councilor.email] : []));
+  const counts = await leadsCollection("customers")
+        .aggregate<{
+          _id: { assignedTo: string | null; funnelId: string; status: string };
+          count: number;
+        }>([
+          {
+            $group: {
+              _id: { assignedTo: "$assignedTo", funnelId: "$funnelId", status: "$status" },
+              count: { $sum: 1 },
+            },
+          },
+        ])
+        .toArray();
+
+  const funnelNames = new Map(funnels.map((funnel) => [funnel.id, funnel.name]));
+  const byCouncilor = new Map<
+    string | null,
+    Map<string, { active: number; inactive: number }>
+  >();
+  counts.forEach(({ _id, count }) => {
+    const assignedTo = _id.assignedTo || null;
+    const funnelsById = byCouncilor.get(assignedTo) ?? new Map<string, { active: number; inactive: number }>();
+    const statusCounts = funnelsById.get(_id.funnelId) ?? { active: 0, inactive: 0 };
+    if (_id.status === "active" || _id.status === "inactive") statusCounts[_id.status] += count;
+    funnelsById.set(_id.funnelId, statusCounts);
+    byCouncilor.set(assignedTo, funnelsById);
+  });
+
+  function breakdown(assignedTo: string | null) {
+      const funnelsById = byCouncilor.get(assignedTo) ?? new Map<string, { active: number; inactive: number }>();
+      const funnelSummaries = new Map(
+        funnels.map((funnel) => [funnel.id, { id: funnel.id, name: funnel.name, ...({ active: 0, inactive: 0 }) }]),
+      );
+      funnelsById.forEach((statuses, funnelId) => {
+        const summary = funnelSummaries.get(funnelId) ?? {
+          id: funnelId,
+          name: funnelNames.get(funnelId) ?? "Unavailable funnel",
+          active: 0,
+          inactive: 0,
+        };
+        summary.active = statuses.active;
+        summary.inactive = statuses.inactive;
+        funnelSummaries.set(funnelId, summary);
+      });
+      const funnelRows = Array.from(funnelSummaries.values()).map((funnel) => ({
+        id: funnel.id,
+        name: funnel.name,
+        customerCount: funnel.active + funnel.inactive,
+        statuses: { active: funnel.active, inactive: funnel.inactive },
+      }));
+      const customerStatuses = funnelRows.reduce(
+        (totals, funnel) => ({
+          active: totals.active + funnel.statuses.active,
+          inactive: totals.inactive + funnel.statuses.inactive,
+        }),
+        { active: 0, inactive: 0 },
+      );
+      return {
+          customerCount: customerStatuses.active + customerStatuses.inactive,
+          customerStatuses,
+          funnels: funnelRows,
+      };
+  }
+  return {
+    items: councilors.flatMap((councilor) => {
+      if (councilor.kind !== "councilors") return [];
+      const serializedCouncilor = serialize(councilor);
+      if (serializedCouncilor.kind !== "councilors") return [];
+      return [{ ...serializedCouncilor, ...breakdown(councilor.email) }];
+    }),
+    others: Array.from(byCouncilor.keys())
+      .filter((email) => !email || !emails.includes(email))
+      .map((email) => ({
+        id: email ? `unknown:${email}` : "unassigned",
+        name: email ? `Unknown councilor (${email})` : "Unassigned",
+        ...breakdown(email),
+      })),
+  };
+}
 export async function createLead(actor: LeadActor, kind: LeadKind, raw: unknown, mine: boolean) {
   requirePermission(actor, areaFor(kind, mine), "create");
   requireAdmin(actor, kind);
@@ -502,9 +591,18 @@ export async function updateLead(actor: LeadActor, kind: LeadKind, id: string, r
   if (!item) throw new LeadError("Assignment changed. Refresh and try again.", 409);
   return { item: serialize(item) };
 }
-export async function bulkLeads(actor: LeadActor, kind: LeadKind, ids: string[], mine: boolean, status?: unknown) {
-  requirePermission(actor, areaFor(kind, mine), status === undefined ? "delete" : "update");
+export async function bulkLeads(
+  actor: LeadActor,
+  kind: LeadKind,
+  ids: string[],
+  mine: boolean,
+  status?: unknown,
+  assignedTo?: unknown,
+) {
+  requirePermission(actor, areaFor(kind, mine), status === undefined && assignedTo === undefined ? "delete" : "update");
   requireAdmin(actor, kind);
+  if (assignedTo !== undefined && (kind !== "customers" || mine || !leadIsManager(actor)))
+    throw new LeadError("Only a Developer or Admin can bulk-assign customers from Customers.", 403);
   const collection = leadsCollection(kind);
   const filter: Filter<LeadDocument> = {
     id: { $in: ids },
@@ -513,6 +611,20 @@ export async function bulkLeads(actor: LeadActor, kind: LeadKind, ids: string[],
   const records = await collection.find(filter).toArray();
   if (records.length !== ids.length)
     throw new LeadError("Some records no longer exist or are not assigned to you. Refresh the list.", 409);
+  if (assignedTo !== undefined) {
+    if (typeof assignedTo !== "string") throw new LeadError("Choose an active councilor.");
+    const councilorEmail = normalizeLeadEmail(assignedTo);
+    if (!(await leadsCollection("councilors").findOne({ email: councilorEmail, status: "active" })))
+      throw new LeadError("Choose an active councilor.");
+    const now = new Date();
+    const result = await collection.updateMany(filter, {
+      $set: { assignedTo: councilorEmail, assignedAt: now.toISOString(), updatedAt: now },
+    });
+    if (result.matchedCount !== ids.length)
+      throw new LeadError("Some customer assignments changed. Refresh and try again.", 409);
+    await Promise.all(records.map((record) => logActivity(record.id, councilorEmail, "assigned", now)));
+    return { updatedCount: result.modifiedCount };
+  }
   if (status !== undefined) {
     if (status !== "active" && status !== "inactive") throw new LeadError("Choose active or inactive status.");
     return {

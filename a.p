@@ -1,1 +1,1 @@
-Look at the page 'src/app/dashboard/leads/..' and you found 5 tabs Now your task is fetch session and render email and role at the top right side of the page. I want to see the email and role from all tabs. 
+Look at the page '/dashboard/leads/councilors' I want to see summery of each councilor customers by their status and funnels. Do not remove table add a new sections and display the summery. 

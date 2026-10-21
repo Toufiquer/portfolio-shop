@@ -22,6 +22,18 @@ export const leadCan = (actor: LeadActor | undefined, area: string, operation: D
 type LeadBase = { id: string; name: string; status: LeadStatus; createdAt: string; updatedAt: string };
 export type LeadFunnel = LeadBase & { kind: "funnels"; position: number; description: string };
 export type LeadCouncilor = LeadBase & { kind: "councilors"; mobile: string; email: string };
+export type LeadCouncilorSummary = LeadCouncilor & {
+  customerCount: number;
+  customerStatuses: Record<LeadStatus, number>;
+  funnels: {
+    id: string;
+    name: string;
+    customerCount: number;
+    statuses: Record<LeadStatus, number>;
+  }[];
+};
+export type LeadOtherCustomerSummary = Pick<LeadCouncilorSummary, "id" | "name" | "customerCount" | "customerStatuses" | "funnels">;
+export type LeadCouncilorSummaries = { items: LeadCouncilorSummary[]; others: LeadOtherCustomerSummary[] };
 export type LeadNote = {
   id: string;
   note: string;

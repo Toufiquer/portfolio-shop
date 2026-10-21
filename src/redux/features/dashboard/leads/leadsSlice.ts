@@ -5,7 +5,15 @@
 |-----------------------------------------
 */
 
-import type { LeadInput, LeadKind, LeadList, LeadListParams, LeadOverview, LeadStatus } from "@/lib/dashboard/leads";
+import type {
+  LeadCouncilorSummaries,
+  LeadInput,
+  LeadKind,
+  LeadList,
+  LeadListParams,
+  LeadOverview,
+  LeadStatus,
+} from "@/lib/dashboard/leads";
 import { apiSlice } from "@/redux/api/apiSlice";
 
 export type LeadMutation = {
@@ -66,6 +74,10 @@ const leadsApi = apiSlice.enhanceEndpoints({ addTagTypes: ["Leads"] }).injectEnd
       query: () => "leads/v1?overview=true",
       providesTags: ["Leads"],
     }),
+    getLeadsCouncilorSummaries: build.query<LeadCouncilorSummaries, void>({
+      query: () => "leads/v1?councilorSummaries=true",
+      providesTags: ["Leads"],
+    }),
     getLeadsDemoState: build.query<LeadDemoState, void>({
       query: () => "leads/v1/demo",
       providesTags: ["Leads"],
@@ -80,6 +92,12 @@ const leadsApi = apiSlice.enhanceEndpoints({ addTagTypes: ["Leads"] }).injectEnd
         const query = leadQueryString({ kind, mine });
         if (operation === "create") return { url: `leads/v1?${query}`, method: "POST", body: data };
         if (operation === "import") return { url: "leads/v1/import", method: "POST", body: { kind, mine, rows } };
+        if (operation === "assign" && ids)
+          return {
+            url: "leads/v1/bulk",
+            method: "PATCH",
+            body: { kind, mine, ids, assignedTo },
+          };
         if (operation === "delete" || operation === "status")
           return {
             url: "leads/v1/bulk",
@@ -106,6 +124,7 @@ const leadsApi = apiSlice.enhanceEndpoints({ addTagTypes: ["Leads"] }).injectEnd
 export const {
   useGetLeadOptionsQuery,
   useGetLeadsQuery,
+  useGetLeadsCouncilorSummariesQuery,
   useLazyGetLeadsQuery,
   useGetLeadsOverviewQuery,
   useGetLeadsDemoStateQuery,

@@ -26,11 +26,13 @@ import {
 import { useDashboardPermissions } from "@/lib/dashboard/use-dashboard-permissions";
 import {
   useGetLeadsQuery,
+  useGetLeadsCouncilorSummariesQuery,
   useLazyGetLeadsQuery,
   useMutateLeadsMutation,
   type LeadMutation,
 } from "@/redux/features/dashboard/leads/leadsSlice";
 
+import CouncilorSummary from "./CouncilorSummary";
 import { exportLeadExcel, readLeadExcel } from "./excel";
 import Mutation from "./Mutation";
 import { leadInput, leadPanel, leadPresentation } from "./presentation";
@@ -105,6 +107,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
   const [view, setView] = useState<LeadItem | null>(null);
   const [assigning, setAssigning] = useState<LeadCustomer | null>(null);
   const [assignee, setAssignee] = useState("");
+  const [bulkAssigning, setBulkAssigning] = useState(false);
   const [noting, setNoting] = useState<LeadCustomer | null>(null);
   const [note, setNote] = useState("");
   const [deleting, setDeleting] = useState<string[] | null>(null);
@@ -134,6 +137,11 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
   const [mutate, { isLoading: mutating }] = useMutateLeadsMutation();
   const cooldown = useRefreshCooldown();
   const isAdmin = Boolean(actor && leadIsManager(actor));
+  const {
+    data: councilorSummaryData,
+    isLoading: councilorSummariesLoading,
+    error: councilorSummariesError,
+  } = useGetLeadsCouncilorSummariesQuery(undefined, { skip: kind !== "councilors" || !isAdmin });
   const canManage = (item: LeadItem) => isAdmin || (item.kind === "customers" && item.assignedTo === actor?.email);
   const canCreate = leadCan(actor, area, "create") && (isAdmin || kind === "customers");
   const busy = mutating || workingFile;
@@ -260,6 +268,13 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
           </Action>
         )}
       </PageHeading>
+      {kind === "councilors" && isAdmin && (
+        <CouncilorSummary
+          data={councilorSummaryData}
+          isLoading={councilorSummariesLoading}
+          error={councilorSummariesError}
+        />
+      )}
       <div className={`${leadPanel} grid gap-4 overflow-visible p-4 sm:p-5`}>
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eadfca] pb-4">
           <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
@@ -460,6 +475,18 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
         {activeSelection.length > 0 && (
           <div className="flex flex-wrap items-center gap-2 border-b border-amber-100 bg-amber-50 px-4 py-3 text-xs sm:px-5">
             <span className="mr-1 font-semibold text-amber-900">{activeSelection.length} selected</span>
+            {kind === "customers" && !mine && isAdmin && (
+              <Action
+                tone="save"
+                disabled={!canUpdate || busy || isFetching}
+                onClick={() => {
+                  setAssignee("");
+                  setBulkAssigning(true);
+                }}
+              >
+                Assign to councilor
+              </Action>
+            )}
             <Action
               disabled={!canUpdate || busy || isFetching}
               tone="save"
@@ -951,6 +978,41 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
                 }}
               >
                 {mutating ? "Saving…" : "Save assignment"}
+              </Action>
+            </div>
+          </div>
+        </LeadsModal>
+      )}
+      {bulkAssigning && (
+        <LeadsModal title={`Assign ${activeSelection.length} customers`} busy={mutating} onClose={() => setBulkAssigning(false)}>
+          <div className="grid gap-4 p-5">
+            <p className="text-sm leading-6 text-slate-600">
+              Assign all {activeSelection.length} selected customers to one active councilor.
+            </p>
+            <RecordSelect
+              kind="councilors"
+              value={assignee}
+              label="Choose a councilor"
+              onChange={setAssignee}
+              activeOnly
+              disabled={mutating}
+            />
+            <div className="flex justify-end gap-2 border-t border-[#eadfca] pt-4">
+              <Action disabled={mutating} onClick={() => setBulkAssigning(false)}>
+                Cancel
+              </Action>
+              <Action
+                tone="save"
+                disabled={!assignee || mutating || !activeSelection.length}
+                onClick={async () => {
+                  const response = await run(
+                    { operation: "assign", ids: activeSelection, assignedTo: assignee },
+                    "Selected customers assigned to the councilor.",
+                  );
+                  if (response) setBulkAssigning(false);
+                }}
+              >
+                {mutating ? "Saving…" : "Assign customers"}
               </Action>
             </div>
           </div>
