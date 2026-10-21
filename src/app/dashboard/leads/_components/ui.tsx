@@ -44,6 +44,7 @@ export function PageHeading({
   icon,
   iconClass,
   children,
+  hideTitleOnMobile = false,
 }: {
   title: string;
   description?: string;
@@ -51,10 +52,11 @@ export function PageHeading({
   icon: string;
   iconClass: string;
   children?: ReactNode;
+  hideTitleOnMobile?: boolean;
 }) {
   return (
     <header className="flex flex-wrap items-center justify-between gap-4 px-1">
-      <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+      <div className={`flex min-w-0 items-start gap-3 sm:gap-4 ${hideTitleOnMobile ? "sr-only sm:not-sr-only" : ""}`}>
         <span className={`grid size-12 shrink-0 place-items-center rounded-sm border ${iconClass}`}>
           <Icon name={icon} className="size-6" />
         </span>

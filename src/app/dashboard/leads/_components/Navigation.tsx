@@ -9,7 +9,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Icon } from "@/components/all-icons/all-icons";
 import { leadTabs } from "@/lib/dashboard/leads";
@@ -22,8 +22,10 @@ export default function Navigation({ role, email }: { role: string; email: strin
   const { canEnter, data: permissions } = useDashboardPermissions("/dashboard/leads");
   const navRef = useRef<HTMLElement>(null);
   const activeRef = useRef<HTMLAnchorElement>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isHome = pathname === "/dashboard/leads";
   const current = leadTabs.find((tab) => pathname === `/dashboard/leads/${tab.path}`);
+  const availableTabs = leadTabs.filter((tab) => canEnter(`/dashboard/leads/${tab.path}`));
   useEffect(() => {
     const nav = navRef.current;
     const active = activeRef.current;
@@ -56,8 +58,8 @@ export default function Navigation({ role, email }: { role: string; email: strin
               <Icon name="FolderKanban" className="size-4 text-amber-600" />
               Leads workspace
             </Link>
-            <Icon name="ChevronRight" className="size-3 shrink-0" />
-            <span className="truncate font-medium text-slate-800">{current?.label}</span>
+            <Icon name="ChevronRight" className="hidden size-3 shrink-0 sm:block" />
+            <span className="hidden truncate font-medium text-slate-800 sm:block">{current?.label}</span>
           </>
         )}
       </nav>
@@ -88,14 +90,54 @@ export default function Navigation({ role, email }: { role: string; email: strin
           </div>
         </header>
       ) : (
-        <nav
-          ref={navRef}
-          aria-label="Leads tabs"
-          className={`${leadPanel} flex min-w-0 gap-1.5 overflow-x-auto p-1.5 sm:grid sm:grid-cols-5`}
-        >
-          {leadTabs
-            .filter((tab) => canEnter(`/dashboard/leads/${tab.path}`))
-            .map((tab) => {
+        <>
+          <div className="relative flex justify-end sm:hidden">
+            <button
+              type="button"
+              aria-label={`${mobileMenuOpen ? "Close" : "Choose"} Leads tab. Current tab: ${current?.label ?? "Leads"}`}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="leads-mobile-tabs"
+              onClick={() => setMobileMenuOpen((open) => !open)}
+              className={`${leadPanel} flex w-full items-center justify-between gap-3 px-4 py-3 text-left outline-none transition hover:border-amber-300 hover:bg-amber-50 focus-visible:ring-2 focus-visible:ring-amber-500`}
+            >
+              <span className="flex min-w-0 items-center gap-3">
+                <Icon name={current?.icon ?? "FolderKanban"} className="size-4 shrink-0 text-amber-700" />
+                <span className="truncate text-sm font-semibold text-slate-800">{current?.label ?? "Leads tabs"}</span>
+              </span>
+              <Icon
+                name="ChevronDown"
+                className={`size-4 shrink-0 text-slate-500 transition-transform ${mobileMenuOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            <nav
+              id="leads-mobile-tabs"
+              aria-label="Choose a Leads tab"
+              className={`${leadPanel} absolute top-full right-0 z-40 mt-2 w-full gap-1.5 p-2 shadow-lg shadow-stone-300/40 ${mobileMenuOpen ? "grid" : "hidden"}`}
+            >
+              {availableTabs
+                .filter((tab) => tab.path !== current?.path)
+                .map((tab) => {
+                  const href = `/dashboard/leads/${tab.path}`;
+                  return (
+                    <Link
+                      key={tab.path}
+                      href={href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="flex items-center gap-3 rounded-sm px-3 py-3 text-sm font-semibold text-stone-600 outline-none transition hover:bg-amber-50 hover:text-amber-900 focus-visible:ring-2 focus-visible:ring-amber-500"
+                    >
+                      <Icon name={tab.icon} className="size-4 shrink-0" />
+                      <span className="flex-1">{tab.label}</span>
+                    </Link>
+                  );
+                })}
+            </nav>
+          </div>
+          <nav
+            ref={navRef}
+            aria-label="Leads tabs"
+            className={`${leadPanel} hidden min-w-0 gap-1.5 overflow-x-auto p-1.5 sm:grid sm:grid-cols-5`}
+          >
+            {availableTabs.map((tab) => {
               const href = `/dashboard/leads/${tab.path}`;
               return (
                 <Link
@@ -110,7 +152,8 @@ export default function Navigation({ role, email }: { role: string; email: strin
                 </Link>
               );
             })}
-        </nav>
+          </nav>
+        </>
       )}
     </div>
   );

@@ -96,6 +96,7 @@ function noteDate(value: string) {
 export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: boolean }) {
   const [page, setPage] = useState(1),
     [pageSize, setPageSize] = useState(10);
+  const [organizeOpen, setOrganizeOpen] = useState(false);
   const [text, setText] = useState(""),
     [search, setSearch] = useState("");
   const [status, setStatus] = useState(""),
@@ -137,11 +138,14 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
   const [mutate, { isLoading: mutating }] = useMutateLeadsMutation();
   const cooldown = useRefreshCooldown();
   const isAdmin = Boolean(actor && leadIsManager(actor));
+  const canViewCustomerDistribution = isAdmin && leadCan(actor, "councilors", "read");
   const {
     data: councilorSummaryData,
     isLoading: councilorSummariesLoading,
     error: councilorSummariesError,
-  } = useGetLeadsCouncilorSummariesQuery(undefined, { skip: kind !== "councilors" || !isAdmin });
+  } = useGetLeadsCouncilorSummariesQuery(undefined, {
+    skip: mine || (kind !== "councilors" && kind !== "customers" && kind !== "funnels") || !canViewCustomerDistribution,
+  });
   const canManage = (item: LeadItem) => isAdmin || (item.kind === "customers" && item.assignedTo === actor?.email);
   const canCreate = leadCan(actor, area, "create") && (isAdmin || kind === "customers");
   const busy = mutating || workingFile;
@@ -256,6 +260,7 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
         title={title}
         icon={mine ? "FileText" : kind === "funnels" ? "Filter" : kind === "councilors" ? "User" : "Users"}
         iconClass={presentation.iconClass}
+        hideTitleOnMobile
       >
         <Action onClick={refresh} disabled={!canRead || Boolean(cooldown.remaining) || isFetching || busy}>
           <Icon name="RefreshCw" className={isFetching ? "animate-spin" : ""} />
@@ -268,132 +273,145 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
           </Action>
         )}
       </PageHeading>
-      {kind === "councilors" && isAdmin && (
+      {!mine && (kind === "councilors" || kind === "customers" || kind === "funnels") && canViewCustomerDistribution && (
         <CouncilorSummary
           data={councilorSummaryData}
           isLoading={councilorSummariesLoading}
           error={councilorSummariesError}
+          groupBy={kind === "councilors" ? "councilor" : "funnel"}
         />
       )}
-      <div className={`${leadPanel} grid gap-4 overflow-visible p-4 sm:p-5`}>
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#eadfca] pb-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-800">
+      <section className={`${leadPanel} overflow-visible p-4 sm:p-5`}>
+        <button
+          type="button"
+          aria-expanded={organizeOpen}
+          aria-controls="leads-find-organize-panel"
+          onClick={() => setOrganizeOpen((open) => !open)}
+          className={`flex w-full items-center justify-between gap-3 text-left ${organizeOpen ? "border-b border-[#eadfca] pb-4" : ""}`}
+        >
+          <span className="flex items-center gap-2 text-sm font-semibold text-slate-800">
             <span className="grid size-8 place-items-center rounded-sm bg-amber-50 text-amber-700">
               <Icon name="Filter" className="size-4" />
             </span>
             Find and organize
-          </h2>
-        </div>
-        <div className="flex flex-wrap items-start gap-2">
-          <div className="relative min-w-0 flex-1 basis-full sm:min-w-48 sm:basis-auto">
-            <Icon name="Search" className="pointer-events-none absolute top-3.5 left-3.5 size-4 text-slate-400" />
-            <Input
-              aria-label={`Search loaded ${title.toLowerCase()}`}
-              className={`${leadInput} pl-9`}
-              placeholder={`Search ${kind} by ${kind === "funnels" ? "name or position" : "name, mobile, or email"}…`}
-              value={text}
-              maxLength={160}
-              onChange={(event) => {
-                setText(event.target.value);
-                setSelected([]);
-                if (!event.target.value.trim()) {
-                  setSearch("");
-                  setPage(1);
-                }
-              }}
-            />
-          </div>
-          <LeadSelect
-            label="Filter by status"
-            value={status}
-            options={statusOptions}
-            onChange={(value) => {
-              setStatus(value);
-              resetPage();
-            }}
-            disabled={busy}
+          </span>
+          <Icon
+            name="ChevronDown"
+            className={`size-4 shrink-0 text-slate-500 transition-transform ${organizeOpen ? "rotate-180" : ""}`}
           />
-          {kind !== "funnels" && (
-            <>
-              <Action className="h-10" disabled={!canRead || busy || isFetching || !actor} onClick={exportExcel}>
-                <Icon name="Download" />
-                Export Excel
-              </Action>
-              {canCreate && (
-                <>
-                  <Action className="h-10" disabled={busy} onClick={() => fileInput.current?.click()}>
-                    <Icon name="Upload" />
-                    Import Excel
-                  </Action>
-                  <input
-                    ref={fileInput}
-                    type="file"
-                    accept=".xlsx,.xls"
-                    aria-label="Import Excel file"
-                    className="hidden"
-                    onChange={importExcel}
-                    disabled={busy}
-                  />
-                </>
-              )}
-            </>
-          )}
-        </div>
-        {kind === "customers" && (
-          <div className="grid gap-3 border-t border-[#eadfca] pt-4 sm:grid-cols-3">
-            <div className="grid content-start gap-2">
-              <p className="text-[11px] font-bold tracking-wide text-slate-500">Funnel</p>
-              <RecordSelect
-                kind="funnels"
-                label="All funnels"
-                value={funnelId}
-                onChange={(value) => {
-                  setFunnelId(value);
-                  resetPage();
+        </button>
+        <div id="leads-find-organize-panel" className={organizeOpen ? "mt-4 grid gap-4" : "hidden"}>
+          <div className="flex flex-wrap items-start gap-2">
+            <div className="relative min-w-0 flex-1 basis-full sm:min-w-48 sm:basis-auto">
+              <Icon name="Search" className="pointer-events-none absolute top-3.5 left-3.5 size-4 text-slate-400" />
+              <Input
+                aria-label={`Search loaded ${title.toLowerCase()}`}
+                className={`${leadInput} pl-9`}
+                placeholder={`Search ${kind} by ${kind === "funnels" ? "name or position" : "name, mobile, or email"}…`}
+                value={text}
+                maxLength={160}
+                onChange={(event) => {
+                  setText(event.target.value);
+                  setSelected([]);
+                  if (!event.target.value.trim()) {
+                    setSearch("");
+                    setPage(1);
+                  }
                 }}
-                disabled={busy}
               />
             </div>
-            <div className="grid content-start gap-2">
-              <p className="text-[11px] font-bold tracking-wide text-slate-500">Assignment</p>
-              <div className="rounded-sm border border-[#eadfca] bg-[#fffdf7] p-2.5">
-                <LeadSelect
-                  label="Filter by assignment"
-                  value={assignment}
-                  options={[
-                    { value: "", label: "All assignments" },
-                    { value: "assigned", label: "Assigned" },
-                    { value: "unassigned", label: "Unassigned" },
-                  ]}
+            <LeadSelect
+              label="Filter by status"
+              value={status}
+              options={statusOptions}
+              onChange={(value) => {
+                setStatus(value);
+                resetPage();
+              }}
+              disabled={busy}
+            />
+            {kind !== "funnels" && (
+              <>
+                <Action className="h-10" disabled={!canRead || busy || isFetching || !actor} onClick={exportExcel}>
+                  <Icon name="Download" />
+                  Export Excel
+                </Action>
+                {canCreate && (
+                  <>
+                    <Action className="h-10" disabled={busy} onClick={() => fileInput.current?.click()}>
+                      <Icon name="Upload" />
+                      Import Excel
+                    </Action>
+                    <input
+                      ref={fileInput}
+                      type="file"
+                      accept=".xlsx,.xls"
+                      aria-label="Import Excel file"
+                      className="hidden"
+                      onChange={importExcel}
+                      disabled={busy}
+                    />
+                  </>
+                )}
+              </>
+            )}
+          </div>
+          {kind === "customers" && (
+            <div className="grid gap-3 border-t border-[#eadfca] pt-4 sm:grid-cols-3">
+              <div className="grid content-start gap-2">
+                <p className="text-[11px] font-bold tracking-wide text-slate-500">Funnel</p>
+                <RecordSelect
+                  kind="funnels"
+                  label="All funnels"
+                  value={funnelId}
                   onChange={(value) => {
-                    setAssignment(value);
+                    setFunnelId(value);
                     resetPage();
                   }}
                   disabled={busy}
                 />
-                {!mine && (
-                  <p className="mt-2 text-[11px] leading-5 text-slate-500">
-                    Filter by assigned or unassigned customers.
-                  </p>
-                )}
+              </div>
+              <div className="grid content-start gap-2">
+                <p className="text-[11px] font-bold tracking-wide text-slate-500">Assignment</p>
+                <div className="rounded-sm border border-[#eadfca] bg-[#fffdf7] p-2.5">
+                  <LeadSelect
+                    label="Filter by assignment"
+                    value={assignment}
+                    options={[
+                      { value: "", label: "All assignments" },
+                      { value: "assigned", label: "Assigned" },
+                      { value: "unassigned", label: "Unassigned" },
+                    ]}
+                    onChange={(value) => {
+                      setAssignment(value);
+                      resetPage();
+                    }}
+                    disabled={busy}
+                  />
+                  {!mine && (
+                    <p className="mt-2 text-[11px] leading-5 text-slate-500">
+                      Filter by assigned or unassigned customers.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="grid content-start gap-2">
+                <p className="text-[11px] font-bold tracking-wide text-slate-500">Councilor</p>
+                <RecordSelect
+                  kind="councilors"
+                  label="All councilors"
+                  value={councilor}
+                  onChange={(value) => {
+                    setCouncilor(value);
+                    resetPage();
+                  }}
+                  disabled={busy}
+                />
               </div>
             </div>
-            <div className="grid content-start gap-2">
-              <p className="text-[11px] font-bold tracking-wide text-slate-500">Councilor</p>
-              <RecordSelect
-                kind="councilors"
-                label="All councilors"
-                value={councilor}
-                onChange={(value) => {
-                  setCouncilor(value);
-                  resetPage();
-                }}
-                disabled={busy}
-              />
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </section>
       {busy && (
         <p
           className="flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800"

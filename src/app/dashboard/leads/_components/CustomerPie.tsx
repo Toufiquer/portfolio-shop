@@ -7,11 +7,30 @@
 
 import { useState } from "react";
 
-import type { LeadCouncilorSummaries } from "@/lib/dashboard/leads";
+import type {
+  LeadCouncilorSummaries,
+  LeadOtherCustomerSummary,
+  LeadCouncilorSummary,
+  LeadStatus,
+} from "@/lib/dashboard/leads";
 
 import { leadPanel } from "./presentation";
 
 const colors = ["#059669", "#d97706", "#2563eb", "#db2777", "#7c3aed", "#0891b2", "#ea580c", "#65a30d"];
+type DistributionDetail = {
+  id: string;
+  name: string;
+  customerCount: number;
+  statuses: Record<LeadStatus, number>;
+};
+type DistributionEntry = {
+  id: string;
+  name: string;
+  customerCount: number;
+  customerStatuses: Record<LeadStatus, number>;
+  details: DistributionDetail[];
+};
+
 function piePath(start: number, end: number) {
   const point = (angle: number) => ({ x: 110 + 94 * Math.cos(angle), y: 110 + 94 * Math.sin(angle) });
   const first = point(start);
@@ -23,29 +42,68 @@ function piePath(start: number, end: number) {
   return `M 110 110 L ${first.x} ${first.y} A 94 94 0 ${end - start > Math.PI ? 1 : 0} 1 ${last.x} ${last.y} Z`;
 }
 
-export default function CustomerPie({ data }: { data: LeadCouncilorSummaries }) {
+export default function CustomerPie({
+  data,
+  groupBy = "councilor",
+  showGroupByToggle = false,
+  onGroupByChange,
+}: {
+  data: LeadCouncilorSummaries;
+  groupBy?: "councilor" | "funnel";
+  showGroupByToggle?: boolean;
+  onGroupByChange?: (groupBy: "councilor" | "funnel") => void;
+}) {
   const [selected, setSelected] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
-  const entries = [
+  const councilorEntries: (LeadCouncilorSummary | LeadOtherCustomerSummary)[] = [
     ...[...data.others].sort((first, second) => Number(second.id === "unassigned") - Number(first.id === "unassigned")),
     ...data.items,
   ];
+  const councilorDistributions: DistributionEntry[] = councilorEntries.map((councilor) => ({
+    id: councilor.id,
+    name: councilor.name,
+    customerCount: councilor.customerCount,
+    customerStatuses: councilor.customerStatuses,
+    details: councilor.funnels.map((funnel) => ({ ...funnel, statuses: funnel.statuses })),
+  }));
+  const funnelDistributions = new Map<string, DistributionEntry>();
+  councilorDistributions.forEach((councilor) => {
+    councilor.details.forEach((funnel) => {
+      const distribution = funnelDistributions.get(funnel.id) ?? {
+        id: funnel.id,
+        name: funnel.name,
+        customerCount: 0,
+        customerStatuses: { active: 0, inactive: 0 },
+        details: [],
+      };
+      distribution.customerCount += funnel.customerCount;
+      distribution.customerStatuses.active += funnel.statuses.active;
+      distribution.customerStatuses.inactive += funnel.statuses.inactive;
+      distribution.details.push({ ...funnel, id: councilor.id, name: councilor.name });
+      funnelDistributions.set(funnel.id, distribution);
+    });
+  });
+  const entries = groupBy === "funnel" ? Array.from(funnelDistributions.values()) : councilorDistributions;
   const total = entries.reduce((sum, entry) => sum + entry.customerCount, 0);
+  const defaultEntry =
+    groupBy === "councilor"
+      ? entries.find((entry) => entry.id === data.items[0]?.id)
+      : entries.find((entry) => entry.customerCount > 0) ?? entries[0];
   const visible =
     entries.find((entry) => entry.id === hovered) ??
     entries.find((entry) => entry.id === selected) ??
-    data.items[0] ??
+    defaultEntry ??
     entries.find((entry) => entry.customerCount > 0) ??
     entries[0];
-  const visibleFunnels = visible?.funnels ?? [];
+  const visibleFunnels = visible?.details ?? [];
   const maxFunnelCount = Math.max(0, ...visibleFunnels.map((funnel) => funnel.customerCount));
   const funnelScaleMax = Math.max(4, Math.ceil(maxFunnelCount / 4) * 4);
   const funnelChartWidth = Math.max(360, visibleFunnels.length * 76 + 48);
-  const funnelChartHeight = 210;
+  const funnelChartHeight = 168;
   const funnelChartLeft = 36;
   const funnelChartRight = 12;
-  const funnelChartTop = 14;
-  const funnelChartBottom = 38;
+  const funnelChartTop = 10;
+  const funnelChartBottom = 30;
   const funnelPlotWidth = funnelChartWidth - funnelChartLeft - funnelChartRight;
   const funnelPlotHeight = funnelChartHeight - funnelChartTop - funnelChartBottom;
   let angle = -Math.PI / 2;
@@ -74,9 +132,26 @@ export default function CustomerPie({ data }: { data: LeadCouncilorSummaries }) 
 
   return (
     <section className={`${leadPanel} min-w-0 p-4 sm:p-5`} aria-labelledby="customer-pie-title">
-      <h2 id="customer-pie-title" className="text-sm font-semibold text-slate-900">
-        Customer distribution
-      </h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id="customer-pie-title" className="text-sm font-semibold text-slate-900">
+          {groupBy === "funnel" ? "Customer distribution by funnel" : "Customer distribution by councilor"}
+        </h2>
+        {showGroupByToggle && onGroupByChange && (
+          <div className="flex rounded-sm border border-[#eadfca] bg-[#fffdf8] p-0.5" aria-label="Distribution breakdown">
+            {(["councilor", "funnel"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={groupBy === value}
+                className={`rounded-sm px-2.5 py-1.5 text-[11px] font-semibold capitalize ${groupBy === value ? "bg-amber-600 text-white" : "text-slate-600 hover:bg-amber-50"}`}
+                onClick={() => onGroupByChange(value)}
+              >
+                By {value}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
       {total === 0 ? (
         <p className="py-6 text-sm text-slate-500">No customers to display yet.</p>
       ) : (
@@ -86,7 +161,7 @@ export default function CustomerPie({ data }: { data: LeadCouncilorSummaries }) 
             <svg
               viewBox={`0 0 500 ${chartHeight}`}
               className="mx-auto w-full max-w-[500px]"
-              aria-label={`Customer distribution: ${total} customers`}
+              aria-label={`Customer distribution by ${groupBy}: ${total} customers`}
             >
               <g transform={`translate(0 ${centerY - 110})`}>
                 {segments
@@ -200,7 +275,10 @@ export default function CustomerPie({ data }: { data: LeadCouncilorSummaries }) 
                 </div>
               </div>
               <div className="mt-2 flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
-                {visible.funnels.length ? (
+                {groupBy === "funnel" && (
+                  <h4 className="mr-auto text-xs font-semibold text-slate-800">Customers by councilor</h4>
+                )}
+                {visibleFunnels.length ? (
                   <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-slate-500" aria-label="Chart legend">
                     <span className="inline-flex items-center gap-1.5">
                       <span className="size-2 rounded-sm bg-emerald-500" aria-hidden="true" /> Active
@@ -211,14 +289,14 @@ export default function CustomerPie({ data }: { data: LeadCouncilorSummaries }) 
                   </div>
                 ) : null}
               </div>
-              {visible.funnels.length ? (
+              {visibleFunnels.length ? (
                 <div className="mt-1 overflow-x-auto">
                     <svg
                       viewBox={`0 0 ${funnelChartWidth} ${funnelChartHeight}`}
                       className="block h-auto w-full"
                       style={{ minWidth: `${funnelChartWidth}px` }}
                       role="img"
-                      aria-label={`Grouped bar chart of active and inactive customers by funnel for ${visible.name}`}
+                      aria-label={`Grouped bar chart of active and inactive customers by ${groupBy === "funnel" ? "councilor" : "funnel"} for ${visible.name}`}
                     >
                       {[0, 1, 2, 3, 4].map((step) => {
                         const value = (funnelScaleMax / 4) * step;
@@ -246,8 +324,8 @@ export default function CustomerPie({ data }: { data: LeadCouncilorSummaries }) 
                           </g>
                         );
                       })}
-                      {visible.funnels.map((funnel, index) => {
-                        const slotWidth = funnelPlotWidth / visible.funnels.length;
+                      {visibleFunnels.map((funnel, index) => {
+                        const slotWidth = funnelPlotWidth / visibleFunnels.length;
                         const centerX = funnelChartLeft + slotWidth * (index + 0.5);
                         const barWidth = Math.min(22, slotWidth * 0.28);
                         const activeHeight = (funnel.statuses.active / funnelScaleMax) * funnelPlotHeight;
@@ -299,7 +377,9 @@ export default function CustomerPie({ data }: { data: LeadCouncilorSummaries }) 
                     </svg>
                   </div>
               ) : (
-                <p className="mt-2 text-xs text-slate-500">No funnels available.</p>
+                <p className="mt-2 text-xs text-slate-500">
+                  No {groupBy === "funnel" ? "councilors" : "funnels"} available.
+                </p>
               )}
             </div>
           )}

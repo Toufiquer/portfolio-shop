@@ -15,12 +15,14 @@ export default function CouncilorSummary({
   data,
   isLoading,
   error,
+  groupBy = "councilor",
 }: {
   data?: LeadCouncilorSummaries;
   isLoading: boolean;
   error: unknown;
+  groupBy?: "councilor" | "funnel";
 }) {
-  if (data) return <CustomerPie data={data} />;
+  if (data) return <CustomerPie data={data} groupBy={groupBy} />;
 
   return (
     <section className={`${leadPanel} min-w-0 p-4 sm:p-5`} aria-label="Customer distribution">
