@@ -1,1 +1,0 @@
-Look at the page '/dashboard/leads/councilors' I want to see summery of each councilor customers by their status and funnels. Do not remove table add a new sections and display the summery. 

@@ -393,16 +393,6 @@ export default function Query({ kind, mine = false }: { kind: LeadKind; mine?: b
             </div>
           </div>
         )}
-        {kind !== "funnels" && canCreate && !mine && (
-          <details className="rounded-sm border border-[#eadfca] bg-[#fffdf7] px-3 py-2.5 text-xs text-slate-500">
-            <summary className="cursor-pointer font-semibold text-slate-700">Excel import guidelines</summary>
-            <p className="pt-2 leading-5">
-              Excel: up to 100 rows per import. Keep Mobile cells as text. Customer imports require Funnel ID from a
-              funnel&apos;s View dialog. Assignment columns in exports are informational; My Leads imports assign to
-              you.
-            </p>
-          </details>
-        )}
       </div>
       {busy && (
         <p

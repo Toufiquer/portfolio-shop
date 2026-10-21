@@ -17,7 +17,7 @@ import { useDashboardPermissions } from "@/lib/dashboard/use-dashboard-permissio
 
 import { leadPanel } from "./presentation";
 
-export default function Navigation() {
+export default function Navigation({ role, email }: { role: string; email: string }) {
   const pathname = usePathname();
   const { canEnter, data: permissions } = useDashboardPermissions("/dashboard/leads");
   const navRef = useRef<HTMLElement>(null);
@@ -35,6 +35,32 @@ export default function Navigation() {
   }, [pathname, permissions]);
   return (
     <div className="grid min-w-0 gap-4">
+      <nav aria-label="Breadcrumb" className="flex min-w-0 items-center gap-2 px-1 text-xs text-slate-500">
+        <span
+          tabIndex={0}
+          title={email}
+          aria-label={`${role}. Hover to see email: ${email}`}
+          className="max-w-[min(40vw,12rem)] truncate rounded-sm bg-amber-50 px-2 py-1 font-semibold text-amber-800 outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+        >
+          {role}
+        </span>
+        <Icon name="ChevronRight" className="size-3 shrink-0" />
+        {isHome ? (
+          <span className="truncate font-medium text-slate-800">Leads workspace</span>
+        ) : (
+          <>
+            <Link
+              href="/dashboard/leads"
+              className="flex items-center gap-1.5 rounded-sm font-medium text-slate-500 outline-none transition hover:text-amber-700 focus-visible:ring-2 focus-visible:ring-amber-500"
+            >
+              <Icon name="FolderKanban" className="size-4 text-amber-600" />
+              Leads workspace
+            </Link>
+            <Icon name="ChevronRight" className="size-3 shrink-0" />
+            <span className="truncate font-medium text-slate-800">{current?.label}</span>
+          </>
+        )}
+      </nav>
       {isHome ? (
         <header
           className={`${leadPanel} relative overflow-hidden bg-linear-to-br from-white via-[#fffdf7] to-amber-50 p-6 sm:p-8`}
@@ -62,42 +88,29 @@ export default function Navigation() {
           </div>
         </header>
       ) : (
-        <>
-          <div className="flex min-w-0 items-center gap-2 px-1 text-xs text-slate-500">
-            <Link
-              href="/dashboard/leads"
-              className="flex items-center gap-1.5 rounded-sm font-medium text-slate-500 outline-none transition hover:text-amber-700 focus-visible:ring-2 focus-visible:ring-amber-500"
-            >
-              <Icon name="FolderKanban" className="size-4 text-amber-600" />
-              Leads workspace
-            </Link>
-            <Icon name="ChevronRight" className="size-3 shrink-0" />
-            <span className="truncate font-medium text-slate-800">{current?.label}</span>
-          </div>
-          <nav
-            ref={navRef}
-            aria-label="Leads tabs"
-            className={`${leadPanel} flex min-w-0 gap-1.5 overflow-x-auto p-1.5 sm:grid sm:grid-cols-5`}
-          >
-            {leadTabs
-              .filter((tab) => canEnter(`/dashboard/leads/${tab.path}`))
-              .map((tab) => {
-                const href = `/dashboard/leads/${tab.path}`;
-                return (
-                  <Link
-                    key={tab.path}
-                    ref={pathname === href ? activeRef : undefined}
-                    href={href}
-                    aria-current={pathname === href ? "page" : undefined}
-                    className={`flex shrink-0 items-center justify-center gap-2 rounded-sm border px-3 py-3 text-sm font-semibold outline-none transition duration-700 focus-visible:ring-2 focus-visible:ring-amber-500 motion-reduce:transition-none sm:min-w-0 ${pathname === href ? "border-amber-600 bg-amber-600 text-white shadow-md shadow-amber-200" : "border-transparent text-stone-500 hover:bg-[#fffdf7] hover:text-stone-900"}`}
-                  >
-                    <Icon name={tab.icon} className="size-4 shrink-0" />
-                    <span className="truncate">{tab.label}</span>
-                  </Link>
-                );
-              })}
-          </nav>
-        </>
+        <nav
+          ref={navRef}
+          aria-label="Leads tabs"
+          className={`${leadPanel} flex min-w-0 gap-1.5 overflow-x-auto p-1.5 sm:grid sm:grid-cols-5`}
+        >
+          {leadTabs
+            .filter((tab) => canEnter(`/dashboard/leads/${tab.path}`))
+            .map((tab) => {
+              const href = `/dashboard/leads/${tab.path}`;
+              return (
+                <Link
+                  key={tab.path}
+                  ref={pathname === href ? activeRef : undefined}
+                  href={href}
+                  aria-current={pathname === href ? "page" : undefined}
+                  className={`flex shrink-0 items-center justify-center gap-2 rounded-sm border px-3 py-3 text-sm font-semibold outline-none transition duration-700 focus-visible:ring-2 focus-visible:ring-amber-500 motion-reduce:transition-none sm:min-w-0 ${pathname === href ? "border-amber-600 bg-amber-600 text-white shadow-md shadow-amber-200" : "border-transparent text-stone-500 hover:bg-[#fffdf7] hover:text-stone-900"}`}
+                >
+                  <Icon name={tab.icon} className="size-4 shrink-0" />
+                  <span className="truncate">{tab.label}</span>
+                </Link>
+              );
+            })}
+        </nav>
       )}
     </div>
   );
