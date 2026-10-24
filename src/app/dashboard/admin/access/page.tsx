@@ -205,14 +205,14 @@ export default function AccessPage() {
         )}
         <section className="relative overflow-hidden rounded-sm border border-[#eadfca] bg-white p-5 shadow-[0_20px_60px_-35px_rgba(120,53,15,.32)] sm:p-7">
           <div className="absolute -right-16 -top-16 h-36 w-36 rounded-full bg-amber-200/50 blur-2xl" />
-          <div className="relative flex flex-wrap items-center justify-between gap-3">
+          <div className="relative flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <h1 className="text-2xl font-semibold">Access</h1>
-            <div className="flex gap-2">
-              <label className="relative">
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:flex-nowrap">
+              <label className="relative w-full sm:w-auto">
                 <span className="sr-only">Search access records</span>
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-500" />
                 <input
-                  className="h-8 w-52 rounded-sm border border-[#eadfca] bg-white py-1.5 pl-8 pr-2.5 text-xs outline-none transition focus:border-amber-700 sm:w-60"
+                  className="h-8 w-full rounded-sm border border-[#eadfca] bg-white py-1.5 pl-8 pr-2.5 text-xs outline-none transition focus:border-amber-700 sm:w-60"
                   onChange={(event) => {
                     setSearch(event.target.value);
                     setPage(1);
