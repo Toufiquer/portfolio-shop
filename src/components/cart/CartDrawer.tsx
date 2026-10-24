@@ -42,15 +42,41 @@ import {
   type LocalOrderHistoryItem,
 } from "@/lib/order-history";
 
+type OrderCostSummary = {
+  subtotal: number;
+  tax?: number;
+  shipping?: number;
+  discount?: number;
+  couponCode?: string;
+  total: number;
+};
+
+type CheckoutOrder = LocalOrderHistoryItem &
+  OrderCostSummary & {
+    currency: "BDT";
+  };
+
+type SessionProfile = {
+  name?: string | null;
+  email?: string | null;
+  mobileNumber?: string | null;
+  address?: string | null;
+};
+
 export function CartDrawer() {
   const { data: session, isPending: sessionPending } = authClient.useSession();
+  const sessionProfile = session?.user as SessionProfile | undefined;
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const closeTimer = useRef<number | null>(null);
   const openFrame = useRef<number | null>(null);
+  const incompleteTrackingTokenRef = useRef<string | null>(null);
   const [items, setItems] = useState<CartItem[]>([]);
   const [activeTab, setActiveTab] = useState<"cart" | "history">("cart");
+  const [checkoutView, setCheckoutView] = useState<"cart" | "details">("cart");
   const [history, setHistory] = useState<LocalOrderHistoryItem[]>([]);
+  const [name, setName] = useState("");
+  const [nameTouched, setNameTouched] = useState(false);
   const [phone, setPhone] = useState("");
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [address, setAddress] = useState("");
@@ -58,6 +84,10 @@ export function CartDrawer() {
   const [checkoutStatus, setCheckoutStatus] = useState<"idle" | "processing" | "success" | "error">("idle");
   const [confirmedOrderId, setConfirmedOrderId] = useState<string | null>(null);
   const [incompleteOrderId, setIncompleteOrderId] = useState<string | null>(null);
+  const [incompleteTrackingToken, setIncompleteTrackingToken] = useState<string | null>(null);
+  const [incompleteOrder, setIncompleteOrder] = useState<CheckoutOrder | null>(null);
+  const [couponPreview, setCouponPreview] = useState<OrderCostSummary | null>(null);
+  const [couponError, setCouponError] = useState("");
   const [creatingIncompleteOrder, setCreatingIncompleteOrder] = useState(false);
   const [message, setMessage] = useState("");
   const [cooldownExpiresAt, setCooldownExpiresAt] = useState<string | null>(null);
@@ -67,6 +97,7 @@ export function CartDrawer() {
   const openCart = () => {
     if (closeTimer.current) window.clearTimeout(closeTimer.current);
     setActiveTab("cart");
+    setCheckoutView("cart");
     setVisible(true);
     if (openFrame.current) window.cancelAnimationFrame(openFrame.current);
     openFrame.current = window.requestAnimationFrame(() => {
@@ -84,6 +115,7 @@ export function CartDrawer() {
     setMessage("");
     setConfirmedOrderId(null);
     setOrderToDelete(null);
+    setCheckoutView("cart");
     setOpen(false);
     if (closeTimer.current) window.clearTimeout(closeTimer.current);
     closeTimer.current = window.setTimeout(() => setVisible(false), 300);
@@ -152,21 +184,22 @@ export function CartDrawer() {
     creatingIncompleteOrder ||
     countdownSeconds > 0 ||
     !items.length ||
+    !name.trim() ||
     !phoneValidation.isValid;
 
-  const createIncompleteOrder = async (phoneNumber = phone): Promise<string | null> => {
-    if (!session) return null;
+  const createIncompleteOrder = async (phoneNumber = phone, customerName = name): Promise<string | null> => {
     if (incompleteOrderId) return incompleteOrderId;
     const validation = validatePhoneNumber(phoneNumber);
-    if (!validation.isValid || !items.length || creatingIncompleteOrder) return null;
+    if (!customerName.trim() || !validation.isValid || !items.length || creatingIncompleteOrder) return null;
     setCreatingIncompleteOrder(true);
     try {
       const response = await fetch("/api/orders/v1", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          intent: "incomplete",
           items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
-          customer: { phone: phoneNumber.trim(), address: address.trim() },
+          customer: { name: customerName.trim(), phone: phoneNumber.trim(), address: address.trim() },
           couponCode: couponCode.trim(),
         }),
       });
@@ -175,9 +208,10 @@ export function CartDrawer() {
         code?: string;
         error?: string;
         cooldownExpiresAt?: string;
-        order?: LocalOrderHistoryItem;
+        order?: CheckoutOrder;
+        trackingToken?: string;
       } | null;
-      if (!response.ok || !payload?.ok || !payload.order?.id) {
+      if (!response.ok || !payload?.ok || !payload.order?.id || (!session && !payload.trackingToken)) {
         if (payload?.code === "ORDER_LIMITED" && payload.cooldownExpiresAt)
           setCooldownExpiresAt(payload.cooldownExpiresAt);
         setCheckoutStatus("error");
@@ -185,7 +219,13 @@ export function CartDrawer() {
         return null;
       }
       setIncompleteOrderId(payload.order.id);
-      saveOrderToHistory(payload.order);
+      setIncompleteTrackingToken(payload.trackingToken ?? null);
+      incompleteTrackingTokenRef.current = payload.trackingToken ?? null;
+      setIncompleteOrder(payload.order);
+      setCouponPreview(null);
+      saveOrderToHistory(
+        payload.trackingToken ? { ...payload.order, trackingToken: payload.trackingToken } : payload.order,
+      );
       return payload.order.id;
     } catch {
       setCheckoutStatus("error");
@@ -196,8 +236,49 @@ export function CartDrawer() {
     }
   };
 
+  const previewCoupon = async () => {
+    const normalizedCoupon = couponCode.trim().toUpperCase();
+    const trackingToken = incompleteTrackingToken ?? incompleteTrackingTokenRef.current;
+    if (!normalizedCoupon || !incompleteOrderId || (!session && !trackingToken)) {
+      setCouponPreview(null);
+      setCouponError("");
+      return;
+    }
+    try {
+      const response = await fetch("/api/orders/v1", {
+        method: "PUT",
+        headers: {
+          "content-type": "application/json",
+          ...(trackingToken ? { "x-order-access-token": trackingToken } : {}),
+        },
+        body: JSON.stringify({ id: incompleteOrderId, couponCode: normalizedCoupon }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        quote?: OrderCostSummary;
+      } | null;
+      if (!response.ok || !payload?.ok || !payload.quote) {
+        setCouponPreview(null);
+        setCouponError(payload?.error ?? "Coupon could not be verified. It will be checked again on confirmation.");
+        return;
+      }
+      setCouponPreview(payload.quote);
+      setCouponError("");
+    } catch {
+      setCouponPreview(null);
+      setCouponError("Coupon preview is unavailable. It will be checked on confirmation.");
+    }
+  };
+
   const handleCheckout = async () => {
+    setNameTouched(true);
     setPhoneTouched(true);
+    if (!name.trim()) {
+      setCheckoutStatus("error");
+      setMessage("Please enter your name.");
+      return;
+    }
     if (!phoneValidation.isValid) {
       setCheckoutStatus("error");
       setMessage(phoneValidation.error || "Please enter a valid phone number.");
@@ -208,51 +289,19 @@ export function CartDrawer() {
     setConfirmedOrderId(null);
     setMessage("");
     try {
-      if (!session) {
-        const response = await fetch("/api/orders/v1", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            items: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
-            customer: { phone: phone.trim(), address: address.trim() },
-            couponCode: couponCode.trim(),
-          }),
-        });
-        const payload = (await response.json().catch(() => null)) as {
-          ok?: boolean;
-          code?: string;
-          error?: string;
-          cooldownExpiresAt?: string;
-          order?: LocalOrderHistoryItem;
-          trackingToken?: string;
-        } | null;
-        if (!response.ok || !payload?.ok || !payload.order?.id || !payload.trackingToken) {
-          if (payload?.code === "ORDER_LIMITED" && payload.cooldownExpiresAt)
-            setCooldownExpiresAt(payload.cooldownExpiresAt);
-          setCheckoutStatus("error");
-          setMessage(payload?.error ?? "Could not place your order. Please try again.");
-          return;
-        }
-        saveOrderToHistory({ ...payload.order, trackingToken: payload.trackingToken });
-        clearCart();
-        setIncompleteOrderId(null);
-        setPhone("");
-        setPhoneTouched(false);
-        setAddress("");
-        setCouponCode("");
-        setConfirmedOrderId(payload.order.id);
-        setCheckoutStatus("success");
-        setMessage(`Order ${payload.order.id} was placed successfully.`);
-        return;
-      }
       const orderId = incompleteOrderId ?? (await createIncompleteOrder());
       if (!orderId) return;
+      const trackingToken = incompleteTrackingToken ?? incompleteTrackingTokenRef.current;
       const response = await fetch("/api/orders/v1", {
         method: "PATCH",
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          ...(trackingToken ? { "x-order-access-token": trackingToken } : {}),
+        },
         body: JSON.stringify({
           id: orderId,
-          customer: { phone: phone.trim(), address: address.trim() },
+          customer: { name: name.trim(), phone: phone.trim(), address: address.trim() },
+          couponCode: couponCode.trim(),
         }),
       });
       const payload = (await response.json().catch(() => null)) as {
@@ -260,7 +309,7 @@ export function CartDrawer() {
         code?: string;
         error?: string;
         cooldownExpiresAt?: string;
-        order?: LocalOrderHistoryItem;
+        order?: CheckoutOrder;
       } | null;
       if (!response.ok || !payload?.ok) {
         if (payload?.code === "ORDER_LIMITED" && payload.cooldownExpiresAt)
@@ -273,6 +322,13 @@ export function CartDrawer() {
       saveOrderToHistory(payload.order);
       clearCart();
       setIncompleteOrderId(null);
+      setIncompleteTrackingToken(null);
+      incompleteTrackingTokenRef.current = null;
+      setIncompleteOrder(null);
+      setCouponPreview(null);
+      setCouponError("");
+      setName("");
+      setNameTouched(false);
       setPhone("");
       setPhoneTouched(false);
       setAddress("");
@@ -284,6 +340,15 @@ export function CartDrawer() {
       setCheckoutStatus("error");
       setMessage("Could not place your order. Check your connection and try again.");
     }
+  };
+
+  const currentCartSubtotal = items.reduce((total, item) => total + item.price * item.quantity, 0);
+
+  const openCheckout = () => {
+    setName((current) => current || sessionProfile?.name?.trim() || sessionProfile?.email?.trim() || "");
+    setPhone((current) => current || sessionProfile?.mobileNumber?.trim() || "");
+    setAddress((current) => current || sessionProfile?.address?.trim() || "");
+    setCheckoutView("details");
   };
 
   if (!visible) return null;
@@ -353,7 +418,7 @@ export function CartDrawer() {
                 role="tab"
                 type="button"
               >
-                Cart ({items.length})
+                Order ({items.length})
               </button>
               <button
                 aria-selected={activeTab === "history"}
@@ -509,77 +574,138 @@ export function CartDrawer() {
 
         {activeTab === "cart" && items.length ? (
           <div className="border-t border-[#eadfca] bg-white px-5 py-4">
-            <div className="space-y-3">
-              <div>
-                <Input
-                  aria-describedby={phoneTouched && !phoneValidation.isValid ? "cart-phone-error" : undefined}
-                  aria-invalid={phoneTouched && !phoneValidation.isValid}
-                  aria-label="Phone number"
-                  className={
-                    phoneTouched && !phoneValidation.isValid ? "border-red-400 focus-visible:ring-red-300" : ""
-                  }
-                  onBlur={() => setPhoneTouched(true)}
-                  onChange={(event) => {
-                    const nextPhone = event.target.value;
-                    setPhone(nextPhone);
-                    if (!phoneTouched) setPhoneTouched(true);
-                    if (session && validatePhoneNumber(nextPhone).isValid) void createIncompleteOrder(nextPhone);
-                  }}
-                  placeholder="Phone number (required: 01... or +880...)"
-                  required
-                  value={phone}
+            {checkoutView === "cart" ? (
+              <>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-stone-500">Items subtotal</span>
+                  <span className="font-bold text-stone-950">{formatBDT(currentCartSubtotal)}</span>
+                </div>
+                <Button
+                  className="mt-4 w-full bg-stone-900 text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={sessionPending}
+                  onClick={openCheckout}
+                  size="lg"
+                  type="button"
+                >
+                  Place order
+                </Button>
+              </>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-stone-900">Order details</p>
+                    <p className="mt-0.5 text-xs text-stone-500">Review your delivery details before confirming.</p>
+                  </div>
+                  <Button onClick={() => setCheckoutView("cart")} size="sm" type="button" variant="outline">
+                    Back
+                  </Button>
+                </div>
+                <div className="space-y-3">
+                  <div>
+                    <Input
+                      aria-invalid={nameTouched && !name.trim()}
+                      aria-label="Name"
+                      className={nameTouched && !name.trim() ? "border-red-400 focus-visible:ring-red-300" : ""}
+                      onBlur={() => setNameTouched(true)}
+                      onChange={(event) => {
+                        const nextName = event.target.value;
+                        setName(nextName);
+                        if (validatePhoneNumber(phone).isValid) void createIncompleteOrder(phone, nextName);
+                      }}
+                      placeholder="Full name"
+                      required
+                      value={name}
+                    />
+                    {nameTouched && !name.trim() ? (
+                      <p className="mt-1 text-xs font-medium text-red-600">Name is required.</p>
+                    ) : null}
+                  </div>
+                  <div>
+                    <Input
+                      aria-describedby={phoneTouched && !phoneValidation.isValid ? "cart-phone-error" : undefined}
+                      aria-invalid={phoneTouched && !phoneValidation.isValid}
+                      aria-label="Phone number"
+                      className={
+                        phoneTouched && !phoneValidation.isValid ? "border-red-400 focus-visible:ring-red-300" : ""
+                      }
+                      onBlur={() => setPhoneTouched(true)}
+                      onChange={(event) => {
+                        const nextPhone = event.target.value;
+                        setPhone(nextPhone);
+                        if (!phoneTouched) setPhoneTouched(true);
+                        if (validatePhoneNumber(nextPhone).isValid) void createIncompleteOrder(nextPhone);
+                      }}
+                      placeholder="Phone number (01XXXXXXXXX or +8801XXXXXXXXX)"
+                      required
+                      value={phone}
+                    />
+                    {phoneTouched && !phoneValidation.isValid ? (
+                      <p className="mt-1 text-xs font-medium text-red-600" id="cart-phone-error">
+                        {phoneValidation.error}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Textarea
+                    aria-label="Delivery address"
+                    onChange={(event) => setAddress(event.target.value)}
+                    placeholder="Delivery address (optional)"
+                    rows={3}
+                    value={address}
+                  />
+                  <Input
+                    aria-label="Coupon code"
+                    onBlur={() => void previewCoupon()}
+                    onChange={(event) => {
+                      setCouponCode(event.target.value.toUpperCase());
+                      setCouponPreview(null);
+                      setCouponError("");
+                    }}
+                    placeholder="Coupon code (optional)"
+                    value={couponCode}
+                  />
+                  {couponError ? <p className="text-xs font-medium text-red-600">{couponError}</p> : null}
+                  {!session && !sessionPending ? (
+                    <p className="text-xs leading-5 text-stone-500">
+                      No account is needed to order. You can also{" "}
+                      <Link className="font-semibold text-amber-800 underline" href="/registration">
+                        create an account (optional)
+                      </Link>
+                      .
+                    </p>
+                  ) : null}
+                </div>
+                <CheckoutSummary
+                  couponCode={couponCode}
+                  currentSubtotal={currentCartSubtotal}
+                  loading={creatingIncompleteOrder}
+                  couponPreview={couponPreview}
+                  order={incompleteOrder}
                 />
-                {phoneTouched && !phoneValidation.isValid ? (
-                  <p className="mt-1 text-xs font-medium text-red-600" id="cart-phone-error">
-                    {phoneValidation.error}
+                {countdownSeconds > 0 ? (
+                  <p className="text-center text-sm font-semibold text-red-700">
+                    Order limit active. Try again in {formatCountdown(countdownSeconds)}.
                   </p>
                 ) : null}
+                <Button
+                  className="w-full bg-stone-900 text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={checkoutDisabled}
+                  onClick={() => void handleCheckout()}
+                  size="lg"
+                  type="button"
+                >
+                  {checkoutStatus === "processing"
+                    ? "Confirming order…"
+                    : creatingIncompleteOrder
+                      ? "Saving incomplete order…"
+                      : countdownSeconds > 0
+                        ? `Try again in ${formatCountdown(countdownSeconds)}`
+                        : phoneTouched && !phoneValidation.isValid
+                          ? "Valid phone number required"
+                          : "Confirm order"}
+                </Button>
               </div>
-              <Textarea
-                aria-label="Delivery address"
-                onChange={(event) => setAddress(event.target.value)}
-                placeholder="Delivery address (optional)"
-                rows={3}
-                value={address}
-              />
-              <Input
-                aria-label="Coupon code"
-                onChange={(event) => setCouponCode(event.target.value.toUpperCase())}
-                placeholder="Coupon code (optional)"
-                value={couponCode}
-              />
-              {!session && !sessionPending ? (
-                <p className="text-xs leading-5 text-stone-500">
-                  No account is needed to order. You can also{" "}
-                  <Link className="font-semibold text-amber-800 underline" href="/registration">
-                    create an account (optional)
-                  </Link>
-                  .
-                </p>
-              ) : null}
-            </div>
-            {countdownSeconds > 0 ? (
-              <p className="mt-3 text-center text-sm font-semibold text-red-700">
-                Order limit active. Try again in {formatCountdown(countdownSeconds)}.
-              </p>
-            ) : null}
-            <Button
-              className="mt-4 w-full bg-stone-900 text-white hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={checkoutDisabled}
-              onClick={() => void handleCheckout()}
-              size="lg"
-              type="button"
-            >
-              {checkoutStatus === "processing"
-                ? "Placing order…"
-                : creatingIncompleteOrder
-                  ? "Saving incomplete order…"
-                  : countdownSeconds > 0
-                    ? `Try again in ${formatCountdown(countdownSeconds)}`
-                    : phoneTouched && !phoneValidation.isValid
-                      ? "Valid phone number required"
-                      : "Place order"}
-            </Button>
+            )}
           </div>
         ) : null}
       </aside>
@@ -611,6 +737,71 @@ function formatCountdown(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function CheckoutSummary({
+  couponCode,
+  couponPreview,
+  currentSubtotal,
+  loading,
+  order,
+}: {
+  couponCode: string;
+  couponPreview: OrderCostSummary | null;
+  currentSubtotal: number;
+  loading: boolean;
+  order: CheckoutOrder | null;
+}) {
+  const normalizedCoupon = couponCode.trim().toUpperCase();
+  const summary = couponPreview?.couponCode === normalizedCoupon ? couponPreview : order;
+  const couponApplied = Boolean(normalizedCoupon && normalizedCoupon === summary?.couponCode);
+  const tax = summary?.tax ?? 0;
+  const shipping = summary?.shipping ?? 0;
+  const discount = couponApplied ? (summary?.discount ?? 0) : 0;
+  const subtotal = summary?.subtotal ?? currentSubtotal;
+  const total = couponApplied ? (summary?.total ?? subtotal) : Math.max(0, subtotal + tax + shipping);
+
+  return (
+    <section aria-live="polite" className="rounded-sm border border-[#eadfca] bg-[#fffaf0] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-bold text-stone-900">Order summary</h3>
+        {loading ? <span className="text-xs font-medium text-amber-800">Preparing order…</span> : null}
+      </div>
+      <dl className="mt-3 space-y-2 text-sm">
+        <SummaryRow label="Subtotal" value={formatBDT(subtotal)} />
+        <SummaryRow label="Tax" value={summary ? formatBDT(tax) : "Enter a valid number"} />
+        <SummaryRow label="Shipping" value={summary ? formatBDT(shipping) : "Enter a valid number"} />
+        <SummaryRow
+          label="Coupon"
+          value={
+            normalizedCoupon
+              ? couponApplied
+                ? `${normalizedCoupon} −${formatBDT(discount)}`
+                : `${normalizedCoupon} (validated on confirmation)`
+              : "No coupon"
+          }
+        />
+        <div className="flex items-center justify-between border-t border-[#eadfca] pt-2 text-base font-bold text-stone-950">
+          <dt>Total</dt>
+          <dd>{formatBDT(total)}</dd>
+        </div>
+      </dl>
+      {!order && !loading ? (
+        <p className="mt-3 text-xs leading-5 text-stone-500">
+          A valid number saves an incomplete order and loads the final tax/shipping total before confirmation.
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-stone-600">
+      <dt>{label}</dt>
+      <dd className="text-right font-medium text-stone-900">{value}</dd>
+    </div>
+  );
 }
 
 function EmptyHistory() {

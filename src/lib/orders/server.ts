@@ -8,6 +8,8 @@
 
 import { createHash, randomBytes, randomInt, randomUUID } from "crypto";
 
+import type { Filter } from "mongodb";
+
 import { type Product } from "@/lib/dashboard/catalog";
 import { couponDiscount, type Coupon } from "@/lib/dashboard/coupons";
 import {
@@ -16,6 +18,7 @@ import {
   type OrderCustomer,
   type OrderItemSnapshot,
   type OrderSettings,
+  type ParsedOrderConfirmation,
   type OrderStatus,
   type ParsedCheckout,
 } from "@/lib/dashboard/orders";
@@ -34,6 +37,12 @@ type SessionUser = {
 export type CreateOrderResult =
   | { ok: true; order: Order }
   | { ok: false; status: number; code: OrderApiErrorCode; error: string; cooldownExpiresAt?: string };
+export type IncompleteOrderQuoteResult =
+  | {
+      ok: true;
+      quote: Pick<Order, "subtotal" | "tax" | "shipping" | "discount" | "couponCode" | "total" | "currency">;
+    }
+  | { ok: false; status: number; code: OrderApiErrorCode; error: string };
 
 const products = productsCollection;
 const orders = ordersCollection;
@@ -54,6 +63,19 @@ function priceFor(product: Product) {
     : product.realPrice;
 }
 
+const money = (value: number) => Math.max(0, Math.round((value + Number.EPSILON) * 100) / 100);
+const productTaxRate = (product: Product) =>
+  typeof product.taxRate === "number" &&
+  Number.isFinite(product.taxRate) &&
+  product.taxRate >= 0 &&
+  product.taxRate <= 100
+    ? product.taxRate
+    : 0;
+const productShippingCost = (product: Product) =>
+  typeof product.shippingCost === "number" && Number.isFinite(product.shippingCost) && product.shippingCost >= 0
+    ? product.shippingCost
+    : 0;
+
 function customerFrom(sessionUser: SessionUser, input: ParsedCheckout["customer"]): OrderCustomer | null {
   const userId = sessionUser.id?.trim();
   const email = sessionUser.email?.trim().toLowerCase();
@@ -61,7 +83,7 @@ function customerFrom(sessionUser: SessionUser, input: ParsedCheckout["customer"
   return {
     userId,
     email,
-    name: sessionUser.name?.trim() || email,
+    name: input.name || sessionUser.name?.trim() || email,
     phone: input.phone || sessionUser.mobileNumber?.trim() || "",
     address: input.address || sessionUser.address?.trim() || "",
   };
@@ -187,6 +209,9 @@ async function createOrderUnchecked(
   const snapshots: OrderItemSnapshot[] = input.items.map(({ productId, quantity }) => {
     const product = productById.get(productId)!;
     const unitPrice = priceFor(product);
+    const taxRate = productTaxRate(product);
+    const unitShippingCost = productShippingCost(product);
+    const lineTotal = money(unitPrice * quantity);
     return {
       productId: product.id,
       sku: product.sku,
@@ -194,13 +219,19 @@ async function createOrderUnchecked(
       name: product.name,
       primaryImage: product.primaryImage,
       unitPrice,
+      taxRate,
+      unitShippingCost,
       quantity,
       stockDeducted: 0,
-      lineTotal: unitPrice * quantity,
+      lineTotal,
+      lineTax: money((lineTotal * taxRate) / 100),
+      lineShipping: money(unitShippingCost * quantity),
     };
   });
 
-  const subtotal = snapshots.reduce((sum, item) => sum + item.lineTotal, 0);
+  const subtotal = money(snapshots.reduce((sum, item) => sum + item.lineTotal, 0));
+  const tax = money(snapshots.reduce((sum, item) => sum + (item.lineTax ?? 0), 0));
+  const shipping = money(snapshots.reduce((sum, item) => sum + (item.lineShipping ?? 0), 0));
   const couponCode = input.couponCode.trim().toUpperCase();
   const coupon = couponCode ? await coupons().findOne({ code: couponCode, active: true }) : null;
   if (couponCode && !coupon)
@@ -285,9 +316,11 @@ async function createOrderUnchecked(
       items: snapshots,
       itemCount: snapshots.reduce((sum, item) => sum + item.quantity, 0),
       subtotal,
+      tax,
+      shipping,
       discount,
       ...(coupon ? { couponCode: coupon.code } : {}),
-      total: subtotal - discount,
+      total: money(subtotal + tax + shipping - discount),
       currency: "BDT",
       status: initialStatus,
       createdAt: now,
@@ -404,18 +437,159 @@ export async function createOrder(
   return createOrderWithLimit(customer, input, initialStatus);
 }
 
+/** Promotes an existing reservation only after a fresh server-side coupon check. */
+async function promoteIncompleteOrder(
+  filter: Filter<Order>,
+  customer: OrderCustomer,
+  couponCodeInput: string,
+): Promise<CreateOrderResult> {
+  const incomplete = await orders().findOne(filter);
+  if (!incomplete)
+    return {
+      ok: false,
+      status: 409,
+      code: "INVALID_CHECKOUT",
+      error: "This incomplete order is no longer available.",
+    };
+
+  const couponCode = couponCodeInput.trim().toUpperCase();
+  const coupon = couponCode ? await coupons().findOne({ code: couponCode, active: true }) : null;
+  if (couponCode && !coupon)
+    return { ok: false, status: 400, code: "INVALID_CHECKOUT", error: "This coupon is invalid or inactive." };
+
+  const subtotal = money(incomplete.subtotal);
+  const tax = money(incomplete.tax ?? 0);
+  const shipping = money(incomplete.shipping ?? 0);
+  const discount = coupon ? couponDiscount(coupon, subtotal) : 0;
+  const now = new Date();
+  const updated = await orders().findOneAndUpdate(
+    filter,
+    {
+      $set: {
+        customer,
+        subtotal,
+        tax,
+        shipping,
+        discount,
+        ...(coupon ? { couponCode: coupon.code } : {}),
+        total: money(subtotal + tax + shipping - discount),
+        status: "placed",
+        updatedAt: now,
+        statusUpdatedAt: now,
+      },
+      ...(coupon ? {} : { $unset: { couponCode: "" } }),
+    },
+    { returnDocument: "after" },
+  );
+  return updated
+    ? { ok: true, order: updated }
+    : {
+        ok: false,
+        status: 409,
+        code: "INVALID_CHECKOUT",
+        error: "This incomplete order is no longer available.",
+      };
+}
+
+/**
+ * Promotes the signed-in customer's reserved order only after rechecking its active coupon.
+ * Product price, tax, shipping, and stock were snapshotted and reserved when the incomplete order was created.
+ */
+export async function confirmIncompleteOrder(
+  sessionUser: SessionUser,
+  input: ParsedOrderConfirmation,
+): Promise<CreateOrderResult> {
+  const customer = customerFrom(sessionUser, input.customer);
+  if (!customer) return { ok: false, status: 401, code: "AUTH_REQUIRED", error: "Sign in required." };
+  return promoteIncompleteOrder(
+    { id: input.id, "customer.userId": customer.userId, status: "incomplete" },
+    customer,
+    input.couponCode,
+  );
+}
+
+export async function confirmGuestIncompleteOrder(
+  input: ParsedOrderConfirmation,
+  trackingToken: string,
+): Promise<CreateOrderResult> {
+  const phone = input.customer.phone.startsWith("+880") ? input.customer.phone : `+88${input.customer.phone}`;
+  return promoteIncompleteOrder(
+    { id: input.id, guestAccessTokenHash: hashGuestOrderAccessToken(trackingToken), status: "incomplete" },
+    { userId: "", email: "", name: input.customer.name, phone, address: input.customer.address },
+    input.couponCode,
+  );
+}
+
+/** Gives the customer a no-side-effect coupon preview for their own reserved order. Confirmation repeats this check. */
+async function quoteIncompleteOrderByFilter(
+  filter: Filter<Order>,
+  couponCodeInput: string,
+): Promise<IncompleteOrderQuoteResult> {
+  const incomplete = await orders().findOne(filter);
+  if (!incomplete)
+    return {
+      ok: false,
+      status: 409,
+      code: "INVALID_CHECKOUT",
+      error: "This incomplete order is no longer available.",
+    };
+  const couponCode = couponCodeInput.trim().toUpperCase();
+  const coupon = couponCode ? await coupons().findOne({ code: couponCode, active: true }) : null;
+  if (couponCode && !coupon)
+    return { ok: false, status: 400, code: "INVALID_CHECKOUT", error: "This coupon is invalid or inactive." };
+  const subtotal = money(incomplete.subtotal);
+  const tax = money(incomplete.tax ?? 0);
+  const shipping = money(incomplete.shipping ?? 0);
+  const discount = coupon ? couponDiscount(coupon, subtotal) : 0;
+  return {
+    ok: true,
+    quote: {
+      subtotal,
+      tax,
+      shipping,
+      discount,
+      ...(coupon ? { couponCode: coupon.code } : {}),
+      total: money(subtotal + tax + shipping - discount),
+      currency: "BDT",
+    },
+  };
+}
+
+export async function quoteIncompleteOrder(
+  sessionUser: SessionUser,
+  input: Pick<ParsedOrderConfirmation, "id" | "couponCode">,
+): Promise<IncompleteOrderQuoteResult> {
+  const userId = sessionUser.id?.trim();
+  if (!userId) return { ok: false, status: 401, code: "AUTH_REQUIRED", error: "Sign in required." };
+  return quoteIncompleteOrderByFilter(
+    { id: input.id, "customer.userId": userId, status: "incomplete" },
+    input.couponCode,
+  );
+}
+
+export async function quoteGuestIncompleteOrder(
+  input: Pick<ParsedOrderConfirmation, "id" | "couponCode">,
+  trackingToken: string,
+): Promise<IncompleteOrderQuoteResult> {
+  return quoteIncompleteOrderByFilter(
+    { id: input.id, guestAccessTokenHash: hashGuestOrderAccessToken(trackingToken), status: "incomplete" },
+    input.couponCode,
+  );
+}
+
 export async function createGuestOrder(
   input: ParsedCheckout,
+  initialStatus: Extract<OrderStatus, "incomplete" | "placed"> = "placed",
 ): Promise<CreateOrderResult | { ok: true; order: Order; trackingToken: string }> {
   const phone = input.customer.phone.startsWith("+880") ? input.customer.phone : `+88${input.customer.phone}`;
   const trackingToken = randomBytes(32).toString("base64url");
   const customer: OrderCustomer = {
     userId: "",
     email: "",
-    name: "Guest",
+    name: input.customer.name,
     phone,
     address: input.customer.address,
   };
-  const result = await createOrderWithLimit(customer, input, "placed", hashGuestOrderAccessToken(trackingToken));
+  const result = await createOrderWithLimit(customer, input, initialStatus, hashGuestOrderAccessToken(trackingToken));
   return result.ok ? { ...result, trackingToken } : result;
 }

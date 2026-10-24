@@ -25,10 +25,16 @@ export type OrderItemSnapshot = {
   name: string;
   primaryImage: string;
   unitPrice: number;
+  /** Checkout-time tax rate for this item; absent on older orders. */
+  taxRate?: number;
+  /** Checkout-time shipping charge per unit; absent on older orders. */
+  unitShippingCost?: number;
   quantity: number;
   /** Actual inventory removed for this line; absent on orders created before oversell support. */
   stockDeducted?: number;
   lineTotal: number;
+  lineTax?: number;
+  lineShipping?: number;
 };
 
 export type Order = {
@@ -38,6 +44,8 @@ export type Order = {
   items: OrderItemSnapshot[];
   itemCount: number;
   subtotal: number;
+  tax?: number;
+  shipping?: number;
   discount?: number;
   couponCode?: string;
   total: number;
@@ -59,7 +67,7 @@ export type OrderSettings = {
 };
 
 export type CheckoutItemInput = { productId: string; quantity: number };
-export type CheckoutCustomerInput = { phone?: string; address?: string };
+export type CheckoutCustomerInput = { name?: string; phone?: string; address?: string };
 export type CheckoutInput = { items: CheckoutItemInput[]; customer?: CheckoutCustomerInput; couponCode?: string };
 
 export type OrderApiErrorCode =
@@ -78,6 +86,12 @@ export type ParsedCheckout = {
   couponCode: string;
 };
 
+export type ParsedOrderConfirmation = {
+  id: string;
+  customer: Required<CheckoutCustomerInput>;
+  couponCode: string;
+};
+
 const isObject = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === "object";
 const text = (value: unknown, max: number) =>
   typeof value === "string" && value.trim().length <= max ? value.trim() : null;
@@ -89,7 +103,7 @@ export function validatePhoneNumber(rawPhone: string): { isValid: boolean; error
   }
 
   if (trimmed.startsWith("+880")) {
-    if (trimmed.length !== 14 || !/^\+880\d{10}$/.test(trimmed)) {
+    if (!/^\+8801\d{9}$/.test(trimmed)) {
       return {
         isValid: false,
         error: "Phone number starting with +880 must have total 14 characters including + (e.g. +8801XXXXXXXXX).",
@@ -99,10 +113,10 @@ export function validatePhoneNumber(rawPhone: string): { isValid: boolean; error
   }
 
   if (trimmed.startsWith("01")) {
-    if (trimmed.length < 11 || !/^01\d+$/.test(trimmed)) {
+    if (!/^01\d{9}$/.test(trimmed)) {
       return {
         isValid: false,
-        error: "Phone number starting with 01 must have a minimum of 11 digits (e.g. 01XXXXXXXXX).",
+        error: "Phone number starting with 01 must have exactly 11 digits (e.g. 01XXXXXXXXX).",
       };
     }
     return { isValid: true };
@@ -110,7 +124,7 @@ export function validatePhoneNumber(rawPhone: string): { isValid: boolean; error
 
   return {
     isValid: false,
-    error: "Phone number must start with 01 (minimum 11 digits) or +880 (total 14 characters).",
+    error: "Phone number must start with 01 (11 digits) or +880 (14 characters).",
   };
 }
 
@@ -139,9 +153,10 @@ export function parseCheckoutInput(body: unknown): ParsedCheckout | { code: Orde
     return { code: "INVALID_QUANTITY", error: "Each product quantity must not exceed 100." };
 
   const customer = isObject(body.customer) ? body.customer : {};
+  const name = customer.name === undefined ? "" : text(customer.name, 160);
   const phone = customer.phone === undefined ? "" : text(customer.phone, 40);
   const address = customer.address === undefined ? "" : text(customer.address, 500);
-  if (phone === null || address === null)
+  if (name === null || phone === null || address === null || !name)
     return { code: "INVALID_CHECKOUT", error: "Customer contact details are invalid." };
 
   const phoneCheck = validatePhoneNumber(phone);
@@ -154,7 +169,29 @@ export function parseCheckoutInput(body: unknown): ParsedCheckout | { code: Orde
 
   return {
     items: [...quantities].map(([productId, quantity]) => ({ productId, quantity })),
-    customer: { phone: phone.trim(), address },
+    customer: { name, phone: phone.trim(), address },
+    couponCode: couponCode.toUpperCase(),
+  };
+}
+
+export function parseOrderConfirmationInput(
+  body: unknown,
+): ParsedOrderConfirmation | { code: OrderApiErrorCode; error: string } {
+  if (!isObject(body) || !isObject(body.customer))
+    return { code: "INVALID_CHECKOUT", error: "Provide order and customer details." };
+  const id = text(body.id, 20);
+  if (!id || !/^[A-Z]{2}-\d{4}$/.test(id)) return { code: "INVALID_CHECKOUT", error: "Invalid order ID." };
+  const name = text(body.customer.name, 160);
+  const phone = text(body.customer.phone, 40);
+  const address = text(body.customer.address, 500);
+  const couponCode = body.couponCode === undefined ? "" : text(body.couponCode, 60);
+  if (!name || phone === null || address === null || couponCode === null)
+    return { code: "INVALID_CHECKOUT", error: "Customer contact details are invalid." };
+  const phoneCheck = validatePhoneNumber(phone);
+  if (!phoneCheck.isValid) return { code: "INVALID_CHECKOUT", error: phoneCheck.error ?? "Invalid phone number." };
+  return {
+    id,
+    customer: { name, phone, address },
     couponCode: couponCode.toUpperCase(),
   };
 }

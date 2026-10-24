@@ -30,6 +30,10 @@ export type Product = {
   realPrice: number;
   discountPrice: number;
   discount: number;
+  /** Percentage tax applied to this product's discounted unit price at checkout. */
+  taxRate?: number;
+  /** Delivery charge in BDT applied once per purchased unit at checkout. */
+  shippingCost?: number;
   star: number;
   primaryImage: string;
   images: string[];
@@ -148,6 +152,8 @@ export function createProductDefaults({
     description: emptyRichText,
     discount: 15,
     discountPrice: 850,
+    taxRate: 0,
+    shippingCost: 0,
     images: [imageUrl],
     isFeatured: false,
     mainFeatures: ["Quality checked", "Ready to ship"],
@@ -234,8 +240,17 @@ export function parseProductInput(body: unknown): ProductInput | null {
   const primaryImage = stringValue(data?.primaryImage, 2_000) ?? "";
   const realPrice = data?.realPrice,
     discountPrice = data?.discountPrice,
-    discount = data?.discount;
-  if (typeof realPrice !== "number" || typeof discountPrice !== "number" || typeof discount !== "number") return null;
+    discount = data?.discount,
+    taxRate = data?.taxRate === undefined ? 0 : data.taxRate,
+    shippingCost = data?.shippingCost === undefined ? 0 : data.shippingCost;
+  if (
+    typeof realPrice !== "number" ||
+    typeof discountPrice !== "number" ||
+    typeof discount !== "number" ||
+    typeof taxRate !== "number" ||
+    typeof shippingCost !== "number"
+  )
+    return null;
   const expectedDiscount = realPrice > 0 ? ((realPrice - discountPrice) / realPrice) * 100 : 0;
   if (
     !name ||
@@ -266,6 +281,11 @@ export function parseProductInput(body: unknown): ProductInput | null {
     discount < 0 ||
     discount > 100 ||
     Math.abs(expectedDiscount - discount) > 0.01 ||
+    !Number.isFinite(taxRate) ||
+    taxRate < 0 ||
+    taxRate > 100 ||
+    !Number.isFinite(shippingCost) ||
+    shippingCost < 0 ||
     typeof data?.star !== "number" ||
     !Number.isFinite(data.star) ||
     data.star < 0 ||
@@ -286,6 +306,8 @@ export function parseProductInput(body: unknown): ProductInput | null {
     realPrice,
     discountPrice,
     discount,
+    taxRate,
+    shippingCost,
     star: data.star,
     primaryImage,
     images,

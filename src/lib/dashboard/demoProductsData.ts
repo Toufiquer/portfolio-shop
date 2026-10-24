@@ -307,6 +307,8 @@ export function buildDemoProductPayload({
     realPrice: demo.realPrice,
     discountPrice: demo.discountPrice,
     discount: Number((((demo.realPrice - demo.discountPrice) / demo.realPrice) * 100).toFixed(2)),
+    taxRate: 0,
+    shippingCost: 0,
     star: demo.star,
     primaryImage,
     images: [primaryImage],

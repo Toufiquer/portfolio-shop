@@ -1266,7 +1266,9 @@ function ProductForm({
   save: (form: ProductInput) => Promise<void>;
 }) {
   const [form, setForm] = useState<ProductInput>(
-    initial ? { ...initial } : createProductDefaults({ categoryId: defaultCategoryId, imageUrl: defaultImageUrl }),
+    initial
+      ? { ...initial, taxRate: initial.taxRate ?? 0, shippingCost: initial.shippingCost ?? 0 }
+      : createProductDefaults({ categoryId: defaultCategoryId, imageUrl: defaultImageUrl }),
   );
   const [categorySearch, setCategorySearch] = useState("");
   const [picker, setPicker] = useState<"primary" | "gallery" | null>(null);
@@ -1390,6 +1392,29 @@ function ProductForm({
               </Field>
               <Field label="Discount (%)">
                 <input className="input cursor-not-allowed bg-stone-100" readOnly type="number" value={form.discount} />
+              </Field>
+              <Field label="Tax (%)">
+                <input
+                  className="input"
+                  max="100"
+                  min="0"
+                  onChange={(event) => setForm({ ...form, taxRate: Number(event.target.value) })}
+                  required
+                  step="0.01"
+                  type="number"
+                  value={form.taxRate ?? 0}
+                />
+              </Field>
+              <Field label="Shipping cost (৳ / unit)">
+                <input
+                  className="input"
+                  min="0"
+                  onChange={(event) => setForm({ ...form, shippingCost: Number(event.target.value) })}
+                  required
+                  step="0.01"
+                  type="number"
+                  value={form.shippingCost ?? 0}
+                />
               </Field>
               <Field label="Stock">
                 <input
@@ -1679,6 +1704,8 @@ function ProductViewModal({
     ["Brand", item.brand],
     ["Stock", `${item.stock} available`],
     ["Rating", `${item.star.toFixed(1)} / 5`],
+    ["Tax", `${item.taxRate ?? 0}%`],
+    ["Shipping", `৳${(item.shippingCost ?? 0).toFixed(2)} / unit`],
     ["Delivery", item.deliveryTime],
     ["Warranty", item.warranty],
     ["Featured", item.isFeatured ? "Yes" : "No"],
