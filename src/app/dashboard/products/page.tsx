@@ -439,22 +439,22 @@ export default function ProductsPage() {
           </TabsList>
           <TabsContent
             aria-labelledby="products-tab"
-            className="mt-5"
+            className="mt-5 pb-24 sm:pb-0"
             id="products-tab-panel"
             tabIndex={0}
             value="products"
           >
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
                 <h1 className="text-xl font-semibold text-stone-900">Products</h1>
                 <p className="mt-1 text-sm text-stone-600">
                   Manage catalog details, inventory, categories, rich descriptions, and images.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex w-full flex-wrap gap-2 sm:w-auto">
                 {data && data.total <= 1 ? (
                   <button
-                    className="secondary-button"
+                    className="secondary-button flex-1 sm:flex-none"
                     disabled={busy}
                     onClick={() => setDemoModalOpen(true)}
                     type="button"
@@ -462,12 +462,12 @@ export default function ProductsPage() {
                     <Sparkles className="h-4 w-4 text-amber-600" /> Demo products
                   </button>
                 ) : null}
-                <button className="primary-button" onClick={openCreate} type="button">
+                <button className="primary-button flex-1 sm:flex-none" onClick={openCreate} type="button">
                   <Plus className="h-4 w-4" /> Add product
                 </button>
               </div>
             </div>
-            <div className="mt-5 grid gap-3 rounded-sm bg-[#fffaf0] p-3 md:grid-cols-[minmax(0,1fr)_11rem_12rem]">
+            <div className="mt-4 grid gap-2 rounded-sm bg-[#fffaf0] p-2.5 md:mt-5 md:gap-3 md:p-3 md:grid-cols-[minmax(0,1fr)_11rem_12rem]">
               <label className="relative">
                 <Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-stone-400" />
                 <input
@@ -677,7 +677,7 @@ export default function ProductsPage() {
                     </tbody>
                   </table>
                 </div>
-                <div className="grid gap-3 p-3 lg:hidden">
+                <div className="grid gap-3 p-2.5 sm:p-3 lg:hidden">
                   {items.map((item) => (
                     <ProductCard
                       categories={categoryNames}
@@ -706,6 +706,7 @@ export default function ProductsPage() {
               isSaving={updateState.isLoading}
               items={items}
               onSaveInventory={saveInventory}
+              onViewProduct={setViewing}
               pagination={
                 <ProductsPagination data={data} isFetching={isFetching} query={query} updateQuery={updateQuery} />
               }
@@ -1218,33 +1219,31 @@ function ProductCard({
   view: () => void;
 }) {
   return (
-    <article className="flex gap-3 rounded-sm border border-stone-200 p-3">
-      <Checkbox aria-label={`Select ${item.name}`} checked={selected} onCheckedChange={toggle} />
-      <Image
-        alt=""
-        className="h-16 w-16 shrink-0 rounded-sm object-cover"
-        height={64}
-        src={item.primaryImage}
-        width={64}
-      />
-      <div className="min-w-0 flex-1">
-        <div className="flex justify-between gap-2">
-          <div className="min-w-0">
-            <p className="truncate font-medium">{item.name}</p>
-            <p className="truncate text-xs text-stone-500">{item.sku}</p>
+    <article className="rounded-sm border border-[#eadfca] bg-white p-3 shadow-[0_10px_24px_-22px_rgba(120,53,15,.45)]">
+      <div className="flex min-w-0 gap-3">
+        <Checkbox aria-label={`Select ${item.name}`} checked={selected} onCheckedChange={toggle} />
+        <Image
+          alt=""
+          className="h-16 w-16 shrink-0 rounded-sm border border-[#eadfca] bg-[#fffaf0] object-cover"
+          height={64}
+          src={item.primaryImage}
+          width={64}
+        />
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-sm font-semibold leading-5 text-stone-900">{item.name}</p>
+          <p className="mt-0.5 truncate text-xs text-stone-500">{item.sku}</p>
+          <p className="mt-2 truncate text-xs text-stone-600">
+            {item.categories.map((id) => categories.get(id) ?? "Unknown").join(", ")}
+          </p>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span className="min-w-0 truncate text-sm font-semibold text-stone-900">
+              ৳{item.discountPrice.toFixed(2)} <span className="font-normal text-stone-500">· {item.stock} stock</span>
+            </span>
+            <Status status={item.status} />
           </div>
-          <Actions edit={edit} remove={remove} view={view} />
-        </div>
-        <p className="mt-2 text-xs text-stone-600">
-          {item.categories.map((id) => categories.get(id) ?? "Unknown").join(", ")}
-        </p>
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-sm">
-            ৳{item.discountPrice.toFixed(2)} · {item.stock} stock
-          </span>
-          <Status status={item.status} />
         </div>
       </div>
+      <Actions edit={edit} mobile remove={remove} view={view} />
     </article>
   );
 }
@@ -1611,7 +1610,40 @@ function ImageSelect({ label, onClick, url }: { label: string; onClick: () => vo
     </div>
   );
 }
-function Actions({ edit, remove, view }: { edit: () => void; remove: () => void; view: () => void }) {
+function Actions({
+  edit,
+  mobile = false,
+  remove,
+  view,
+}: {
+  edit: () => void;
+  mobile?: boolean;
+  remove: () => void;
+  view: () => void;
+}) {
+  if (mobile) {
+    return (
+      <div className="mt-3 flex items-center gap-2 border-t border-stone-100 pt-2.5">
+        <button aria-label="Edit product" className="secondary-button h-9 px-3 text-xs" onClick={edit} type="button">
+          <Pencil className="h-4 w-4" /> Edit
+        </button>
+        <div className="ml-auto flex gap-1">
+          <button aria-label="View product" className="icon-button h-9 w-9" onClick={view} type="button">
+            <Eye className="h-4 w-4" />
+          </button>
+          <button
+            aria-label="Delete product"
+            className="icon-button h-9 w-9 border-red-100 text-red-700 hover:bg-red-50"
+            onClick={remove}
+            type="button"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex justify-end gap-1">
       <button aria-label="View product" className="icon-button" onClick={view} type="button">

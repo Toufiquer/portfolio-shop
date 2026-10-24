@@ -8,7 +8,8 @@
 
 "use client";
 
-import { Loader2, PackageOpen, Save } from "lucide-react";
+import { Eye, Loader2, PackageOpen, Save } from "lucide-react";
+import Image from "next/image";
 import { type FormEvent, type ReactNode, useState } from "react";
 
 import { toast } from "@/components/ui/global-toast";
@@ -36,6 +37,7 @@ type ProductStockTabProps = {
   isSaving: boolean;
   items: ProductItem[];
   onSaveInventory: (item: ProductItem, change: InventoryChange) => Promise<void>;
+  onViewProduct: (item: ProductItem) => void;
   pagination: ReactNode;
 };
 
@@ -46,6 +48,7 @@ export default function ProductStockTab({
   isSaving,
   items,
   onSaveInventory,
+  onViewProduct,
   pagination,
 }: ProductStockTabProps) {
   const { data: settingsData, error: settingsError, isLoading: settingsLoading } = useGetOrderSettingsQuery();
@@ -153,6 +156,7 @@ export default function ProductStockTab({
                 isSaving={isSaving}
                 key={`${item.id}-${item.stock}-${item.status}`}
                 onSave={onSaveInventory}
+                onView={onViewProduct}
               />
             ))}
           </div>
@@ -168,10 +172,12 @@ function StockItemForm({
   item,
   isSaving,
   onSave,
+  onView,
 }: {
   item: ProductItem;
   isSaving: boolean;
   onSave: (item: ProductItem, change: InventoryChange) => Promise<void>;
+  onView: (item: ProductItem) => void;
 }) {
   const [stock, setStock] = useState(String(item.stock));
   const [status, setStatus] = useState<ProductItem["status"]>(item.status);
@@ -197,12 +203,21 @@ function StockItemForm({
 
   return (
     <form className="rounded-sm border border-stone-200 bg-[#fffaf0]/60 p-3" onSubmit={(event) => void submit(event)}>
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_13rem_auto] sm:items-end">
-        <div className="min-w-0">
-          <p className="truncate font-semibold text-stone-900" title={item.name}>
-            {item.name}
-          </p>
-          <p className="mt-0.5 truncate text-xs text-stone-500">SKU: {item.sku}</p>
+      <div className="grid gap-3 sm:grid-cols-[minmax(13rem,1fr)_10rem_13rem_auto] sm:items-end">
+        <div className="flex min-w-0 items-center gap-3">
+          <Image
+            alt={item.name}
+            className="h-11 w-11 shrink-0 rounded-sm border border-[#eadfca] object-cover"
+            height={44}
+            src={item.primaryImage}
+            width={44}
+          />
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-stone-900" title={item.name}>
+              {item.name}
+            </p>
+            <p className="mt-0.5 truncate text-xs text-stone-500">SKU: {item.sku}</p>
+          </div>
         </div>
         <label className="block text-sm font-medium text-stone-700">
           <span className="mb-1 block">Stock quantity</span>
@@ -232,10 +247,21 @@ function StockItemForm({
             <option value="archived">Archived</option>
           </select>
         </label>
-        <button className="primary-button" disabled={saving || isSaving} type="submit">
-          {saving || isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {saving || isSaving ? "Saving…" : "Save"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            aria-label={`View ${item.name} details`}
+            className="icon-button"
+            onClick={() => onView(item)}
+            title="View product details"
+            type="button"
+          >
+            <Eye className="h-4 w-4" />
+          </button>
+          <button className="primary-button" disabled={saving || isSaving} type="submit">
+            {saving || isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saving || isSaving ? "Saving…" : "Save"}
+          </button>
+        </div>
       </div>
     </form>
   );
