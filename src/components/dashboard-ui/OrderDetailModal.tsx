@@ -193,7 +193,7 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
 
       <div
         aria-modal="true"
-        className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/45 p-3 sm:p-5 backdrop-blur-xs transition-opacity duration-300"
+        className="fixed inset-0 z-[70] flex items-center justify-center bg-stone-950/45 p-2 sm:p-5 backdrop-blur-xs transition-opacity duration-300"
         id="order-print-portal"
         onClick={(e) => {
           if (e.target === e.currentTarget && !updateState.isLoading) {
@@ -203,13 +203,13 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
         role="dialog"
       >
         <section
-          className="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-md border border-[#eadfca] bg-white shadow-2xl animate-in fade-in-0 zoom-in-95 duration-200"
+          className="relative flex max-h-[calc(100dvh-1rem)] w-full max-w-3xl flex-col overflow-hidden rounded-sm border border-[#eadfca] bg-white shadow-2xl animate-in fade-in-0 zoom-in-95 duration-200 sm:max-h-[calc(100dvh-2.5rem)]"
           id="order-print-modal"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <header className="print-header-compact flex shrink-0 items-center justify-between border-b border-[#eadfca] bg-[#fffaf0] px-6 py-4 sm:px-7 sm:py-5">
-            <div className="min-w-0 pr-4">
+          <header className="print-header-compact relative flex shrink-0 flex-col gap-3 border-b border-[#eadfca] bg-[#fffaf0] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7 sm:py-5">
+            <div className="min-w-0 pr-10 sm:pr-4">
               <div className="flex flex-wrap items-center gap-2.5">
                 <h2 className="text-xl font-bold text-stone-900 sm:text-2xl">Order Details</h2>
                 <button
@@ -231,17 +231,17 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="no-print flex min-w-0 flex-wrap items-center gap-2 sm:flex-nowrap sm:justify-end sm:pr-10">
               {/* Status Switcher in Header */}
-              <div className="flex items-center gap-2">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 sm:flex-nowrap">
                 <span
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold capitalize ${currentStyle.badge}`}
+                  className={`inline-flex items-center gap-1.5 rounded-sm border px-3 py-1 text-xs font-semibold capitalize ${currentStyle.badge}`}
                 >
-                  <span className={`h-2 w-2 rounded-full ${currentStyle.dot}`} />
+                  <span className={`h-2 w-2 rounded-sm ${currentStyle.dot}`} />
                   {currentStatus}
                 </span>
 
-                <div className="no-print">
+                <div>
                   <select
                     aria-label="Change order status"
                     className="h-8 cursor-pointer rounded-sm border border-[#eadfca] bg-white px-2.5 text-xs font-semibold capitalize text-stone-800 shadow-2xs outline-none transition hover:border-amber-400 focus:border-amber-500"
@@ -257,25 +257,23 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
                   </select>
                 </div>
               </div>
-
-              {/* Close Icon Button */}
-              <button
-                aria-label="Close modal"
-                className="no-print grid h-8 w-8 cursor-pointer place-items-center rounded-sm text-stone-400 transition hover:bg-amber-100 hover:text-stone-800"
-                disabled={updateState.isLoading}
-                onClick={onClose}
-                type="button"
-              >
-                <X className="h-4 w-4" />
-              </button>
             </div>
+            <button
+              aria-label="Close modal"
+              className="no-print absolute right-3 top-3 grid size-9 cursor-pointer place-items-center rounded-sm text-stone-400 transition hover:bg-amber-100 hover:text-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 sm:right-5 sm:top-1/2 sm:-translate-y-1/2"
+              disabled={updateState.isLoading}
+              onClick={onClose}
+              type="button"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </header>
 
           {/* Body with Generous Border Padding */}
-          <div className="print-p-compact flex-1 overflow-y-auto p-6 sm:p-7 space-y-6">
+          <div className="print-p-compact min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:space-y-6 sm:p-7">
             {/* Customer & Delivery Information Card */}
-            <div className="print-card-compact rounded-md border border-[#eadfca] bg-[#fffaf0]/40 p-5 sm:p-6 shadow-2xs">
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:divide-x md:divide-[#eadfca]">
+            <div className="print-card-compact rounded-sm border border-[#eadfca] bg-[#fffaf0]/40 p-4 shadow-2xs sm:p-6">
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 md:divide-x md:divide-[#eadfca] md:gap-6">
                 {/* Customer Column */}
                 <div className="space-y-2">
                   <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-amber-950">
@@ -317,8 +315,8 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
             </div>
 
             {/* Ordered Products Table & Invoice Breakdown */}
-            <div className="overflow-hidden rounded-md border border-[#eadfca] bg-white shadow-2xs">
-              <div className="border-b border-[#eadfca] bg-[#fffaf0] px-5 py-3 sm:px-6 flex items-center justify-between">
+            <div className="overflow-hidden rounded-sm border border-[#eadfca] bg-white shadow-2xs">
+              <div className="flex items-center justify-between gap-3 border-b border-[#eadfca] bg-[#fffaf0] px-4 py-3 sm:px-6">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-amber-950">
                   Ordered Products ({order.items?.length || 0})
                 </h3>
@@ -327,7 +325,60 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
                 </span>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="space-y-3 p-3 sm:hidden print:hidden">
+                {order.items?.map((item, index) => {
+                  const itemKey = `${item.productId || "item"}-${item.sku || ""}-${index}`;
+                  return (
+                    <article className="rounded-sm border border-[#eadfca] bg-white p-3" key={itemKey}>
+                      <div className="flex items-start gap-3">
+                        {item.primaryImage ? (
+                          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-sm border border-[#eadfca] bg-[#fffaf0]">
+                            <Image
+                              alt={item.name}
+                              className="object-contain p-1"
+                              fill
+                              sizes="44px"
+                              src={item.primaryImage}
+                            />
+                          </div>
+                        ) : null}
+                        <div className="min-w-0">
+                          <p className="font-semibold leading-snug text-stone-900">{item.name}</p>
+                          {item.sku ? (
+                            <p className="mt-0.5 font-mono text-[11px] text-stone-400">SKU: {item.sku}</p>
+                          ) : null}
+                        </div>
+                      </div>
+                      <dl className="mt-3 grid grid-cols-3 gap-2 border-t border-stone-100 pt-3 text-xs">
+                        <div>
+                          <dt className="text-stone-500">Unit price</dt>
+                          <dd className="mt-0.5 font-semibold text-stone-800">{bdt(item.unitPrice)}</dd>
+                        </div>
+                        <div className="text-center">
+                          <dt className="text-stone-500">Quantity</dt>
+                          <dd className="mt-0.5 font-semibold text-stone-800">×{item.quantity}</dd>
+                        </div>
+                        <div className="text-right">
+                          <dt className="text-stone-500">Total</dt>
+                          <dd className="mt-0.5 font-bold text-stone-900">{bdt(item.lineTotal)}</dd>
+                        </div>
+                      </dl>
+                    </article>
+                  );
+                })}
+                <dl className="border-t border-[#eadfca] bg-[#fffaf0] px-3 py-3 text-sm">
+                  <div className="flex items-center justify-between gap-3 text-stone-600">
+                    <dt>Subtotal</dt>
+                    <dd className="font-semibold text-stone-800">{bdt(order.subtotal ?? order.total)}</dd>
+                  </div>
+                  <div className="mt-2 flex items-center justify-between gap-3 border-t border-[#eadfca] pt-2 font-bold text-stone-900">
+                    <dt>Grand Total ({order.currency || "BDT"})</dt>
+                    <dd className="text-amber-950">{bdt(order.total)}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div className="hidden overflow-x-auto sm:block print:block">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-stone-200 bg-stone-50/60 text-[11px] font-bold uppercase tracking-wider text-stone-600">
                     <tr>
@@ -401,9 +452,9 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
           </div>
 
           {/* Footer */}
-          <footer className="no-print flex shrink-0 items-center justify-between border-t border-[#eadfca] bg-[#fffaf0] px-6 py-4 sm:px-7">
+          <footer className="no-print flex shrink-0 items-center justify-between gap-3 border-t border-[#eadfca] bg-[#fffaf0] px-4 py-3 sm:px-7 sm:py-4">
             <button
-              className="inline-flex cursor-pointer items-center gap-2 rounded-sm border border-[#eadfca] bg-white px-4 py-2 text-xs font-semibold text-stone-700 shadow-2xs transition duration-200 hover:bg-amber-100 hover:text-amber-950 active:scale-95"
+              className="inline-flex cursor-pointer items-center gap-2 rounded-sm border border-[#eadfca] bg-white px-3 py-2 text-xs font-semibold text-stone-700 shadow-2xs transition duration-200 hover:bg-amber-100 hover:text-amber-950 active:scale-95 sm:px-4"
               onClick={() => window.print()}
               type="button"
             >
@@ -411,7 +462,7 @@ export default function OrderDetailModal({ isOpen, onClose, order }: OrderDetail
               Print Receipt
             </button>
             <button
-              className="cursor-pointer rounded-sm bg-amber-100 px-5 py-2 text-xs font-semibold text-amber-950 transition duration-200 hover:bg-amber-200 active:scale-95"
+              className="cursor-pointer rounded-sm bg-amber-100 px-4 py-2 text-xs font-semibold text-amber-950 transition duration-200 hover:bg-amber-200 active:scale-95 sm:px-5"
               onClick={onClose}
               type="button"
             >

@@ -8,8 +8,9 @@
 
 "use client";
 
-import { Minus, Plus } from "lucide-react";
+import { Minus, Plus, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { toast } from "@/components/ui/global-toast";
 import {
@@ -76,8 +77,7 @@ export default function OrderLimitModal({ isOpen, onClose }: OrderLimitModalProp
 
   if (!isOpen) return null;
 
-  const isPresetActive = (pMinutes: number, pOrders: number) =>
-    minutes === pMinutes && maxOrders === pOrders;
+  const isPresetActive = (pMinutes: number, pOrders: number) => minutes === pMinutes && maxOrders === pOrders;
 
   const handleApplyPreset = (pMinutes: number, pOrders: number) => {
     setMinutes(pMinutes);
@@ -106,10 +106,10 @@ export default function OrderLimitModal({ isOpen, onClose }: OrderLimitModalProp
     }
   };
 
-  return (
+  const modalContent = (
     <div
       aria-hidden={!isOpen}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 p-4 backdrop-blur-xs transition-opacity duration-200"
+      className="fixed inset-0 z-[70] flex items-center justify-center bg-stone-950/40 p-2.5 backdrop-blur-xs transition-opacity duration-200 sm:p-6"
       onClick={(e) => {
         if (e.target === e.currentTarget && !updateState.isLoading) onClose();
       }}
@@ -117,17 +117,17 @@ export default function OrderLimitModal({ isOpen, onClose }: OrderLimitModalProp
       <section
         aria-labelledby="order-limit-modal-title"
         aria-modal="true"
-        className="w-full max-w-xl rounded-sm border border-[#eadfca] bg-white p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+        className="flex max-h-[calc(100dvh-1.25rem)] w-full max-w-xl flex-col overflow-hidden rounded-sm border border-[#eadfca] bg-white shadow-2xl animate-in fade-in zoom-in-95 duration-150 sm:max-h-[calc(100dvh-3rem)]"
         role="dialog"
       >
-        <div className="flex items-start justify-between border-b border-[#eadfca] pb-4">
-          <div>
+        <div className="flex shrink-0 items-start justify-between gap-3 border-b border-[#eadfca] px-4 py-4 sm:px-6">
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-semibold text-stone-900" id="order-limit-modal-title">
+              <h2 className="text-lg font-semibold text-stone-900 sm:text-xl" id="order-limit-modal-title">
                 Order Limit Configuration
               </h2>
               <span
-                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                className={`inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-medium ${
                   enabled
                     ? "border border-emerald-300 bg-emerald-50 text-emerald-800"
                     : "border border-stone-200 bg-stone-100 text-stone-600"
@@ -142,19 +142,19 @@ export default function OrderLimitModal({ isOpen, onClose }: OrderLimitModalProp
           </div>
           <button
             aria-label="Close modal"
-            className="text-stone-400 hover:text-stone-700 text-xl font-bold leading-none p-1"
+            className="grid size-9 shrink-0 cursor-pointer place-items-center rounded-sm text-stone-400 transition hover:bg-amber-100 hover:text-stone-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
             disabled={updateState.isLoading}
             onClick={onClose}
             type="button"
           >
-            &times;
+            <X className="size-4" />
           </button>
         </div>
 
-        <div className="mt-5 space-y-6">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-4 sm:space-y-6 sm:px-6 sm:py-5">
           {/* Main Toggle Switch */}
-          <div className="flex items-center justify-between rounded-sm border border-[#eadfca] bg-[#fffaf0] p-4">
-            <div>
+          <div className="flex items-center justify-between gap-3 rounded-sm border border-[#eadfca] bg-[#fffaf0] p-3.5 sm:p-4">
+            <div className="min-w-0">
               <p className="text-sm font-semibold text-stone-900">Enable Order Limiting</p>
               <p className="text-xs text-stone-600 mt-0.5">
                 When enabled, customers can only place up to the configured number of orders within the time window.
@@ -163,7 +163,7 @@ export default function OrderLimitModal({ isOpen, onClose }: OrderLimitModalProp
             <button
               aria-checked={enabled}
               aria-label="Toggle order limiting"
-              className={`relative h-7 w-12 shrink-0 cursor-pointer rounded-full border p-0.5 transition-colors duration-200 ease-in-out ${
+              className={`relative h-7 w-12 shrink-0 cursor-pointer rounded-sm border p-0.5 transition-colors duration-200 ease-in-out ${
                 enabled ? "border-emerald-500 bg-emerald-500" : "border-stone-300 bg-stone-300"
               }`}
               disabled={isLoading || updateState.isLoading}
@@ -172,7 +172,7 @@ export default function OrderLimitModal({ isOpen, onClose }: OrderLimitModalProp
               type="button"
             >
               <span
-                className={`block size-5.5 rounded-full bg-white shadow-sm transition-transform duration-200 ease-in-out ${
+                className={`block size-5.5 rounded-sm bg-white shadow-sm transition-transform duration-200 ease-in-out ${
                   enabled ? "translate-x-5" : "translate-x-0"
                 }`}
               />
@@ -182,9 +182,7 @@ export default function OrderLimitModal({ isOpen, onClose }: OrderLimitModalProp
           {/* Quick Presets */}
           <div className={enabled ? "opacity-100 transition-opacity" : "opacity-60 transition-opacity"}>
             <div className="flex items-center justify-between">
-              <label className="text-xs font-semibold uppercase tracking-wider text-stone-600">
-                Quick Presets
-              </label>
+              <label className="text-xs font-semibold uppercase tracking-wider text-stone-600">Quick Presets</label>
               <span className="text-[11px] text-stone-500">Click to apply time & order limits</span>
             </div>
             <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -257,7 +255,7 @@ export default function OrderLimitModal({ isOpen, onClose }: OrderLimitModalProp
               <div className="mt-2 flex flex-wrap gap-1">
                 {[1, 5, 10, 15, 30, 60].map((m) => (
                   <button
-                    className={`rounded-xs px-2 py-0.5 text-[11px] font-medium transition ${
+                    className={`rounded-sm px-2 py-0.5 text-[11px] font-medium transition ${
                       minutes === m
                         ? "bg-amber-800 text-white"
                         : "border border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100"
@@ -315,7 +313,7 @@ export default function OrderLimitModal({ isOpen, onClose }: OrderLimitModalProp
               <div className="mt-2 flex flex-wrap gap-1">
                 {[1, 3, 5, 10, 20, 50].map((count) => (
                   <button
-                    className={`rounded-xs px-2 py-0.5 text-[11px] font-medium transition ${
+                    className={`rounded-sm px-2 py-0.5 text-[11px] font-medium transition ${
                       maxOrders === count
                         ? "bg-amber-800 text-white"
                         : "border border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100"
@@ -350,7 +348,8 @@ export default function OrderLimitModal({ isOpen, onClose }: OrderLimitModalProp
                 </>
               ) : (
                 <span className="italic text-stone-600">
-                  Rate limiting is currently <strong>disabled</strong>. Customers can place orders without time-window restrictions.
+                  Rate limiting is currently <strong>disabled</strong>. Customers can place orders without time-window
+                  restrictions.
                 </span>
               )}
             </p>
@@ -358,13 +357,8 @@ export default function OrderLimitModal({ isOpen, onClose }: OrderLimitModalProp
         </div>
 
         {/* Modal Actions */}
-        <div className="mt-6 flex items-center justify-end gap-3 border-t border-[#eadfca] pt-4">
-          <button
-            className="secondary-button"
-            disabled={updateState.isLoading}
-            onClick={onClose}
-            type="button"
-          >
+        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-[#eadfca] bg-white px-4 py-3 sm:px-6 sm:py-4">
+          <button className="secondary-button" disabled={updateState.isLoading} onClick={onClose} type="button">
             Cancel
           </button>
           <button
@@ -379,4 +373,6 @@ export default function OrderLimitModal({ isOpen, onClose }: OrderLimitModalProp
       </section>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
