@@ -518,7 +518,7 @@ function SessionModal({ session, onClose }: { session: SessionItem; onClose: () 
       className="fixed inset-0 z-50 grid place-items-center bg-stone-950/20 p-4 backdrop-blur-sm"
       role="dialog"
     >
-      <section className="max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-sm border border-[#eadfca] bg-[#fffaf0] p-5 shadow-2xl">
+      <section className="max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto rounded-sm border border-[#eadfca] bg-[#fffaf0] p-5 shadow-2xl pb-10">
         <div className="flex items-center justify-between gap-4">
           <h2 className="text-lg font-semibold text-stone-900">Session details</h2>
           <button
