@@ -15,6 +15,7 @@ import { rateLimitDistributed } from "@/app/api/lib/api-rate-limit";
 import { auth, client } from "@/app/api/lib/auth";
 import { authorizeDashboardRequest } from "@/app/api/lib/dashboard-authorization";
 import { pageCacheTag } from "@/lib/pages/server";
+import { removeSeoSettingsForDeletedPage } from "@/lib/services/seo-settings";
 
 export type PageBlock = {
   id: string;
@@ -130,6 +131,7 @@ async function permitted(request: Request) {
 function refresh(path: string) {
   revalidatePath(path);
   revalidatePath("/", "layout");
+  revalidatePath("/sitemap.xml");
   revalidateTag(pageCacheTag(path), "max");
   revalidateTag("site-pages", "max");
   revalidateTag("public-page-search", { expire: 0 });
@@ -269,6 +271,7 @@ export async function DELETE(request: Request) {
   if (!id) return Response.json({ error: "Page id is required." }, { status: 400 });
   const old = await pages().findOneAndDelete({ id });
   if (!old) return Response.json({ error: "Page not found." }, { status: 404 });
+  await removeSeoSettingsForDeletedPage(old.id, old.path);
   refresh(old.path);
   return Response.json({ ok: true });
 }

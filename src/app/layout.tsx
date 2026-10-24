@@ -9,6 +9,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
+import { getCanonicalAppUrl } from "@/app/api/lib/canonical-app-url";
 import { ConfirmDeleteProvider } from "@/components/confirm-delete-provider";
 import Footer from "@/components/footer/Footer";
 import { Menu } from "@/components/menu/Menu";
@@ -18,6 +19,7 @@ import { ScrollTransition } from "@/components/ScrollTransition";
 import TopBanner from "@/components/topbanner/TopBanner";
 import { GlobalToast } from "@/components/ui/global-toast";
 import WhatsAppButton from "@/components/whatsapp/WhatsAppButton";
+import { getSeoSettings } from "@/lib/services/seo-settings";
 import { ReduxProvider } from "@/redux/app/provider";
 import "./globals.css";
 
@@ -32,13 +34,28 @@ const geistMono = Geist_Mono({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
+  const setting = await getSeoSettings({ type: "layout" });
+  const title = setting?.title || "NexaMart";
+  const description = setting?.description || "NexaMart progressive web application";
+  const images = setting?.socialImage ? [setting.socialImage] : undefined;
   return {
-    title: "NexaMart",
-    description: "NexaMart progressive web application",
+    metadataBase: getCanonicalAppUrl(),
+    title,
+    description,
     applicationName: "NexaMart",
     icons: { icon: "/Logo.png" },
     appleWebApp: { capable: true, statusBarStyle: "default", title: "NexaMart" },
     formatDetection: { telephone: false },
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      siteName: "NexaMart",
+      ...(setting?.canonicalUrl ? { url: setting.canonicalUrl } : {}),
+      ...(images ? { images } : {}),
+    },
+    twitter: { card: "summary_large_image", title, description, ...(images ? { images } : {}) },
+    ...(setting?.canonicalUrl ? { alternates: { canonical: setting.canonicalUrl } } : {}),
   };
 }
 

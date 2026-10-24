@@ -19,6 +19,33 @@ export const navigationCollection = <T extends Document>() => database().collect
 export const whatsappSettingsCollection = <T extends Document>() => database().collection<T>("whatsappSettings");
 export const trackingCollection = <T extends Document>() => database().collection<T>("tracking");
 export const buildRevalidationCollection = <T extends Document>() => database().collection<T>("build_revalidation");
+export const seoSettingsCollection = () => database().collection<SeoSettingsRecord>("seo_settings");
+
+export type SeoSettingsTarget = { type: "layout" } | { type: "page"; pageId: string };
+export type SeoSettingsRecord = {
+  targetKey: "layout" | `page:${string}`;
+  target: SeoSettingsTarget;
+  title: string;
+  description: string;
+  socialImage: string | null;
+  canonicalUrl: string | null;
+  focusKeyword: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export const findSeoSettings = (targetKey: SeoSettingsRecord["targetKey"]) =>
+  seoSettingsCollection().findOne({ targetKey });
+export const createSeoSettings = (item: SeoSettingsRecord) => seoSettingsCollection().insertOne(item);
+export const updateSeoSettings = (
+  targetKey: SeoSettingsRecord["targetKey"],
+  changes: Partial<Pick<SeoSettingsRecord, "title" | "description" | "socialImage" | "canonicalUrl" | "focusKeyword">>,
+  updatedAt: Date,
+) => seoSettingsCollection().updateOne({ targetKey }, { $set: { ...changes, updatedAt } });
+export const deleteSeoSettings = (targetKey: SeoSettingsRecord["targetKey"]) =>
+  seoSettingsCollection().deleteMany({ targetKey });
+export const deletePageSeoSettings = (pageId: string) =>
+  seoSettingsCollection().deleteMany({ targetKey: `page:${pageId}` });
 
 export type BuildRecord = { key: string; cooldownUntil: Date; updatedAt: Date };
 export const findBuildRecords = (keys: string[]) =>

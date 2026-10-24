@@ -177,6 +177,7 @@ export async function importDefaultData(body: ImportRequest) {
       revalidatePath("/", "layout");
     }
     if (pagesInserted || pagesUpdated) {
+      revalidatePath("/sitemap.xml");
       revalidateTag("site-pages", "max");
       revalidateTag("public-page-search", { expire: 0 });
     }

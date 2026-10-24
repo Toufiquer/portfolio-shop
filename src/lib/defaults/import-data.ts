@@ -44,6 +44,7 @@ export const sidebarDefaults: ImportSidebarDefault[] = [
       { name: "Footer", url: "/dashboard/admin/footer", icon: "FileText" },
       { name: "Menu", url: "/dashboard/admin/menu", icon: "Menu" },
       { name: "Pages", url: "/dashboard/admin/pages", icon: "FileText" },
+      { name: "SEO Settings", url: "/dashboard/admin/seo", icon: "Search" },
       { name: "Top Banner", url: "/dashboard/admin/topbanner", icon: "FileBadge" },
       { name: "Build", url: "/dashboard/admin/build", icon: "BiSolidHourglassBottom" },
       { name: "Tracking", url: "/dashboard/admin/tracking", icon: "Activity" },

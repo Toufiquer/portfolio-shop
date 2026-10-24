@@ -6,10 +6,12 @@
 |-----------------------------------------
 */
 
+import type { Metadata, ResolvingMetadata } from "next";
 import Link from "next/link";
 
 import { PageBlocks } from "@/components/pages/PageBlocks";
 import { PwaControls } from "@/components/pwa-controls";
+import { getPublishedPageSeoMetadata } from "@/lib/pages/seo-metadata";
 import { getPublishedPage } from "@/lib/pages/server";
 import { getPublicProductsByReferences, type PublicProductReference } from "@/lib/products/server";
 import type { PageBlock } from "@/redux/features/dashboard/pages/pagesSlice";
@@ -39,6 +41,11 @@ function containerProductReferences(blocks: PageBlock[]): PublicProductReference
     }
   }
   return references;
+}
+
+export async function generateMetadata(_props: object, parent: ResolvingMetadata): Promise<Metadata> {
+  const page = await getPublishedPage("/");
+  return page ? getPublishedPageSeoMetadata(page, parent) : {};
 }
 
 export default async function Home() {

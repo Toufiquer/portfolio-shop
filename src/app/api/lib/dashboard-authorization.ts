@@ -250,6 +250,7 @@ function apiResourcePaths(pathname: string, method: string): string[] | null {
     footer: ["/dashboard/admin/footer", "/dashboard/admin/footer-editor"],
     menu: ["/dashboard/admin/menu"],
     pages: ["/dashboard/admin/pages"],
+    seo: ["/dashboard/admin/seo"],
     build: ["/dashboard/admin/build"],
     tracking: ["/dashboard/admin/tracking"],
     categories: ["/dashboard/category"],

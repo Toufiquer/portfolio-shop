@@ -48,6 +48,7 @@ export const apiSlice = createApi({
     "OrderSettings",
     "Page",
     "PageSubmission",
+    "SeoSetting",
     "User",
     "Account",
     "Session",
