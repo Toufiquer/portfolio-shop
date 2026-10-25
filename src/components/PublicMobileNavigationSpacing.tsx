@@ -35,5 +35,9 @@ export function PublicMobileNavigationSpacing({ children }: Readonly<{ children:
     return () => window.removeEventListener("speed-box-navigation-updated", load);
   }, []);
 
-  return <div className={mobileNavigationVisible && !isDashboardRoute ? "mb-25 md:mb-0" : undefined}>{children}</div>;
+  return (
+    <div className={mobileNavigationVisible && !isDashboardRoute ? "mb-25 print:mb-0 md:mb-0" : undefined}>
+      {children}
+    </div>
+  );
 }

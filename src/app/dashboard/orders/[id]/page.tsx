@@ -87,8 +87,34 @@ export default function OrderDetailPage() {
               </section>
               <section className="rounded-sm border border-[#eadfca] bg-[#fffaf0] p-4">
                 <h2 className="font-semibold text-stone-900">Totals</h2>
-                <p className="mt-3 text-sm text-stone-600">Items: {order.itemCount}</p>
-                <p className="mt-2 text-lg font-bold text-stone-950">{bdt(order.total)}</p>
+                <dl className="mt-3 grid gap-2 text-sm">
+                  <div className="flex items-center justify-between gap-3 text-stone-600">
+                    <dt>Items</dt>
+                    <dd>{order.itemCount}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-stone-600">
+                    <dt>Subtotal</dt>
+                    <dd>{bdt(order.subtotal ?? order.total)}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-stone-600">
+                    <dt>Tax</dt>
+                    <dd>{bdt(order.tax ?? 0)}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 text-stone-600">
+                    <dt>Shipping</dt>
+                    <dd>{bdt(order.shipping ?? 0)}</dd>
+                  </div>
+                  <div className="flex min-w-0 items-center justify-between gap-3 text-stone-600">
+                    <dt>Coupon</dt>
+                    <dd className="truncate font-mono text-xs text-amber-800" title={order.couponCode}>
+                      {order.couponCode ? `${order.couponCode} · −${bdt(order.discount ?? 0)}` : "—"}
+                    </dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 border-t border-[#eadfca] pt-2 text-lg font-bold text-stone-950">
+                    <dt>Grand total</dt>
+                    <dd>{bdt(order.total)}</dd>
+                  </div>
+                </dl>
               </section>
             </div>
             <section className="mt-4 overflow-hidden rounded-sm border border-[#eadfca]">

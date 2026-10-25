@@ -71,20 +71,28 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
     >
       <body className="min-h-full flex flex-col">
-        <ScrollTransition />
-        <GlobalToast />
+        <div className="print:hidden">
+          <ScrollTransition />
+          <GlobalToast />
+        </div>
         <ReduxProvider>
           <ConfirmDeleteProvider>
-            <TopBanner />
-            <Menu />
+            <div className="print:hidden">
+              <TopBanner />
+              <Menu />
+            </div>
             <PublicMobileNavigationSpacing>
               <>
                 {children}
-                <Footer />
+                <div className="print:hidden">
+                  <Footer />
+                </div>
               </>
             </PublicMobileNavigationSpacing>
-            <WhatsAppButton />
-            <MobileNavigation />
+            <div className="print:hidden">
+              <WhatsAppButton />
+              <MobileNavigation />
+            </div>
           </ConfirmDeleteProvider>
         </ReduxProvider>
       </body>

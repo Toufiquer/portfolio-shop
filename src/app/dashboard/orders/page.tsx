@@ -8,8 +8,8 @@
 
 "use client";
 
-import { ChevronDown, Eye, Loader2, Pencil, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
-import { useState } from "react";
+import { Columns3, ChevronDown, Eye, Loader2, Pencil, Search, SlidersHorizontal, Trash2, X } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { useConfirmDelete } from "@/components/confirm-delete-provider";
 import OrderDetailModal from "@/components/dashboard-ui/OrderDetailModal";
@@ -29,6 +29,37 @@ import {
 
 const bdt = (value: number) => `৳${value.toLocaleString("en-BD")}`;
 const pageSizes = [10, 25, 50, 100] as const;
+const orderColumnOptions = [
+  { id: "customer", label: "Customer" },
+  { id: "products", label: "Products" },
+  { id: "total", label: "Total" },
+  { id: "tax", label: "Tax" },
+  { id: "shipping", label: "Shipping" },
+  { id: "coupon", label: "Coupon" },
+  { id: "status", label: "Status" },
+  { id: "created", label: "Created" },
+] as const;
+type OrderColumn = (typeof orderColumnOptions)[number]["id"];
+const orderColumnIds = orderColumnOptions.map(({ id }) => id);
+const defaultOrderColumnIds = orderColumnIds.filter((id) => id !== "tax" && id !== "shipping" && id !== "coupon");
+const orderColumnStorageKey = "shop-orders-columns-v2";
+
+function savedOrderColumns(value: string | null): OrderColumn[] {
+  if (!value) return [...defaultOrderColumnIds];
+  try {
+    const stored = JSON.parse(value);
+    if (
+      Array.isArray(stored) &&
+      stored.every((column): column is OrderColumn => orderColumnIds.includes(column as OrderColumn))
+    ) {
+      return orderColumnIds.filter((column) => stored.includes(column));
+    }
+  } catch {
+    // Ignore invalid browser storage and preserve the default table layout.
+  }
+  return [...defaultOrderColumnIds];
+}
+
 const displayDate = (value: string) =>
   new Intl.DateTimeFormat("en-BD", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 const statusTone: Record<OrderStatus, string> = {
@@ -63,6 +94,8 @@ export default function OrdersPage() {
   const [editing, setEditing] = useState<OrderItem | null>(null);
   const [viewingOrder, setViewingOrder] = useState<OrderItem | null>(null);
   const [orderLimitOpen, setOrderLimitOpen] = useState(false);
+  const [visibleColumns, setVisibleColumns] = useState<OrderColumn[]>(defaultOrderColumnIds);
+  const [columnPickerOpen, setColumnPickerOpen] = useState(false);
 
   const { data: settingsData } = useGetOrderSettingsQuery();
   const orderSettings = settingsData?.settings;
@@ -77,6 +110,15 @@ export default function OrdersPage() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const allSelected = items.length > 0 && items.every((item) => selectedIds.includes(item.id));
   const busy = bulkRemoveState.isLoading || bulkUpdateStatusState.isLoading || updateStatusState.isLoading;
+  const isColumnVisible = (column: OrderColumn) => visibleColumns.includes(column);
+  const desktopTableWidth =
+    visibleColumns.length > 5 ? "min-w-[1180px]" : visibleColumns.length > 2 ? "min-w-[900px]" : "min-w-[720px]";
+  useEffect(() => {
+    const savedColumns = savedOrderColumns(window.localStorage.getItem(orderColumnStorageKey));
+    const restore = window.setTimeout(() => setVisibleColumns(savedColumns), 0);
+    return () => window.clearTimeout(restore);
+  }, []);
+
   const updateFilter = (value: OrderStatus | "") => {
     setSelectedIds([]);
     setStatus(value);
@@ -94,6 +136,17 @@ export default function OrdersPage() {
   };
   const toggle = (id: string, checked: boolean) =>
     setSelectedIds((current) => (checked ? [...new Set([...current, id])] : current.filter((value) => value !== id)));
+  const setColumnVisibility = (column: OrderColumn, visible: boolean) => {
+    const next = visible
+      ? orderColumnIds.filter((id) => visibleColumns.includes(id) || id === column)
+      : visibleColumns.filter((id) => id !== column);
+    setVisibleColumns(next);
+    window.localStorage.setItem(orderColumnStorageKey, JSON.stringify(next));
+  };
+  const resetColumnVisibility = () => {
+    setVisibleColumns([...defaultOrderColumnIds]);
+    window.localStorage.setItem(orderColumnStorageKey, JSON.stringify(defaultOrderColumnIds));
+  };
 
   async function deleteOrder(order: OrderItem) {
     if (!(await confirmDelete(`Delete order ${order.id}? This cannot be undone.`))) return;
@@ -236,26 +289,87 @@ export default function OrdersPage() {
             </div>
           </div>
         ) : null}
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-b border-[#eadfca] pb-3">
+          <div>
+            <h2 className="text-sm font-semibold text-stone-900">Order list</h2>
+            <p className="mt-0.5 text-xs text-stone-500">
+              {total.toLocaleString("en-BD")} order{total === 1 ? "" : "s"} · choose the details to display
+            </p>
+          </div>
+          <div className="relative">
+            <button
+              aria-controls="order-column-picker"
+              aria-expanded={columnPickerOpen}
+              className="secondary-button flex h-8 items-center gap-1.5 px-2.5 text-xs"
+              onClick={() => setColumnPickerOpen((open) => !open)}
+              type="button"
+            >
+              <Columns3 className="size-3.5" />
+              Columns
+              <span className="rounded-sm bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                {visibleColumns.length}/{orderColumnIds.length}
+              </span>
+            </button>
+            {columnPickerOpen ? (
+              <div
+                className="absolute right-0 z-30 mt-2 w-60 rounded-sm border border-[#eadfca] bg-white p-3 shadow-lg shadow-stone-200/60"
+                id="order-column-picker"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold text-stone-800">Visible columns</p>
+                  <button
+                    className="h-7 rounded-sm px-2 text-[11px] font-semibold text-amber-800 transition hover:bg-amber-50 hover:text-amber-950"
+                    onClick={resetColumnVisibility}
+                    type="button"
+                  >
+                    Reset defaults
+                  </button>
+                </div>
+                <p className="mt-1 text-[11px] leading-4 text-stone-500">
+                  Order ID, selection, and actions stay available.
+                </p>
+                <div className="mt-2 grid gap-1 border-t border-[#eadfca] pt-2">
+                  {orderColumnOptions.map((column) => {
+                    const visible = isColumnVisible(column.id);
+                    return (
+                      <label
+                        className="flex cursor-pointer items-center justify-between gap-3 rounded-sm px-2 py-1.5 text-xs text-stone-600 transition hover:bg-amber-50"
+                        key={column.id}
+                      >
+                        <span>{column.label}</span>
+                        <Checkbox
+                          aria-label={`${visible ? "Hide" : "Show"} ${column.label} column`}
+                          checked={visible}
+                          onCheckedChange={(checked) => setColumnVisibility(column.id, checked)}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        </div>
         {error ? (
-          <p className="mt-5 rounded-sm border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <p className="mt-4 rounded-sm border border-red-200 bg-red-50 p-3 text-sm text-red-700">
             {errorMessage(error)}
           </p>
         ) : null}
         {isLoading ? (
-          <div className="mt-5 grid gap-3" role="status">
+          <div className="mt-4 grid gap-3" role="status">
             {Array.from({ length: 4 }).map((_, index) => (
               <div className="h-24 animate-pulse rounded-sm bg-amber-50" key={index} />
             ))}
           </div>
         ) : null}
         {!isLoading && !items.length ? (
-          <div className="mt-5 rounded-sm border border-dashed border-[#d9c9aa] p-10 text-center text-sm text-stone-500">
+          <div className="mt-4 rounded-sm border border-dashed border-[#d9c9aa] p-10 text-center text-sm text-stone-500">
             No orders found.
           </div>
         ) : null}
         {items.length ? (
           <>
-            <div aria-busy={isFetching} className="relative mt-5 space-y-3 md:hidden">
+            <div aria-busy={isFetching} className="relative mt-4 space-y-3 md:hidden">
               {isFetching ? (
                 <div className="absolute inset-0 z-10 grid place-items-center rounded-sm bg-white/75" role="status">
                   <span className="inline-flex items-center gap-2 rounded-sm border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 shadow-sm">
@@ -265,10 +379,10 @@ export default function OrdersPage() {
               ) : null}
               {items.map((order) => (
                 <article
-                  className="rounded-sm border border-[#eadfca] bg-white p-3.5 shadow-[0_8px_20px_-18px_rgba(120,53,15,.45)]"
+                  className="overflow-hidden rounded-sm border border-[#eadfca] bg-white shadow-[0_10px_24px_-20px_rgba(120,53,15,.55)]"
                   key={order.id}
                 >
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 p-3.5 pb-3">
                     <Checkbox
                       aria-label={`Select order ${order.id}`}
                       checked={selectedIds.includes(order.id)}
@@ -283,28 +397,77 @@ export default function OrdersPage() {
                         >
                           {order.id}
                         </button>
-                        <span
-                          className={`shrink-0 rounded-sm px-2 py-1 text-[11px] font-semibold capitalize ring-1 ${statusTone[order.status]}`}
-                        >
-                          {order.status}
-                        </span>
+                        {isColumnVisible("status") ? (
+                          <span
+                            className={`shrink-0 rounded-sm px-2 py-1 text-[11px] font-semibold capitalize ring-1 ${statusTone[order.status]}`}
+                          >
+                            {order.status}
+                          </span>
+                        ) : null}
                       </div>
-                      <p className="mt-2 truncate font-medium text-stone-900">{order.customer.name}</p>
-                      <p className="truncate text-xs text-stone-500">{order.customer.email || "No email provided"}</p>
+                      {isColumnVisible("customer") ? (
+                        <>
+                          <p className="mt-2 truncate font-medium text-stone-900">{order.customer.name}</p>
+                          <p className="truncate text-xs text-stone-500">
+                            {order.customer.email || "No email provided"}
+                          </p>
+                        </>
+                      ) : null}
                     </div>
                   </div>
-                  <div className="mt-3 rounded-sm bg-[#fffaf0] px-3 py-2.5 text-xs text-stone-600">
-                    <p className="font-medium text-stone-800">
-                      {order.itemCount} item{order.itemCount === 1 ? "" : "s"}
-                    </p>
-                    <p className="mt-1 line-clamp-2">
-                      {order.items.map((item) => `${item.name} × ${item.quantity}`).join(" · ")}
-                    </p>
-                  </div>
-                  <div className="mt-3 flex items-end justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-bold text-stone-900">{bdt(order.total)}</p>
-                      <p className="mt-0.5 text-[11px] text-stone-500">{displayDate(order.createdAt)}</p>
+                  {isColumnVisible("products") ||
+                  isColumnVisible("tax") ||
+                  isColumnVisible("shipping") ||
+                  isColumnVisible("coupon") ? (
+                    <div className="mx-3 border-y border-[#eadfca] bg-[#fffaf0] px-3 py-2.5 text-xs text-stone-600">
+                      {isColumnVisible("products") ? (
+                        <>
+                          <p className="font-medium text-stone-800">
+                            {order.itemCount} item{order.itemCount === 1 ? "" : "s"}
+                          </p>
+                          <p className="mt-1 line-clamp-2">
+                            {order.items.map((item) => `${item.name} × ${item.quantity}`).join(" · ")}
+                          </p>
+                        </>
+                      ) : null}
+                      {isColumnVisible("tax") || isColumnVisible("shipping") || isColumnVisible("coupon") ? (
+                        <dl
+                          className={`grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] ${
+                            isColumnVisible("products") ? "mt-2 border-t border-[#eadfca] pt-2" : ""
+                          }`}
+                        >
+                          {isColumnVisible("tax") ? (
+                            <div className="flex items-center justify-between gap-2">
+                              <dt>Tax</dt>
+                              <dd className="font-semibold text-stone-800">{bdt(order.tax ?? 0)}</dd>
+                            </div>
+                          ) : null}
+                          {isColumnVisible("shipping") ? (
+                            <div className="flex items-center justify-between gap-2">
+                              <dt>Shipping</dt>
+                              <dd className="font-semibold text-stone-800">{bdt(order.shipping ?? 0)}</dd>
+                            </div>
+                          ) : null}
+                          {isColumnVisible("coupon") ? (
+                            <div className="col-span-2 flex min-w-0 items-center justify-between gap-2">
+                              <dt>Coupon</dt>
+                              <dd className="truncate font-semibold text-stone-800" title={order.couponCode}>
+                                {order.couponCode ? `${order.couponCode} · −${bdt(order.discount ?? 0)}` : "—"}
+                              </dd>
+                            </div>
+                          ) : null}
+                        </dl>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <div className="flex items-end justify-between gap-3 p-3.5 pt-3">
+                    <div className="min-w-0">
+                      {isColumnVisible("total") ? (
+                        <p className="text-sm font-bold text-stone-900">{bdt(order.total)}</p>
+                      ) : null}
+                      {isColumnVisible("created") ? (
+                        <p className="mt-0.5 text-[11px] text-stone-500">{displayDate(order.createdAt)}</p>
+                      ) : null}
                     </div>
                     <div className="flex shrink-0 gap-1.5">
                       <button
@@ -341,7 +504,7 @@ export default function OrdersPage() {
             </div>
             <div
               aria-busy={isFetching}
-              className="relative mt-5 hidden overflow-x-auto rounded-sm border border-[#eadfca] md:block"
+              className="relative mt-4 hidden overflow-x-auto rounded-sm border border-[#eadfca] bg-white md:block"
             >
               {isFetching ? (
                 <div className="absolute inset-0 z-10 grid place-items-center bg-white/65" role="status">
@@ -350,67 +513,112 @@ export default function OrdersPage() {
                   </span>
                 </div>
               ) : null}
-              <table className="min-w-[900px] w-full text-left text-sm">
-                <thead className="bg-[#fffaf0] text-stone-600">
+              <table className={`${desktopTableWidth} w-full border-separate border-spacing-0 text-left text-sm`}>
+                <thead className="bg-[#fffaf0] text-xs font-semibold uppercase tracking-[0.04em] text-stone-600">
                   <tr>
-                    <th className="w-12 p-3">
+                    <th className="w-12 border-b border-[#eadfca] px-4 py-3">
                       <Checkbox
                         aria-label="Select all orders"
                         checked={allSelected}
                         onCheckedChange={(checked) => setSelectedIds(checked ? items.map((item) => item.id) : [])}
                       />
                     </th>
-                    <th className="p-3">Order</th>
-                    <th className="p-3">Customer</th>
-                    <th className="p-3">Products</th>
-                    <th className="p-3">Total</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Created</th>
-                    <th className="p-3 text-right">Actions</th>
+                    <th className="border-b border-[#eadfca] px-4 py-3">Order</th>
+                    {isColumnVisible("customer") ? (
+                      <th className="border-b border-[#eadfca] px-4 py-3">Customer</th>
+                    ) : null}
+                    {isColumnVisible("products") ? (
+                      <th className="border-b border-[#eadfca] px-4 py-3">Products</th>
+                    ) : null}
+                    {isColumnVisible("total") ? <th className="border-b border-[#eadfca] px-4 py-3">Total</th> : null}
+                    {isColumnVisible("tax") ? <th className="border-b border-[#eadfca] px-4 py-3">Tax</th> : null}
+                    {isColumnVisible("shipping") ? (
+                      <th className="border-b border-[#eadfca] px-4 py-3">Shipping</th>
+                    ) : null}
+                    {isColumnVisible("coupon") ? <th className="border-b border-[#eadfca] px-4 py-3">Coupon</th> : null}
+                    {isColumnVisible("status") ? <th className="border-b border-[#eadfca] px-4 py-3">Status</th> : null}
+                    {isColumnVisible("created") ? (
+                      <th className="border-b border-[#eadfca] px-4 py-3">Created</th>
+                    ) : null}
+                    <th className="border-b border-[#eadfca] px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((order) => (
-                    <tr className="border-t border-stone-100 align-top" key={order.id}>
-                      <td className="p-3">
+                    <tr className="align-top transition-colors hover:bg-amber-50/50" key={order.id}>
+                      <td className="border-b border-stone-100 px-4 py-3.5">
                         <Checkbox
                           aria-label={`Select order ${order.id}`}
                           checked={selectedIds.includes(order.id)}
                           onCheckedChange={(checked) => toggle(order.id, checked)}
                         />
                       </td>
-                      <td className="p-3">
+                      <td className="border-b border-stone-100 px-4 py-3.5">
                         <button
-                          className="cursor-pointer font-mono text-xs font-semibold text-amber-800 hover:underline text-left"
+                          className="cursor-pointer text-left font-mono text-xs font-semibold text-amber-800 hover:underline"
                           onClick={() => setViewingOrder(order)}
                           type="button"
                         >
                           {order.id}
                         </button>
                       </td>
-                      <td className="p-3">
-                        <p className="font-medium text-stone-900">{order.customer.name}</p>
-                        <p className="text-xs text-stone-500">{order.customer.email}</p>
-                      </td>
-                      <td className="p-3">
-                        <ul className="space-y-1">
-                          {order.items.map((item) => (
-                            <li key={item.productId}>
-                              {item.name} · {bdt(item.unitPrice)} × {item.quantity}
-                            </li>
-                          ))}
-                        </ul>
-                      </td>
-                      <td className="p-3 font-semibold text-stone-900">{bdt(order.total)}</td>
-                      <td className="p-3">
-                        <span
-                          className={`inline-flex rounded-sm px-2 py-1 text-xs font-semibold capitalize ring-1 ${statusTone[order.status]}`}
+                      {isColumnVisible("customer") ? (
+                        <td className="border-b border-stone-100 px-4 py-3.5">
+                          <p className="font-medium text-stone-900">{order.customer.name}</p>
+                          <p className="max-w-48 truncate text-xs text-stone-500">
+                            {order.customer.email || "No email provided"}
+                          </p>
+                        </td>
+                      ) : null}
+                      {isColumnVisible("products") ? (
+                        <td className="border-b border-stone-100 px-4 py-3.5">
+                          <ul className="max-w-xs space-y-1 text-xs leading-5 text-stone-600">
+                            {order.items.map((item) => (
+                              <li key={item.productId}>
+                                {item.name} · {bdt(item.unitPrice)} × {item.quantity}
+                              </li>
+                            ))}
+                          </ul>
+                        </td>
+                      ) : null}
+                      {isColumnVisible("total") ? (
+                        <td className="border-b border-stone-100 px-4 py-3.5 font-semibold text-stone-900">
+                          {bdt(order.total)}
+                        </td>
+                      ) : null}
+                      {isColumnVisible("tax") ? (
+                        <td className="border-b border-stone-100 px-4 py-3.5 font-medium text-stone-800">
+                          {bdt(order.tax ?? 0)}
+                        </td>
+                      ) : null}
+                      {isColumnVisible("shipping") ? (
+                        <td className="border-b border-stone-100 px-4 py-3.5 font-medium text-stone-800">
+                          {bdt(order.shipping ?? 0)}
+                        </td>
+                      ) : null}
+                      {isColumnVisible("coupon") ? (
+                        <td
+                          className="max-w-36 truncate border-b border-stone-100 px-4 py-3.5 font-mono text-xs font-semibold text-amber-800"
+                          title={order.couponCode}
                         >
-                          {order.status}
-                        </span>
-                      </td>
-                      <td className="p-3 text-stone-600">{displayDate(order.createdAt)}</td>
-                      <td className="p-3">
+                          {order.couponCode || "—"}
+                        </td>
+                      ) : null}
+                      {isColumnVisible("status") ? (
+                        <td className="border-b border-stone-100 px-4 py-3.5">
+                          <span
+                            className={`inline-flex rounded-sm px-2 py-1 text-xs font-semibold capitalize ring-1 ${statusTone[order.status]}`}
+                          >
+                            {order.status}
+                          </span>
+                        </td>
+                      ) : null}
+                      {isColumnVisible("created") ? (
+                        <td className="whitespace-nowrap border-b border-stone-100 px-4 py-3.5 text-xs text-stone-600">
+                          {displayDate(order.createdAt)}
+                        </td>
+                      ) : null}
+                      <td className="border-b border-stone-100 px-4 py-3.5">
                         <div className="flex justify-end gap-1.5">
                           <button
                             aria-label={`View order ${order.id}`}
