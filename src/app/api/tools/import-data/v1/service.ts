@@ -16,6 +16,8 @@ import { pageDefaults, sidebarDefaults } from "@/lib/defaults/import-data";
 import {
   createImportPage,
   createImportSidebar,
+  deleteImportPages,
+  deleteImportSidebars,
   findImportPagePaths,
   findImportSidebars,
   migrateImportHomePage,
@@ -184,4 +186,28 @@ export async function importDefaultData(body: ImportRequest) {
   }
   if (inserted || updated) await invalidateDashboardCache(redisKeys.sidebars, redisKeys.roles);
   return { inserted, updated, pagesInserted, pagesUpdated };
+}
+
+export async function resetDefaultData() {
+  const [sidebars, pages] = await Promise.all([
+    deleteImportSidebars([...defaultSidebarUrls]),
+    deleteImportPages([
+      ...pageDefaults,
+      { path: "/home", variant: "all-home" },
+      { path: "/frequently-ask-questions", variant: "all-faq" },
+      { path: "/about-us", variant: "all-about" },
+      { path: "/contact-us", variant: "all-contact" },
+    ]),
+  ]);
+
+  if (sidebars.deletedCount) await invalidateDashboardCache(redisKeys.sidebars, redisKeys.roles);
+  if (pages.deletedCount) {
+    for (const page of pageDefaults) revalidatePath(page.path);
+    revalidatePath("/home");
+    revalidatePath("/", "layout");
+    revalidatePath("/sitemap.xml");
+    revalidateTag("site-pages", "max");
+    revalidateTag("public-page-search", { expire: 0 });
+  }
+  return { sidebarsDeleted: sidebars.deletedCount, pagesDeleted: pages.deletedCount };
 }

@@ -1009,6 +1009,46 @@ function excelParser() {
     assert.equal(overview.months.at(-1).customers, overview.summary.all - 1);
     assert.equal(overview.progress.find((row) => row.email === "qa-councilor-a@example.test").counselling24Hours, 1);
   });
+  await check("import reset deletes only default records after server authorization", async () => {
+    const defaultPage = defaultsModule.exports.pageDefaults[0];
+    await db.collection("sidebar").insertOne({
+      id: "qa-sidebar-custom",
+      name: "Custom navigation",
+      url: "/dashboard/custom",
+      icon: "FileText",
+      parentId: null,
+      position: 999,
+    });
+    await db.collection("pages").insertMany([
+      {
+        id: "qa-imported-default-page",
+        title: defaultPage.title,
+        path: defaultPage.path,
+        description: defaultPage.description,
+        published: true,
+        blocks: [{ id: "qa-imported-default-block", type: "all-page", variant: defaultPage.variant, data: {} }],
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: "qa-custom-page",
+        title: "Custom page",
+        path: "/qa-custom-page",
+        description: "Unaffected by import reset.",
+        published: true,
+        blocks: [],
+        createdAt: now,
+        updatedAt: now,
+      },
+    ]);
+    await expectStatus("/api/tools/import-data/v1", "DELETE", undefined, undefined, 401);
+    const result = await expectStatus("/api/tools/import-data/v1", "DELETE", undefined, admin, 200);
+    assert.equal(result.sidebarsDeleted, seededSidebars.length);
+    assert.equal(result.pagesDeleted, 1);
+    assert.equal(await db.collection("sidebar").countDocuments({ id: "qa-sidebar-custom" }), 1);
+    assert.equal(await db.collection("pages").countDocuments({ id: "qa-custom-page" }), 1);
+    assert.equal(await db.collection("pages").countDocuments({ id: "qa-imported-default-page" }), 0);
+  });
   console.log(`Leads integration: ${passed} scenarios passed using an isolated database.`);
   if (process.argv.includes("--keep-open")) {
     console.log(

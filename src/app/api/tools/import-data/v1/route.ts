@@ -13,12 +13,14 @@ import { validateCookieApiWrite } from "@/app/api/lib/request-security";
 import { dashboardCan } from "@/lib/dashboard/permissions";
 
 import { findImportPagePaths, findImportSidebars } from "./model";
-import { importDefaultData } from "./service";
+import { importDefaultData, resetDefaultData } from "./service";
 
 async function permissions(request: Request) {
   const session = await auth.api.getSession({ headers: request.headers });
   if (!session) return null;
   const state = await getDashboardAccessState(session);
+  const canResetSidebars = dashboardCan(state, "/dashboard/developer/sidebar", "delete");
+  const canResetPages = dashboardCan(state, "/dashboard/admin/pages", "delete");
   return {
     canImportSidebars:
       dashboardCan(state, "/dashboard/developer/sidebar", "create") &&
@@ -26,6 +28,9 @@ async function permissions(request: Request) {
     canImportPages:
       dashboardCan(state, "/dashboard/admin/pages", "create") &&
       dashboardCan(state, "/dashboard/admin/pages", "update"),
+    canReset: canResetSidebars && canResetPages,
+    canResetPages,
+    canResetSidebars,
   };
 }
 
@@ -35,8 +40,8 @@ export async function GET(request: Request) {
   const grants = await permissions(request);
   if (!grants) return Response.json({ error: "Sign in required." }, { status: 401 });
   const [sidebars, pages] = await Promise.all([
-    grants.canImportSidebars ? findImportSidebars() : [],
-    grants.canImportPages ? findImportPagePaths() : new Set<string>(),
+    grants.canImportSidebars || grants.canResetSidebars ? findImportSidebars() : [],
+    grants.canImportPages || grants.canResetPages ? findImportPagePaths() : new Set<string>(),
   ]);
   return Response.json(
     { ...grants, sidebarUrls: sidebars.map((item) => item.url), pagePaths: [...pages] },
@@ -64,4 +69,19 @@ export async function POST(request: Request) {
       { status: 403 },
     );
   return Response.json(await importDefaultData(body));
+}
+
+export async function DELETE(request: Request) {
+  const limited = await rateLimitDistributed(request, "import-reset-api", 5, 60_000);
+  if (limited) return limited;
+  const rejected = validateCookieApiWrite(request);
+  if (rejected) return rejected;
+  const grants = await permissions(request);
+  if (!grants) return Response.json({ error: "Sign in required." }, { status: 401 });
+  if (!grants.canReset)
+    return Response.json(
+      { error: "Resetting defaults requires Delete permission for both Sidebar and Pages." },
+      { status: 403 },
+    );
+  return Response.json(await resetDefaultData());
 }

@@ -74,24 +74,4 @@ export const defaultLayout = {
   paddingY: 0,
 };
 
-/** Accepts YouTube watch, short, embed and shorts URLs and returns a safe embed URL. */
-export const getYouTubeEmbedUrl = (url: string) => {
-  const value = url.trim();
-  if (!value) return null;
-
-  try {
-    const parsed = new URL(value);
-    const host = parsed.hostname.replace(/^www\./, "").toLowerCase();
-    let videoId = "";
-
-    if (host === "youtu.be") videoId = parsed.pathname.split("/").filter(Boolean)[0] || "";
-    else if (host === "youtube.com" || host === "m.youtube.com" || host === "youtube-nocookie.com") {
-      if (parsed.pathname === "/watch") videoId = parsed.searchParams.get("v") || "";
-      else if (/^\/(embed|shorts|live)\//.test(parsed.pathname)) videoId = parsed.pathname.split("/")[2] || "";
-    }
-
-    return /^[A-Za-z0-9_-]{11}$/.test(videoId) ? `https://www.youtube-nocookie.com/embed/${videoId}?rel=0` : null;
-  } catch {
-    return null;
-  }
-};
+export { getYouTubeEmbedUrl } from "@/lib/youtube";

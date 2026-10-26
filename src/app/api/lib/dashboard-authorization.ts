@@ -48,6 +48,7 @@ type Sidebar = {
 type SessionUser = { user: { id?: string | null; email?: string | null } };
 
 const standardUserPaths = new Set(["/dashboard/profile", "/dashboard/media", "/dashboard/install"]);
+const dashboardAcademyPaths = new Set(["/dashboard/tutorial"]);
 
 export type DashboardAccessState = {
   bypassed: boolean;
@@ -297,6 +298,16 @@ async function authorizeDashboardRequestWithState(state: DashboardAccessState, p
     return {
       allowed,
       state: allowed ? state : { ...state, message: "Your role has no dashboard permissions yet." },
+    };
+  }
+
+  // Academy lessons are read-only static guidance. A signed-in, non-blocked
+  // dashboard member can use them without exposing any workspace data.
+  if (dashboardAcademyPaths.has(pathname) && method === "GET") {
+    const allowed = Boolean(state.roleId);
+    return {
+      allowed,
+      state: allowed ? state : { ...state, message: "Your role is unavailable." },
     };
   }
 

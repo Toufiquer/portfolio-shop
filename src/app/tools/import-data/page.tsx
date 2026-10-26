@@ -9,31 +9,51 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
 
 import { authClient } from "@/app/api/lib/auth-client";
-import { useGetImportStatusQuery, useImportDataMutation } from "@/app/tools/import-data/importData";
+import {
+  useGetImportStatusQuery,
+  useImportDataMutation,
+  useResetImportDataMutation,
+} from "@/app/tools/import-data/importData";
 import { iconMap } from "@/components/all-icons/all-icons";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Toast } from "@/components/ui/toast";
 import { pageDefaults, sidebarDefaults } from "@/lib/defaults/import-data";
 
+import ImportGroup from "./ImportGroup";
 import ImportLeads from "./ImportLeads";
+import ImportReset from "./ImportReset";
+import ImportRow from "./ImportRow";
+import ImportSkeleton from "./ImportSkeleton";
 
 const defaultPaths = sidebarDefaults.flatMap((group) => [group.url, ...(group.children ?? []).map((item) => item.url)]);
+
+function errorMessage(error: unknown, fallback: string) {
+  if (
+    error &&
+    typeof error === "object" &&
+    "data" in error &&
+    error.data &&
+    typeof error.data === "object" &&
+    "error" in error.data &&
+    typeof error.data.error === "string"
+  )
+    return error.data.error;
+  return error instanceof Error ? error.message : fallback;
+}
 
 export default function ImportDataPage() {
   const { data: session, isPending } = authClient.useSession();
   const {
     data: inventory,
-    isLoading: sidebarsLoading,
+    isLoading: inventoryLoading,
     error: inventoryError,
     refetch: refetchInventory,
   } = useGetImportStatusQuery(undefined, { skip: !session });
-  const pagesLoading = sidebarsLoading;
   const [importData, { isLoading: importing }] = useImportDataMutation();
+  const [resetImportData, { isLoading: resetting }] = useResetImportDataMutation();
   const [toast, setToast] = useState<{ error?: boolean; message: string } | null>(null);
   const [refreshRemaining, setRefreshRemaining] = useState(0);
   const [activeTab, setActiveTab] = useState<"sidebar" | "leads">("sidebar");
@@ -41,14 +61,22 @@ export default function ImportDataPage() {
   const [selectedPagePaths, setSelectedPagePaths] = useState(() => new Set(pageDefaults.map((page) => page.path)));
 
   const savedSidebarPaths = useMemo(() => new Set(inventory?.sidebarUrls ?? []), [inventory?.sidebarUrls]);
-  const savedPagePaths = useMemo(() => new Set(inventory?.pagePaths ?? []), [inventory?.pagePaths]);
-  const sidebarReady = [...selectedSidebarUrls].every((path) => savedSidebarPaths.has(path));
-  const pagesReady = [...selectedPagePaths].every((path) => savedPagePaths.has(path));
+  const savedPagePaths = useMemo(() => {
+    const paths = new Set(inventory?.pagePaths ?? []);
+    if (paths.has("/home")) paths.add("/");
+    return paths;
+  }, [inventory?.pagePaths]);
+  const sidebarReady =
+    !inventory?.canImportSidebars || [...selectedSidebarUrls].every((path) => savedSidebarPaths.has(path));
+  const pagesReady = !inventory?.canImportPages || [...selectedPagePaths].every((path) => savedPagePaths.has(path));
   const ready = sidebarReady && pagesReady;
   const hasSelection = Boolean(
     (inventory?.canImportSidebars && selectedSidebarUrls.size > 0) ||
     (inventory?.canImportPages && selectedPagePaths.size > 0),
   );
+  const savedSidebarCount = defaultPaths.filter((path) => savedSidebarPaths.has(path)).length;
+  const savedPageCount = pageDefaults.filter((page) => savedPagePaths.has(page.path)).length;
+  const hasImportedData = savedSidebarCount > 0 || savedPageCount > 0;
 
   useEffect(() => {
     if (!refreshRemaining) return;
@@ -66,19 +94,18 @@ export default function ImportDataPage() {
         message: `Import complete: ${result.inserted} added, ${result.updated} sidebar records aligned, ${result.pagesInserted} pages created.`,
       });
     } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : typeof error === "object" &&
-              error &&
-              "data" in error &&
-              typeof error.data === "object" &&
-              error.data &&
-              "error" in error.data &&
-              typeof error.data.error === "string"
-            ? error.data.error
-            : "Could not import the default data.";
-      setToast({ error: true, message });
+      setToast({ error: true, message: errorMessage(error, "Could not import the default data.") });
+    }
+  }
+
+  async function handleReset() {
+    try {
+      const result = await resetImportData().unwrap();
+      setToast({
+        message: `Imported data reset: ${result.sidebarsDeleted} navigation items and ${result.pagesDeleted} pages removed.`,
+      });
+    } catch (error) {
+      setToast({ error: true, message: errorMessage(error, "Could not reset the imported data.") });
     }
   }
 
@@ -89,6 +116,7 @@ export default function ImportDataPage() {
       const next = new Set(current);
       if (checked) {
         next.add(url);
+        group?.children?.forEach((child) => next.add(child.url));
         if (parent) next.add(parent.url);
       } else {
         next.delete(url);
@@ -109,12 +137,31 @@ export default function ImportDataPage() {
     }
   }
 
+  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    const tabs: Array<"sidebar" | "leads"> = ["sidebar", "leads"];
+    const current = tabs.indexOf(activeTab);
+    const nextIndex =
+      event.key === "ArrowRight"
+        ? (current + 1) % tabs.length
+        : event.key === "ArrowLeft"
+          ? (current - 1 + tabs.length) % tabs.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? tabs.length - 1
+              : null;
+    if (nextIndex === null) return;
+    event.preventDefault();
+    setActiveTab(tabs[nextIndex]);
+    document.getElementById(`import-tab-${tabs[nextIndex]}`)?.focus();
+  }
+
   if (isPending) return <ImportSkeleton />;
   if (!session)
     return (
       <main className="grid min-h-[calc(100vh-65px)] place-items-center bg-[#fffaf0] p-4">
         <Link
-          className="cursor-pointer rounded-sm bg-amber-100 px-2.5 py-1.5 text-[0.8rem] font-medium text-amber-950 transition duration-700 hover:-translate-y-0.5 hover:bg-amber-200"
+          className="cursor-pointer rounded-sm bg-amber-100 px-2.5 py-1.5 text-[0.8rem] font-medium text-amber-950 transition duration-200 hover:-translate-y-0.5 hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
           href="/login"
         >
           Sign in required
@@ -139,30 +186,29 @@ export default function ImportDataPage() {
               </p>
             </div>
           </div>
-          {activeTab === "sidebar" && (
-            <div className="flex flex-wrap gap-2">
-              <Button
-                className="cursor-pointer border-[#eadfca] transition duration-700 hover:-translate-y-0.5 hover:bg-amber-50"
-                disabled={sidebarsLoading || pagesLoading || importing || Boolean(refreshRemaining)}
-                onClick={() => void handleRefresh()}
-                size="sm"
-                variant="outline"
-              >
-                <span className={sidebarsLoading || pagesLoading ? "animate-spin" : ""}>{iconMap.RefreshCw}</span>
-                {refreshRemaining ? `Refresh ${refreshRemaining}s` : "Refresh"}
-              </Button>
-              <Button
-                className="cursor-pointer bg-emerald-100 text-emerald-900 transition duration-700 hover:-translate-y-0.5 hover:bg-emerald-200"
-                disabled={importing || !hasSelection}
-                onClick={() => void handleImport()}
-                size="sm"
-              >
-                {iconMap.Database}
-                {importing ? "Importing…" : ready ? "Sync selected" : "Import selected"}
-              </Button>
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              className="cursor-pointer rounded-sm border-[#eadfca] transition duration-200 hover:-translate-y-0.5 hover:bg-amber-50 focus-visible:ring-amber-200"
+              disabled={inventoryLoading || importing || resetting || Boolean(refreshRemaining)}
+              onClick={() => void handleRefresh()}
+              size="sm"
+              variant="outline"
+            >
+              <span className={inventoryLoading ? "animate-spin" : ""}>{iconMap.RefreshCw}</span>
+              {refreshRemaining ? `Refresh ${refreshRemaining}s` : "Refresh"}
+            </Button>
+            <Button
+              className="cursor-pointer rounded-sm bg-emerald-100 text-emerald-900 transition duration-200 hover:-translate-y-0.5 hover:bg-emerald-200 focus-visible:ring-emerald-200"
+              disabled={importing || resetting || !hasSelection}
+              onClick={() => void handleImport()}
+              size="sm"
+            >
+              {iconMap.Database}
+              {importing ? "Importing…" : ready ? "Sync selected" : "Import selected"}
+            </Button>
+          </div>
         </div>
+
         <div aria-label="Import type" className="relative mt-6 flex gap-2 border-b border-[#eadfca]" role="tablist">
           {[
             { id: "sidebar", label: "Import Sidebar", icon: iconMap.Menu },
@@ -171,11 +217,13 @@ export default function ImportDataPage() {
             <button
               aria-controls={`import-${tab.id}`}
               aria-selected={activeTab === tab.id}
-              className={`flex cursor-pointer items-center gap-2 border-b-2 px-3 py-3 text-sm font-semibold transition duration-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${activeTab === tab.id ? "border-amber-600 text-amber-800" : "border-transparent text-stone-500 hover:text-stone-800"}`}
+              className={`flex cursor-pointer items-center gap-2 border-b-2 px-3 py-3 text-sm font-semibold transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 ${activeTab === tab.id ? "border-amber-600 text-amber-800" : "border-transparent text-stone-500 hover:text-stone-800"}`}
               id={`import-tab-${tab.id}`}
               key={tab.id}
               onClick={() => setActiveTab(tab.id as "sidebar" | "leads")}
+              onKeyDown={handleTabKeyDown}
               role="tab"
+              tabIndex={activeTab === tab.id ? 0 : -1}
               type="button"
             >
               {tab.icon}
@@ -183,6 +231,7 @@ export default function ImportDataPage() {
             </button>
           ))}
         </div>
+
         {activeTab === "sidebar" ? (
           <div
             aria-labelledby="import-tab-sidebar"
@@ -190,18 +239,29 @@ export default function ImportDataPage() {
             id="import-sidebar"
             role="tabpanel"
           >
-            {inventoryError && (
-              <p role="alert" className="text-sm text-red-700">
+            {inventoryError ? (
+              <p
+                className="rounded-sm border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 lg:col-span-2"
+                role="alert"
+              >
                 Could not load import status. Use Refresh to try again.
               </p>
-            )}
-            <fieldset disabled={!inventory?.canImportSidebars} className="min-w-0 disabled:opacity-60">
-              <ImportGroup
-                complete={sidebarReady}
-                count={inventory?.sidebarUrls.length ?? 0}
-                loading={sidebarsLoading}
-                title="Sidebar"
+            ) : null}
+            {!inventoryLoading &&
+            !inventoryError &&
+            inventory &&
+            !inventory.canImportSidebars &&
+            !inventory.canImportPages &&
+            !inventory.canReset ? (
+              <p
+                className="rounded-sm border border-[#eadfca] bg-[#fffaf0] px-3 py-3 text-sm text-stone-600 lg:col-span-2"
+                role="status"
               >
+                Your role does not currently have permission to import or reset default data.
+              </p>
+            ) : null}
+            <fieldset className="min-w-0 disabled:opacity-60" disabled={!inventory?.canImportSidebars}>
+              <ImportGroup complete={sidebarReady} count={savedSidebarCount} loading={inventoryLoading} title="Sidebar">
                 {sidebarDefaults.map((group) => (
                   <div className="rounded-sm border border-[#eadfca] bg-white p-3" key={group.url}>
                     <ImportRow
@@ -210,38 +270,35 @@ export default function ImportDataPage() {
                       icon={group.icon}
                       label={group.name}
                       onCheckedChange={(checked) => toggleSidebar(group.url, checked)}
+                      variant="card"
                     />
-                    <div className="mt-2 grid gap-1 border-l border-[#eadfca] pl-3">
-                      {(group.children ?? []).map((child) => (
-                        <ImportRow
-                          complete={savedSidebarPaths.has(child.url)}
-                          checked={selectedSidebarUrls.has(child.url)}
-                          icon={child.icon}
-                          key={child.url}
-                          label={child.name}
-                          onCheckedChange={(checked) => toggleSidebar(child.url, checked)}
-                        />
-                      ))}
-                    </div>
+                    {group.children?.length ? (
+                      <div className="mt-2 grid gap-1 border-l border-[#eadfca] pl-3">
+                        {group.children.map((child) => (
+                          <ImportRow
+                            checked={selectedSidebarUrls.has(child.url)}
+                            complete={savedSidebarPaths.has(child.url)}
+                            icon={child.icon}
+                            key={child.url}
+                            label={child.name}
+                            onCheckedChange={(checked) => toggleSidebar(child.url, checked)}
+                          />
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </ImportGroup>
             </fieldset>
-            <fieldset disabled={!inventory?.canImportPages} className="min-w-0 disabled:opacity-60">
-              <ImportGroup
-                complete={pagesReady}
-                count={inventory?.pagePaths.length ?? 0}
-                loading={pagesLoading}
-                title="Pages"
-              >
+            <fieldset className="min-w-0 disabled:opacity-60" disabled={!inventory?.canImportPages}>
+              <ImportGroup complete={pagesReady} count={savedPageCount} loading={inventoryLoading} title="Pages">
                 {pageDefaults.map((page) => (
                   <ImportRow
-                    complete={savedPagePaths.has(page.path)}
                     checked={selectedPagePaths.has(page.path)}
+                    complete={savedPagePaths.has(page.path)}
                     icon="FileText"
                     key={page.path}
                     label={page.title}
-                    path={page.path}
                     onCheckedChange={(checked) =>
                       setSelectedPagePaths((current) => {
                         const next = new Set(current);
@@ -250,6 +307,8 @@ export default function ImportDataPage() {
                         return next;
                       })
                     }
+                    path={page.path}
+                    variant="card"
                   />
                 ))}
               </ImportGroup>
@@ -260,90 +319,14 @@ export default function ImportDataPage() {
             <ImportLeads onNotice={setToast} />
           </div>
         )}
+
+        <ImportReset
+          canReset={Boolean(inventory?.canReset)}
+          hasImportedData={hasImportedData}
+          isResetting={resetting}
+          onReset={handleReset}
+        />
       </section>
-    </main>
-  );
-}
-
-function ImportGroup({
-  children,
-  complete,
-  count,
-  loading,
-  title,
-}: {
-  children: ReactNode;
-  complete: boolean;
-  count: number;
-  loading: boolean;
-  title: string;
-}) {
-  return (
-    <section className="rounded-sm border border-[#eadfca] bg-[#fffaf0] p-4">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <h2 className="font-semibold text-stone-900">{title}</h2>
-          <p className="mt-0.5 text-xs text-stone-500">{loading ? "Checking…" : `${count} saved`}</p>
-        </div>
-        <span className={complete ? "text-emerald-700" : "text-amber-700"}>
-          {complete ? iconMap.Check : iconMap.RefreshCw}
-        </span>
-      </div>
-      <div className="grid gap-2">{loading ? <ImportSkeleton compact /> : children}</div>
-    </section>
-  );
-}
-
-function ImportRow({
-  checked,
-  complete,
-  icon,
-  label,
-  onCheckedChange,
-  path,
-}: {
-  checked: boolean;
-  complete: boolean;
-  icon: string;
-  label: string;
-  onCheckedChange: (checked: boolean) => void;
-  path?: string;
-}) {
-  return (
-    <div className="flex min-w-0 items-center gap-2 rounded-sm px-2 py-1.5 text-sm">
-      <Checkbox aria-label={`Import ${label}`} checked={checked} onCheckedChange={onCheckedChange} />
-      <span className="shrink-0 text-stone-500">{iconMap[icon] ?? iconMap.FileText}</span>
-      <span className={`min-w-0 flex-1 truncate ${complete ? "text-stone-500" : "text-stone-800"}`} title={label}>
-        {label}
-      </span>
-      {path ? (
-        <span className="max-w-24 truncate text-xs text-stone-400" title={path}>
-          {path}
-        </span>
-      ) : null}
-      <span className={complete ? "shrink-0 text-emerald-700" : "shrink-0 text-amber-700"}>
-        {complete ? iconMap.Check : iconMap.Plus}
-      </span>
-    </div>
-  );
-}
-
-function ImportSkeleton({ compact = false }: { compact?: boolean }) {
-  if (compact)
-    return (
-      <div className="grid gap-2">
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-        <Skeleton className="h-9 w-full" />
-      </div>
-    );
-  return (
-    <main className="grid min-h-[calc(100vh-65px)] place-items-center bg-[#fffaf0] p-4">
-      <div className="w-full max-w-5xl rounded-sm border border-[#eadfca] bg-white p-7">
-        <Skeleton className="size-10" />
-        <Skeleton className="mt-5 h-7 w-52" />
-        <Skeleton className="mt-3 h-5 w-80 max-w-full" />
-      </div>
     </main>
   );
 }

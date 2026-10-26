@@ -6,8 +6,8 @@
 
 import "server-only";
 
-import type { ImportPageVariant } from "@/lib/defaults/import-data";
 import { database } from "@/lib/db";
+import type { ImportPageVariant } from "@/lib/defaults/import-data";
 
 export type ImportSidebar = {
   id: string;
@@ -71,3 +71,16 @@ export const migrateImportHomePage = () =>
   importPages().updateOne({ path: "/home" }, { $set: { path: "/", title: "Home", updatedAt: new Date() } });
 
 export const createImportPage = (page: ImportSitePage) => importPages().insertOne(page);
+
+export const deleteImportSidebars = (urls: readonly string[]) =>
+  importSidebars().deleteMany({ url: { $in: [...urls] } });
+
+export const deleteImportPages = (
+  pages: readonly { path: string; variant: ImportSitePage["blocks"][number]["variant"] }[],
+) =>
+  importPages().deleteMany({
+    $or: pages.map(({ path, variant }) => ({
+      path,
+      blocks: { $elemMatch: { type: "all-page", variant } },
+    })),
+  });

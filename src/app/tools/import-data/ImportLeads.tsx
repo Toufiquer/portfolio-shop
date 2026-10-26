@@ -12,6 +12,7 @@ import { useState } from "react";
 import { iconMap } from "@/components/all-icons/all-icons";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useGetLeadsDemoStateQuery, useSeedLeadsDemoMutation } from "@/redux/features/dashboard/leads/leadsSlice";
 
 type ImportNotice = { error?: boolean; message: string };
@@ -32,9 +33,32 @@ function errorMessage(error: unknown) {
 
 export default function ImportLeads({ onNotice }: { onNotice: (notice: ImportNotice) => void }) {
   const [confirming, setConfirming] = useState(false);
-  const { data } = useGetLeadsDemoStateQuery();
+  const { data, isError, isLoading: stateLoading } = useGetLeadsDemoStateQuery();
   const [seed, { isLoading }] = useSeedLeadsDemoMutation();
-  if (!data?.available) return null;
+  if (stateLoading)
+    return (
+      <section className="rounded-sm border border-dashed border-amber-300 bg-amber-50/70 p-5" role="status">
+        <Skeleton className="h-5 w-48" />
+        <Skeleton className="mt-3 h-4 w-full max-w-xl" />
+        <Skeleton className="mt-2 h-4 w-3/4" />
+        <span className="sr-only">Checking Leads demo data availability</span>
+      </section>
+    );
+  if (isError)
+    return (
+      <section className="rounded-sm border border-red-200 bg-red-50 p-5 text-sm text-red-700" role="alert">
+        Could not check whether Leads demo data can be added. Refresh and try again.
+      </section>
+    );
+  if (!data?.available)
+    return (
+      <section className="rounded-sm border border-[#eadfca] bg-[#fffaf0] p-5" role="status">
+        <p className="font-semibold text-stone-900">Demo data is unavailable</p>
+        <p className="mt-1 text-sm leading-6 text-stone-600">
+          Leads demo data can be added only while the Leads workspace is empty.
+        </p>
+      </section>
+    );
 
   async function insertDemo() {
     try {
@@ -58,13 +82,12 @@ export default function ImportLeads({ onNotice }: { onNotice: (notice: ImportNot
           <div>
             <p className="text-sm font-semibold text-stone-900">Import Leads demo data</p>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-stone-600">
-              Add a realistic Leads workspace to explore every Leads tab. This is available only while all Leads data is
-              empty.
+              Adds realistic demo data to explore every Leads tab, only while the Leads workspace is empty.
             </p>
           </div>
         </div>
         <Button
-          className="cursor-pointer bg-amber-700 text-white transition duration-700 hover:-translate-y-0.5 hover:bg-amber-800"
+          className="cursor-pointer rounded-sm bg-amber-700 text-white transition duration-200 hover:-translate-y-0.5 hover:bg-amber-800 focus-visible:ring-amber-300"
           disabled={isLoading}
           onClick={() => setConfirming(true)}
           size="sm"
@@ -81,10 +104,10 @@ export default function ImportLeads({ onNotice }: { onNotice: (notice: ImportNot
           <strong className="text-stone-800">5</strong> business funnels
         </p>
         <p>
-          <strong className="text-stone-800">5</strong> councilors · 189 assigned, 11 unassigned
+          <strong className="text-stone-800">5</strong> councilors
         </p>
         <p>
-          <strong className="text-stone-800">200</strong> councilor-authored notes
+          <strong className="text-stone-800">200</strong> notes
         </p>
       </div>
       <AlertDialog
