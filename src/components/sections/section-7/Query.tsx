@@ -50,6 +50,7 @@ const ClientSection7: React.FC<Section7Props> = ({ data }) => {
       return defaultDataSection7;
     }
   }, [data]);
+
   const paddingX = Math.max(0, Number.isFinite(sectionData.paddingX) ? sectionData.paddingX : 0);
   const paddingY = Math.max(0, Number.isFinite(sectionData.paddingY) ? sectionData.paddingY : 0);
 
@@ -66,6 +67,8 @@ const ClientSection7: React.FC<Section7Props> = ({ data }) => {
         activeTab.toLowerCase().includes(uni.location?.toLowerCase()),
     );
   }, [activeTab, sectionData.universitys]);
+
+  if (sectionData.universitys.length === 0) return null;
 
   const toggleUni = (id: string) => {
     setExpandedUni(expandedUni === id ? null : id);
@@ -114,14 +117,14 @@ const ClientSection7: React.FC<Section7Props> = ({ data }) => {
             className="relative"
           >
             <h1 className="text-5xl md:text-7xl font-black text-slate-900 tracking-tight leading-tight">
-              Study in{" "}
+              Browse products in{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-violet-600">
                 {sectionData.country}
               </span>
             </h1>
 
             <div className="absolute -top-6 -right-6 md:-right-12 rotate-12 bg-yellow-400 text-yellow-950 text-xs font-black px-3 py-1.5 rounded-sm shadow-lg border-2 border-white transform hover:rotate-0 transition-transform cursor-default z-20">
-              {sectionData.universitys.length} Universities
+              {sectionData.universitys.length} Products
             </div>
           </motion.div>
 
@@ -132,8 +135,7 @@ const ClientSection7: React.FC<Section7Props> = ({ data }) => {
             transition={{ delay: 0.2 }}
             className="text-lg text-slate-500 max-w-2xl mx-auto"
           >
-            Explore top-ranked institutions in {sectionData.country} across {sectionData.city.length} vibrant cities.
-            Find the perfect campus for your future.
+            Browse available products on NexaMart, serving customers across {sectionData.country}.
           </motion.p>
         </div>
 

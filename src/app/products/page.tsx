@@ -14,7 +14,10 @@ import Link from "next/link";
 import { ProductCategoryNav } from "@/components/products/ProductCategoryNav";
 import { getPublicCategories, getPublicProducts } from "@/lib/products/server";
 
-export const metadata: Metadata = { title: "Products", description: "Explore our curated technology collection." };
+export const metadata: Metadata = {
+  title: "Products | NexaMart",
+  description: "Browse products at NexaMart, an online shopping platform in Bangladesh.",
+};
 
 export default async function ProductsPage({
   searchParams,
@@ -41,22 +44,22 @@ export default async function ProductsPage({
   const header =
     view === "deals"
       ? {
-          eyebrow: "Limited-time savings",
-          title: "Deals worth grabbing",
-          description: "Shop active offers and save on technology picked for you.",
+          eyebrow: "Products",
+          title: "Browse products",
+          description: "View products available from NexaMart.",
           tone: "border-rose-100 bg-[radial-gradient(circle_at_12%_0%,#ffe0df,transparent_34%),radial-gradient(circle_at_92%_30%,#fff0bf,transparent_30%)]",
         }
       : view === "newest"
         ? {
-            eyebrow: "Just arrived",
-            title: "New arrivals",
-            description: "The latest products added to our collection, first.",
+            eyebrow: "Products",
+            title: "Recently added",
+            description: "Browse products recently added to NexaMart.",
             tone: "border-sky-100 bg-[radial-gradient(circle_at_12%_0%,#dcefff,transparent_34%),radial-gradient(circle_at_92%_30%,#e5f8df,transparent_30%)]",
           }
         : {
-            eyebrow: "Curated technology",
-            title: category ? category.name : "Discover what moves you",
-            description: "Explore our curated technology collection.",
+            eyebrow: "NexaMart",
+            title: category ? category.name : "Browse products",
+            description: "Online shopping across Bangladesh.",
             tone: "border-amber-100 bg-[radial-gradient(circle_at_12%_0%,#fde8bc,transparent_34%),radial-gradient(circle_at_92%_30%,#fee2d1,transparent_30%)]",
           };
   return (

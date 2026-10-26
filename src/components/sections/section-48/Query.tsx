@@ -8,14 +8,14 @@
 
 /*
 |-----------------------------------------
-| NexaMart creamy global study hero
+| NexaMart shopping hero
 |-----------------------------------------
 */
 
 "use client";
 
 import { motion, useReducedMotion } from "framer-motion";
-import { ShieldCheck } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
 import { Noto_Sans_Bengali } from "next/font/google";
 import { useMemo, useState } from "react";
 
@@ -129,25 +129,32 @@ export interface TextDemoHeroProps {
 export function TextDemoHero({
   banglaFirstLine = "স্বপ্ন আপনার,",
   banglaSecondLine = "সঠিক পথ দেখানোর দায়িত্ব আমাদের।",
-  stampValue = "16",
-  stampText = "YEARS OF TRUST • YEARS OF TRUST •",
+  stampValue = "",
+  stampText = "",
   paddingX = 0,
   paddingY = 0,
 }: TextDemoHeroProps = {}) {
   const [activeCountry, setActiveCountry] = useState<string | null>(null);
   const [backgroundScene, setBackgroundScene] = useState(INITIAL_BACKGROUND_SCENE);
-  const [consultationForm, setConsultationForm] = useState({
+  const [contactForm, setContactForm] = useState({
     fullName: "",
     mobileWhatsApp: "",
-    studyDestination: "",
+    productQuestion: "",
   });
-  const [showDemoModal, setShowDemoModal] = useState(false);
   const reduceMotion = useReducedMotion();
 
-  const submitConsultation = (event: React.FormEvent<HTMLFormElement>) => {
+  const openWhatsAppContact = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setShowDemoModal(true);
-    toast.info("Demo modal opened. Consultation submission will be connected later.");
+    const message = [
+      "Hello NexaMart, I have a question.",
+      `Name: ${contactForm.fullName}`,
+      `Phone: ${contactForm.mobileWhatsApp}`,
+      contactForm.productQuestion ? `Product or question: ${contactForm.productQuestion}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+    window.open(`https://wa.me/8801711111111?text=${encodeURIComponent(message)}`, "_blank", "noopener,noreferrer");
+    toast.info("Continue your message in WhatsApp.");
   };
 
   return (
@@ -291,7 +298,7 @@ export function TextDemoHero({
                 >
                   {stampValue}
                 </motion.span>
-                <ShieldCheck className="mt-1 h-5 w-5" strokeWidth={1.8} />
+                <ShoppingBag className="mt-1 h-5 w-5" strokeWidth={1.8} />
               </div>
             </motion.div>
 
@@ -343,13 +350,13 @@ export function TextDemoHero({
 
           <motion.div variants={itemVariants} className="md:mt-7 -mt-12 w-full">
             <form
-              onSubmit={submitConsultation}
+              onSubmit={openWhatsAppContact}
               className="rounded-sm border border-[#cf0a2c]/15 bg-white/80 p-4 shadow-[0_20px_50px_-32px_rgba(207,10,44,0.65)] backdrop-blur-md"
             >
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-black text-slate-950">Free Consultation</p>
-                  <p className="mt-0.5 text-xs text-slate-500">Tell us where you want to study.</p>
+                  <p className="text-sm font-black text-slate-950">Contact NexaMart</p>
+                  <p className="mt-0.5 text-xs text-slate-500">Send a question about online shopping.</p>
                 </div>
                 <span className="grid h-10 w-10 place-items-center rounded-full bg-[#cf0a2c]/10 text-[#cf0a2c]">
                   <Send className="h-4 w-4" />
@@ -365,10 +372,8 @@ export function TextDemoHero({
                     type="text"
                     autoComplete="name"
                     placeholder="Name"
-                    value={consultationForm.fullName}
-                    onChange={(event) =>
-                      setConsultationForm((current) => ({ ...current, fullName: event.target.value }))
-                    }
+                    value={contactForm.fullName}
+                    onChange={(event) => setContactForm((current) => ({ ...current, fullName: event.target.value }))}
                     className="h-12 w-full rounded-sm border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#cf0a2c] focus:ring-2 focus:ring-[#cf0a2c]/10"
                   />
                 </label>
@@ -381,24 +386,24 @@ export function TextDemoHero({
                     type="tel"
                     autoComplete="tel"
                     placeholder="Mobile Number"
-                    value={consultationForm.mobileWhatsApp}
+                    value={contactForm.mobileWhatsApp}
                     onChange={(event) =>
-                      setConsultationForm((current) => ({ ...current, mobileWhatsApp: event.target.value }))
+                      setContactForm((current) => ({ ...current, mobileWhatsApp: event.target.value }))
                     }
                     className="h-12 w-full rounded-sm border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#cf0a2c] focus:ring-2 focus:ring-[#cf0a2c]/10"
                   />
                 </label>
 
                 <label className="relative">
-                  <span className="sr-only">Study destination</span>
+                  <span className="sr-only">Product or question</span>
                   <MapPin className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <input
                     required
                     type="text"
-                    placeholder="Study destination"
-                    value={consultationForm.studyDestination}
+                    placeholder="Product or question (optional)"
+                    value={contactForm.productQuestion}
                     onChange={(event) =>
-                      setConsultationForm((current) => ({ ...current, studyDestination: event.target.value }))
+                      setContactForm((current) => ({ ...current, productQuestion: event.target.value }))
                     }
                     className="h-12 w-full rounded-sm border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#cf0a2c] focus:ring-2 focus:ring-[#cf0a2c]/10"
                   />
@@ -410,50 +415,9 @@ export function TextDemoHero({
                 className="mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-sm bg-[#cf0a2c] px-5 text-sm font-black text-white shadow-[0_15px_30px_-15px_rgba(207,10,44,0.8)] transition hover:-translate-y-0.5 hover:bg-[#b30927] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Send className="h-4 w-4" />
-                Submit Consultation
+                Continue on WhatsApp
               </button>
             </form>
-            {showDemoModal && (
-              <div
-                className="fixed inset-0 z-[110] grid place-items-center bg-slate-950/45 p-4"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="consultation-demo-title"
-              >
-                <div className="w-full max-w-md rounded-sm border border-[#eadfca] bg-white p-6 text-slate-950 shadow-2xl">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p id="consultation-demo-title" className="text-lg font-black">
-                        Consultation demo modal
-                      </p>
-                      <p className="mt-2 text-sm text-slate-600">
-                        The consultation API is disconnected for now. This placeholder can be replaced with the final
-                        workflow later.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowDemoModal(false)}
-                      className="rounded-sm px-2 py-1 text-xl leading-none text-slate-500 transition hover:bg-slate-100"
-                      aria-label="Close demo modal"
-                    >
-                      ×
-                    </button>
-                  </div>
-                  <div className="mt-5 rounded-sm bg-amber-50 p-3 text-xs text-amber-900">
-                    {consultationForm.fullName || "Name"} · {consultationForm.mobileWhatsApp || "Mobile number"} ·{" "}
-                    {consultationForm.studyDestination || "Study destination"}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setShowDemoModal(false)}
-                    className="mt-5 inline-flex h-10 w-full cursor-pointer items-center justify-center rounded-sm bg-[#cf0a2c] px-4 text-sm font-bold text-white transition duration-700 hover:bg-[#b30927]"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            )}
           </motion.div>
         </motion.div>
       </div>

@@ -36,6 +36,7 @@ const parseData = (data?: IDeliveryPolicyData | DeliveryPolicyPayload | string):
 };
 const QueryDeliveryPolicy = ({ data }: DeliveryPolicyProps) => {
   const pageData = parseData(data);
+  if (pageData.sections.length === 0) return null;
   return (
     <main
       className="bg-white text-stone-800"

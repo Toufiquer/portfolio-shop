@@ -36,32 +36,15 @@ export interface Section30Props {
 
 export const defaultDataSection30: Section30Data = {
   id: "section-uid-30",
-  badgeText: "★ We Are Also Providing",
-  headingPrefix: "The Best",
-  headingHighlight: "Study Abroad",
-  headingSuffix: "Services",
-  features: [
-    {
-      title: "Expert Guidance",
-      description:
-        "Get personalized support from experienced counselors who understand your goals and help you achieve them.",
-      iconName: "Users",
-    },
-    {
-      title: "High Success Rate",
-      description: "From applications to visas, our proven process ensures a smooth and successful journey.",
-      iconName: "Award",
-    },
-    {
-      title: "Tailored Solutions",
-      description: "We provide customized advice based on your needs, budget, and career aspirations.",
-      iconName: "BookOpen",
-    },
-  ],
-  ctaText: "Book Free Consultation",
-  rightCardBadge: "★ Where dreams come true",
-  locationLabel: "Your Location",
-  destinationLabel: "Dream Destination",
+  badgeText: "NexaMart · NxMart",
+  headingPrefix: "Online",
+  headingHighlight: "shopping",
+  headingSuffix: "across Bangladesh",
+  features: [],
+  ctaText: "Browse products",
+  rightCardBadge: "Shop online",
+  locationLabel: "Service area",
+  destinationLabel: "Bangladesh",
 };
 
 export const defaultLayout = {

@@ -41,26 +41,7 @@ export interface Section21Data {
 export const defaultDataSection21: Section21Data = {
   id: "section-uid-21",
   sectionUid: "section-uid-21",
-  images: [
-    {
-      id: "1",
-      url: "https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800&q=80",
-      caption: "Mountain View",
-    },
-    {
-      id: "2",
-      url: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&q=80",
-      caption: "Abstract Art",
-    },
-    { id: "3", url: "https://images.unsplash.com/photo-1682687220742-aba13b6e50ba?w=800&q=80", caption: "Urban Life" },
-    { id: "4", url: "https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=800&q=80", caption: "Forest Path" },
-    { id: "5", url: "https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=800&q=80", caption: "Lake Calm" },
-    {
-      id: "6",
-      url: "https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=800&q=80",
-      caption: "Foggy Morning",
-    },
-  ],
+  images: [],
   layout: "bento",
   columns: 3,
   gap: "md",

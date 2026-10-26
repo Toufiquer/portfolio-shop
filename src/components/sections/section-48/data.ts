@@ -32,10 +32,10 @@ export const defaultLayout = {
 
 export const defaultDataSection48: Section48Data = {
   id: "section-uid-48",
-  banglaFirstLine: "স্বপ্ন আপনার,",
-  banglaSecondLine: "সঠিক পথ দেখানোর দায়িত্ব আমাদের।",
-  stampValue: "16",
-  stampText: "YEARS OF TRUST • YEARS OF TRUST •",
+  banglaFirstLine: "বাংলাদেশজুড়ে অনলাইন শপিং",
+  banglaSecondLine: "NexaMart-এ পণ্য দেখুন।",
+  stampValue: "",
+  stampText: "",
 };
 
 export const defaultData = defaultDataSection48;

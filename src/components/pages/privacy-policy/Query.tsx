@@ -53,6 +53,8 @@ const QueryPage4 = ({ data }: Section4Props) => {
     };
   }, [sections]);
 
+  if (sections.length === 0) return null;
+
   const selectSection = (index: number) => {
     setActiveSection(index);
     document.getElementById(`privacy-${index + 1}`)?.scrollIntoView({ behavior: "smooth", block: "start" });

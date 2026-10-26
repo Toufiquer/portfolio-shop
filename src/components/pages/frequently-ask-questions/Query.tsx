@@ -17,95 +17,12 @@ import { Input } from "@/components/ui/input";
 
 import { defaultData } from "./data";
 
-const questions = [
-  {
-    question: "What does NexaMart do?",
-    answer:
-      "NexaMart is a Bangladesh-based technology company that helps businesses with digital products, web solutions, software services, and practical technical support.",
-  },
-  {
-    question: "How can I request a project or quotation?",
-    answer:
-      "Share your requirements through our official contact channel. Our team will review the scope, clarify priorities, and provide the next steps, timeline, and pricing where applicable.",
-  },
-  {
-    question: "How are project costs and payments handled?",
-    answer:
-      "Project pricing, payment milestones, and any required deposit are confirmed in the relevant proposal or invoice. Fees are communicated in Bangladeshi Taka unless stated otherwise.",
-  },
-  {
-    question: "Can you support an existing website or software product?",
-    answer:
-      "Yes. After an initial review, we can advise whether ongoing support, improvements, maintenance, or a separate development engagement is the best fit.",
-  },
-  {
-    question: "How do you protect project information?",
-    answer:
-      "We use reasonable safeguards and limit access to people who need information to deliver authorised work. Please avoid sending sensitive credentials through unsecured channels.",
-  },
-  {
-    question: "Where can I get help after delivery?",
-    answer:
-      "Your proposal or service agreement will describe the included support period. For further help, contact NexaMart through our official support channel with the relevant project details.",
-  },
-  {
-    question: "Do you work with startups and small businesses?",
-    answer:
-      "Yes. We work with businesses at different stages and can recommend a practical approach based on your current goals, budget, and technical needs.",
-  },
-  {
-    question: "Can NexaMart build a mobile-friendly website?",
-    answer:
-      "Yes. Our web solutions are planned to work well across modern desktop, tablet, and mobile devices, subject to the agreed project scope.",
-  },
-  {
-    question: "Will I receive updates during the project?",
-    answer:
-      "Yes. We share progress updates at the milestones agreed for your project and may request feedback or approval before moving to the next stage.",
-  },
-  {
-    question: "Can I request changes after a project starts?",
-    answer:
-      "Yes. We will review each change request. Changes outside the approved scope may affect the price, timeline, or both before work continues.",
-  },
-  {
-    question: "Do you provide domain and hosting services?",
-    answer:
-      "We can help you choose, set up, or manage suitable domain and hosting services where included in your agreement. Third-party provider fees and terms may apply.",
-  },
-  {
-    question: "Who owns the final project deliverables?",
-    answer:
-      "Ownership of final deliverables is set out in your agreement and normally transfers after all applicable payments are received. NexaMart retains ownership of its pre-existing tools, methods, and reusable code.",
-  },
-  {
-    question: "Can you integrate third-party tools or payment gateways?",
-    answer:
-      "Yes, where technically suitable and included in scope. Third-party platforms, payment gateways, and APIs remain subject to their own approval processes, fees, and service terms.",
-  },
-  {
-    question: "What should I prepare before starting a project?",
-    answer:
-      "Please prepare your goals, key requirements, brand assets, content, preferred timeline, and the main contact person who can provide decisions and feedback.",
-  },
-  {
-    question: "Can I cancel a project or request a refund?",
-    answer:
-      "You may contact us to discuss cancellation or a refund request. Eligibility depends on the completed work, payments made, and the applicable proposal, invoice, or Refund Policy.",
-  },
-  {
-    question: "How can I contact NexaMart?",
-    answer:
-      "Please use our official website contact or support channel and include your name, organisation, and a short description of what you need so our team can respond efficiently.",
-  },
-];
-
 const parseQuestions = (value?: string) => {
   try {
     const parsed = JSON.parse(value ?? "") as { question?: string; answer?: string }[];
     return parsed.filter((item) => item.question && item.answer) as { question: string; answer: string }[];
   } catch {
-    return questions;
+    return [];
   }
 };
 

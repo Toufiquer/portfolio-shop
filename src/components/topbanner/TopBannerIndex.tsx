@@ -47,7 +47,7 @@ export const topBannerIndex: Record<TopBannerVariant, Definition> = {
   },
   "topbanner-3": {
     defaultData: defaultThree,
-    description: "Lifetime offer with a call to action",
+    description: "Brand message with a product browsing action",
     Mutation: MutationThree as unknown as Definition["Mutation"],
     Query: QueryThree as unknown as Definition["Query"],
     title: "Offer banner",

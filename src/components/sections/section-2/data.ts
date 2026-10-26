@@ -8,8 +8,8 @@
 
 export const defaultDataSection2 = {
   id: "section-uid-2",
-  heading: "A better experience",
-  description: "Simple content that is easy to edit.",
+  heading: "Online shopping across Bangladesh",
+  description: "Browse available products from NexaMart.",
   paddingX: "0",
   paddingY: "0",
 };

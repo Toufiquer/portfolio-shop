@@ -48,6 +48,8 @@ const ClientSection6: React.FC<Section6Props> = ({ data }) => {
   const paddingX = Math.max(0, sectionData.paddingX);
   const paddingY = Math.max(0, sectionData.paddingY);
 
+  if (!sectionData.universityName.trim()) return null;
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -109,7 +111,7 @@ const ClientSection6: React.FC<Section6Props> = ({ data }) => {
               )}
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200">
                 <CalendarDays size={12} />
-                Est. {sectionData.established}
+                {sectionData.established ? `Since ${sectionData.established}` : ""}
               </span>
             </motion.div>
 
@@ -144,7 +146,7 @@ const ClientSection6: React.FC<Section6Props> = ({ data }) => {
             <motion.div variants={itemVariants} className="border-t border-slate-100 pt-8 space-y-4">
               <div className="flex items-center gap-2 text-slate-400 text-xs font-bold uppercase tracking-widest">
                 <GraduationCap size={16} />
-                <span>Programs Available</span>
+                <span>Product information</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {sectionData.programs &&
@@ -213,7 +215,7 @@ const ClientSection6: React.FC<Section6Props> = ({ data }) => {
                   <div className="rounded-sm border border-amber-200 bg-[#fffaf0]/95 p-5 transition-colors hover:bg-white">
                     <div className="mb-2 flex items-center gap-2 text-amber-800">
                       <Users size={20} />
-                      <span className="text-xs font-bold uppercase tracking-wider">Students</span>
+                      <span className="text-xs font-bold uppercase tracking-wider">Products</span>
                     </div>
                     <p className="text-3xl font-bold text-stone-900">{sectionData.totalStudents}</p>
                   </div>

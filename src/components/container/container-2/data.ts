@@ -64,18 +64,18 @@ export interface ContainerProps {
   data?: IContainerData | string;
 }
 
-export const templateImagePlaceholder = "https://i.ibb.co/j3Z3BK6/marketing.png";
+export const templateImagePlaceholder = "/Logo.png";
 
 export const defaultDataContainer2: IContainerData = {
   containerUid: "container-uid-2",
-  containerName: "All Theme",
-  title: "All Theme",
+  containerName: "Products",
+  title: "Shop products",
   sortMode: "custom",
   gridLayout: "1x3",
   mobileGridLayout: "1x1",
   seeMore: {
-    name: "See More",
-    url: "/all-container",
+    name: "Browse products",
+    url: "/products",
   },
   showSeeMore: true,
   showBottomNavigation: true,

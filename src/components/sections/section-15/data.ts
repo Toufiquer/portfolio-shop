@@ -41,25 +41,4 @@ export interface Section15Payload {
 
 export const defaultLayout = { paddingX: 0, paddingY: 0 };
 
-export const defaultDataSection15: OfficeLocation[] = [
-  {
-    sectionUid: "section-uid-15-100",
-    id: "section-uid-15",
-    name: "NexaMart Head Office",
-    type: "Headquarters",
-    address: "21/B Bijoyshoroni, Tecgaon, Dhaka-1200.",
-    city: "Dhaka",
-    country: "Bangladesh",
-    coordinates: { lat: 23.775, lng: 90.39 },
-    contact: {
-      email: "example@gmail.com",
-      phone: "01711 221122",
-      manager: "NexaMart Team",
-    },
-    image: "https://i.ibb.co/KpGnqS3D/nature.jpg",
-    description:
-      "NexaMart একটি আধুনিক অনলাইন শপিং প্ল্যাটফর্ম, যেখানে সহজে পণ্য খোঁজা, অর্ডার করা ও নিরাপদে কেনাকাটার সুবিধা রয়েছে।",
-    features: ["Customer Support", "Secure Shopping", "Order Assistance"],
-    schedule: "Sat-Thu, 10:00 - 18:00 BST",
-  },
-];
+export const defaultDataSection15: OfficeLocation[] = [];

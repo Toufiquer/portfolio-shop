@@ -8,7 +8,7 @@
 
 /*
 |-----------------------------------------
-| Study Abroad experience hero renderer for Section 37
+| Bilingual shopping hero renderer for Section 37
 |-----------------------------------------
 */
 

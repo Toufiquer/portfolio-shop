@@ -20,6 +20,9 @@ import CompanyStoryQuery from "./company-story/Query";
 import { defaultData as contact } from "./contact-us/data";
 import ContactMutation from "./contact-us/Mutation";
 import ContactQuery from "./contact-us/Query";
+import { defaultDataCookiePolicy as cookiePolicy } from "./cookie-policy/data";
+import CookiePolicyMutation from "./cookie-policy/Mutation";
+import CookiePolicyQuery from "./cookie-policy/Query";
 import { defaultDataCountryDirectory as countryDirectory } from "./country-directory/data";
 import CountryDirectoryMutation from "./country-directory/Mutation";
 import CountryDirectoryQuery from "./country-directory/Query";
@@ -47,9 +50,6 @@ import RefundQuery from "./refund-policy/Query";
 import { defaultDataSecurity as security } from "./security/data";
 import SecurityMutation from "./security/Mutation";
 import SecurityQuery from "./security/Query";
-import { defaultDataCookiePolicy as cookiePolicy } from "./cookie-policy/data";
-import CookiePolicyMutation from "./cookie-policy/Mutation";
-import CookiePolicyQuery from "./cookie-policy/Query";
 import { defaultDataSiteTermsAndConditions as siteTermsAndConditions } from "./site-terms-and-conditions/data";
 import SiteTermsAndConditionsMutation from "./site-terms-and-conditions/Mutation";
 import SiteTermsAndConditionsQuery from "./site-terms-and-conditions/Query";
@@ -178,8 +178,8 @@ export const pageIndex: Record<AllPageKind, Definition> = {
   },
   "delivery-policy": {
     defaultData: deliveryPolicy as unknown as AllPageData,
-    title: "Delivery Policy",
-    description: "A delivery-policy page with shipping and support details",
+    title: "Delivery Information",
+    description: "Reusable delivery information layout; add approved details before publishing",
     Mutation: ({ data, onChange }) => (
       <DeliveryPolicyMutation
         data={data as unknown as typeof deliveryPolicy}
@@ -190,8 +190,8 @@ export const pageIndex: Record<AllPageKind, Definition> = {
   },
   "cookie-policy": {
     defaultData: cookiePolicy as unknown as AllPageData,
-    title: "Cookie Policy",
-    description: "A cookie-policy page with visitor choices and support details",
+    title: "Cookie Information",
+    description: "Reusable cookie information layout; add approved details before publishing",
     Mutation: ({ data, onChange }) => (
       <CookiePolicyMutation
         data={data as unknown as typeof cookiePolicy}
@@ -202,8 +202,8 @@ export const pageIndex: Record<AllPageKind, Definition> = {
   },
   "leadership-team": {
     defaultData: leadershipTeam as unknown as AllPageData,
-    title: "Leadership Team",
-    description: "An animated leadership and team-members page",
+    title: "Leadership Profiles",
+    description: "Reusable profile layout with no sample people or claims",
     Mutation: ({ data, onChange }) => (
       <LeadershipTeamMutation
         data={data as unknown as typeof leadershipTeam}
@@ -214,8 +214,8 @@ export const pageIndex: Record<AllPageKind, Definition> = {
   },
   "country-directory": {
     defaultData: countryDirectory as unknown as AllPageData,
-    title: "Country Directory",
-    description: "A searchable embassy-country directory page",
+    title: "Product Directory Layout",
+    description: "Reusable searchable directory layout with no seeded entries",
     Mutation: ({ data, onChange }) => (
       <CountryDirectoryMutation
         data={data as unknown as typeof countryDirectory}
@@ -226,8 +226,8 @@ export const pageIndex: Record<AllPageKind, Definition> = {
   },
   "about-the-country": {
     defaultData: aboutTheCountry as unknown as AllPageData,
-    title: "About the Country",
-    description: "A complete business website landing-page layout",
+    title: "Home Page Layout",
+    description: "Reusable landing-page layout with NexaMart defaults",
     Mutation: ({ data, onChange }) => (
       <AboutTheCountryMutation
         data={data as unknown as typeof aboutTheCountry}
@@ -250,8 +250,8 @@ export const pageIndex: Record<AllPageKind, Definition> = {
   },
   "visa-requirements": {
     defaultData: visaRequirements as unknown as AllPageData,
-    title: "Visa Requirements",
-    description: "A student-visa guide with country filters and planning resources",
+    title: "Reusable Information Layout",
+    description: "Reusable page layout with empty defaults for business-specific information",
     Mutation: ({ data, onChange }) => (
       <VisaRequirementsMutation
         data={data as unknown as typeof visaRequirements}
@@ -262,8 +262,8 @@ export const pageIndex: Record<AllPageKind, Definition> = {
   },
   "visa-services": {
     defaultData: visaServices as unknown as AllPageData,
-    title: "Visa Services",
-    description: "A complete service catalogue and conversion page",
+    title: "Reusable Listing Layout",
+    description: "Reusable page layout with empty defaults for business-specific entries",
     Mutation: ({ data, onChange }) => (
       <VisaServicesMutation
         data={data as unknown as typeof visaServices}
@@ -274,8 +274,8 @@ export const pageIndex: Record<AllPageKind, Definition> = {
   },
   "visa-application-support": {
     defaultData: visaApplicationSupport as unknown as AllPageData,
-    title: "Visa Application Support",
-    description: "A Bangladesh student-visa guide and checklist page",
+    title: "Reusable Checklist Layout",
+    description: "Reusable checklist layout with empty defaults",
     Mutation: ({ data, onChange }) => (
       <VisaApplicationSupportMutation
         data={data as unknown as typeof visaApplicationSupport}
@@ -286,8 +286,8 @@ export const pageIndex: Record<AllPageKind, Definition> = {
   },
   "visa-consultancy": {
     defaultData: visaConsultancy as unknown as AllPageData,
-    title: "Visa Consultancy",
-    description: "An education-consultancy service and readiness page",
+    title: "Reusable Contact Layout",
+    description: "Reusable information layout with empty defaults",
     Mutation: ({ data, onChange }) => (
       <VisaConsultancyMutation
         data={data as unknown as typeof visaConsultancy}
@@ -298,8 +298,8 @@ export const pageIndex: Record<AllPageKind, Definition> = {
   },
   "visa-service-catalogue": {
     defaultData: visaServiceCatalogue as unknown as AllPageData,
-    title: "Visa Service Catalogue",
-    description: "An alternating service-catalogue page",
+    title: "Reusable Catalogue Layout",
+    description: "Reusable catalogue layout with empty defaults",
     Mutation: ({ data, onChange }) => (
       <VisaServiceCatalogueMutation
         data={data as unknown as typeof visaServiceCatalogue}
@@ -310,8 +310,8 @@ export const pageIndex: Record<AllPageKind, Definition> = {
   },
   "visa-insights": {
     defaultData: visaInsights as unknown as AllPageData,
-    title: "Visa Insights",
-    description: "A searchable study-abroad blog page",
+    title: "Reusable Article Layout",
+    description: "Reusable article layout with no seeded posts or authors",
     Mutation: ({ data, onChange }) => (
       <VisaInsightsMutation
         data={data as unknown as typeof visaInsights}

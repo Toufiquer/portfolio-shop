@@ -34,36 +34,10 @@ export interface Section24Props {
 
 export const defaultDataSection24: ISection24Data = {
   sectionUid: "section-uid-24",
-  features: [
-    {
-      title: "Real Test Format",
-      subtitle: "Authentic IELTS exam experience",
-      iconName: "FileText",
-      iconColorClass: "text-red-500",
-      bgColorClass: "bg-red-100",
-    },
-    {
-      title: "Instant Results",
-      subtitle: "Get your scores immediately",
-      iconName: "Clock",
-      iconColorClass: "text-orange-500",
-      bgColorClass: "bg-orange-100",
-    },
-    {
-      title: "Detailed Explanation",
-      subtitle: "Learn from every question",
-      iconName: "Target",
-      iconColorClass: "text-green-500",
-      bgColorClass: "bg-green-100",
-    },
-  ],
-  stats: [
-    { value: "50K+", label: "Students Tested", colorClass: "text-red-500" },
-    { value: "8.5", label: "Average Band Score", colorClass: "text-orange-500" },
-    { value: "95%", label: "Success Rate", colorClass: "text-green-500" },
-  ],
-  ctaText: "TAKE A TEST",
-  ctaLink: "/test",
+  features: [],
+  stats: [],
+  ctaText: "Browse products",
+  ctaLink: "/products",
 };
 
 export const defaultData = defaultDataSection24;

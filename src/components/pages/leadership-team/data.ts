@@ -55,79 +55,11 @@ export const defaultLayout = {
 
 export const defaultDataLeadershipTeam: ILeadershipTeamData = {
   pageUid: "leadership-team-uid",
-  pageName: "Team",
-  eyebrow: "Site",
-  title: "Meet the people behind Site",
-  description:
-    "A dedicated team combining strategy, creativity, technology, and customer care to help clients reach meaningful goals.",
+  pageName: "NexaMart Team",
+  eyebrow: "NexaMart · NxMart",
+  title: "NexaMart",
+  description: "NexaMart is an online shopping platform serving customers across Bangladesh.",
   founderLabel: "Founder",
-  ceo: {
-    id: "ceo",
-    name: "Tanvir Ahmed",
-    title: "Founder & CEO",
-    bio: "Leads Site with a clear vision: making expert guidance personal, reliable, and accessible.",
-    image: "https://i.pravatar.cc/600?img=13",
-  },
-  rows: [
-    {
-      id: "leadership",
-      label: "Leadership",
-      members: [
-        {
-          id: "creative-director",
-          name: "Nusrat Jahan",
-          title: "Creative Director",
-          bio: "Guides the team and helps every client receive thoughtful support throughout their project journey.",
-          image: "https://i.pravatar.cc/500?img=47",
-        },
-        {
-          id: "lead-developer",
-          name: "Rakibul Hasan",
-          title: "Lead Developer",
-          bio: "Builds the fast, reliable web platforms our clients run their business on.",
-          image: "https://i.pravatar.cc/500?img=68",
-        },
-      ],
-    },
-    {
-      id: "growth",
-      label: "Growth",
-      members: [
-        {
-          id: "marketing-lead",
-          name: "Farhana Islam",
-          title: "Marketing Lead",
-          bio: "Turns ad budgets into measurable growth across Meta, Google, and TikTok.",
-          image: "https://i.pravatar.cc/500?img=32",
-        },
-        {
-          id: "content-strategist",
-          name: "Shahriar Kabir",
-          title: "Content Strategist",
-          bio: "Writes and plans the content calendars that keep client audiences engaged weekly.",
-          image: "https://i.pravatar.cc/500?img=51",
-        },
-      ],
-    },
-    {
-      id: "product",
-      label: "Product",
-      members: [
-        {
-          id: "ui-ux-designer",
-          name: "Mim Akter",
-          title: "UI/UX Designer",
-          bio: "Designs interfaces that feel effortless, tested with real users before every launch.",
-          image: "https://i.pravatar.cc/500?img=25",
-        },
-        {
-          id: "client-success",
-          name: "Imran Chowdhury",
-          title: "Client Success Manager",
-          bio: "The steady voice clients call first, from onboarding through every project milestone.",
-          image: "https://i.pravatar.cc/500?img=60",
-        },
-      ],
-    },
-  ],
+  ceo: { id: "ceo", name: "", title: "", bio: "", image: "" },
+  rows: [],
 };

@@ -30,13 +30,10 @@ export interface Section41Props {
 
 export const defaultDataSection41: Section41Data = {
   id: "section-uid-41",
-  title: "Study in United States from Bangladesh for Higher Education",
-  paragraphs: [
-    "Studying in United States is a transformative experience that opens doors to new opportunities, cultures, and global networking. For Bangladeshi students seeking premium educational credentials and excellent career development, United States stands out as a top-tier destination.",
-    "The USA hosts the largest number of top-ranked universities globally. It is renowned for its flexible curriculum, cutting-edge research, and extensive OPT (Optional Practical Training) work rights for STEM graduates. Under the guidance of NexaMart, the entire path—from university shortlisting and scholarship search to visa approvals—becomes stress-free and highly efficient.",
-  ],
-  imageUrl: "/images/all-pages-placeholder.png",
-  imageAlt: "Study destination placeholder image",
+  title: "Online shopping across Bangladesh",
+  paragraphs: ["NexaMart (NxMart) is an online shopping platform in Bangladesh.", "Browse available products online."],
+  imageUrl: "/Logo.png",
+  imageAlt: "NexaMart logo",
   backgroundColor: "#f6f7f9",
   headingColor: "#252d8f",
   textColor: "#202641",

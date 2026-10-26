@@ -40,31 +40,17 @@ export const defaultData: MenuData = {
   links: [
     { id: "home", label: "Home", url: "/", visible: true, position: 0 },
     {
-      id: "services",
-      label: "Services",
-      url: "/services",
+      id: "products",
+      label: "Products",
+      url: "/products",
       visible: true,
       position: 1,
       children: [
-        {
-          id: "web-development",
-          label: "Web Development",
-          url: "/services/web-development",
-          visible: true,
-          position: 0,
-          children: [
-            {
-              id: "nextjs-development",
-              label: "Next.js Development",
-              url: "/services/web-development/nextjs",
-              visible: true,
-              position: 0,
-            },
-          ],
-        },
+        { id: "about", label: "About us", url: "/about-us", visible: true, position: 0 },
+        { id: "contact", label: "Contact us", url: "/contact-us", visible: true, position: 1 },
       ],
     },
-    { id: "dashboard", label: "Dashboard", url: "/dashboard", visible: true, position: 3 },
+    { id: "dashboard", label: "Account", url: "/login", visible: true, position: 3 },
   ],
   button: {
     type: "dashboard",

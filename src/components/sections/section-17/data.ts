@@ -50,10 +50,10 @@ export interface Section17Data {
 export const defaultDataSection17: Section17Data = {
   id: "section-uid-17",
   sectionUid: "section-uid-17",
-  buttonName: "View Guidelines",
+  buttonName: "Browse products",
   buttonIcon: "doc-icon",
-  buttonPath: "/guidelines/student-guidenes",
-  isNewTab: true,
+  buttonPath: "/products",
+  isNewTab: false,
   buttonVariant: "neonBlue",
   buttonSize: "default",
   buttonWidth: "auto",

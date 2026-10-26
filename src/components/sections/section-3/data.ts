@@ -8,8 +8,8 @@
 
 export const defaultDataSection3 = {
   id: "section-uid-3",
-  heading: "Build something fast",
-  description: "A clear, focused section for your page.",
+  heading: "NexaMart · NxMart",
+  description: "Online shopping across Bangladesh.",
   paddingX: "0",
   paddingY: "0",
 };

@@ -25,14 +25,9 @@ export interface Section26Props {
 
 export const defaultDataSection26: Section26Data = {
   id: "section-uid-26",
-  title: "Join Our Success Community",
-  buttonText: "Start Your Journey Today",
-  stats: [
-    { value: "50K+", label: "Students Helped", iconName: "Users" },
-    { value: "8.5", label: "Average Band Score", iconName: "TrendingUp" },
-    { value: "95%", label: "Success Rate", iconName: "Award" },
-    { value: "24/7", label: "Expert Support", iconName: "CheckCircle" },
-  ],
+  title: "Shop online with NexaMart",
+  buttonText: "Browse products",
+  stats: [],
 };
 
 export interface Section26Payload extends Section26Data {

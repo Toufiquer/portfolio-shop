@@ -23,9 +23,9 @@ export type TopBannerThreeData = {
 export const defaultData: TopBannerThreeData = {
   variant: "topbanner-3",
   isVisible: true,
-  text: "Buy All - Lifetime Access - ৳9950 Only",
-  ctaLabel: "Get Offer",
-  ctaUrl: "/pricing",
+  text: "NexaMart (NxMart) · Online shopping across Bangladesh",
+  ctaLabel: "Browse products",
+  ctaUrl: "/products",
   buttonVisible: true,
   background: "#2563eb",
   foreground: "#fde047",

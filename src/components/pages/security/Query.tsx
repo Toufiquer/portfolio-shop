@@ -40,6 +40,7 @@ const parseData = (data?: ISecurityData | SecurityPayload | string): SecurityPay
 const SecurityQuery = ({ data }: SecurityProps) => {
   const pageData = parseData(data);
   const [openSection, setOpenSection] = useState<string | null>(null);
+  if (pageData.sections.length === 0) return null;
   return (
     <main
       className="bg-white text-stone-800"

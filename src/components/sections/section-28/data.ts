@@ -31,34 +31,9 @@ export interface Section28Props {
 
 export const defaultDataSection28: Section28Data = {
   id: "section-uid-28",
-  title: "Why Choose Our Classes?",
-  subtitle: "Experience the difference with our proven teaching methodology",
-  features: [
-    {
-      title: "Small Batches",
-      description: "Maximum 12 students per batch for personalized attention",
-      iconName: "Users",
-      gradient: "from-blue-500 to-blue-600",
-    },
-    {
-      title: "Expert Teachers",
-      description: "IELTS certified instructors with 8+ band scores",
-      iconName: "Award",
-      gradient: "from-green-500 to-green-600",
-    },
-    {
-      title: "Free Materials",
-      description: "All course materials and books included at no extra cost",
-      iconName: "BookOpen",
-      gradient: "from-purple-500 to-purple-600",
-    },
-    {
-      title: "Mock Tests",
-      description: "Regular practice tests with detailed feedback",
-      iconName: "Star",
-      gradient: "from-red-500 to-red-600",
-    },
-  ],
+  title: "Explore NexaMart",
+  subtitle: "Online shopping across Bangladesh.",
+  features: [],
 };
 
 export const defaultLayout = {

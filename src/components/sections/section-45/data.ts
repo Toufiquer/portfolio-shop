@@ -37,23 +37,11 @@ export interface Section45Props {
 
 export const defaultDataSection45: Section45Data = {
   id: "section-uid-45",
-  title: "Essential Documents for United Kingdom Student Visa",
-  introduction:
-    "To help avoid processing delays, make sure every supporting document is accurate, current, and complete. The typical checklist for Bangladeshi students includes:",
-  documents: [
-    { id: "document-passport", text: "Valid Passport (with at least 6 months validity from date of travel)" },
-    { id: "document-acceptance", text: "Confirmation of Acceptance for Studies (CAS) from your UK institution" },
-    {
-      id: "document-finance",
-      text: "Proof of Financial Support for living costs and any required tuition fees",
-    },
-    { id: "document-academic", text: "Educational Certificates & Transcripts (SSC, HSC, Bachelor marksheet)" },
-    { id: "document-language", text: "English Proficiency Evidence required by your programme" },
-    { id: "document-sop", text: "Statement of Purpose (SOP) detailing academic and career plans" },
-    { id: "document-insurance", text: "Tuberculosis Test Certificate or other health evidence, where required" },
-  ],
-  imageUrl: "/images/all-pages-placeholder.png",
-  imageAlt: "Study destination placeholder image",
+  title: "Product details",
+  introduction: "See each product listing for its available details.",
+  documents: [],
+  imageUrl: "/Logo.png",
+  imageAlt: "NexaMart logo",
   backgroundColor: "#f8f9fb",
   headingColor: "#24349a",
   textColor: "#202641",

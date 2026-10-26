@@ -8,6 +8,7 @@
 
 "use client";
 
+import Link from "next/link";
 import React from "react";
 
 import { iconMap } from "@/components/all-icons/all-icons-jsx";
@@ -96,12 +97,15 @@ const QuerySection30 = ({ data }: Section30Props) => {
             })}
 
             <div className="pt-8">
-              <button className="bg-red-500 hover:bg-red-600 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:shadow-red-500/40 transition-all duration-300 transform hover:scale-105 flex items-center gap-3 mx-auto lg:mx-0">
+              <Link
+                href="/products"
+                className="bg-red-500 hover:bg-red-600 text-white font-bold py-4 px-8 rounded-full shadow-lg hover:shadow-red-500/40 transition-all duration-300 transform hover:scale-105 flex items-center gap-3 mx-auto lg:mx-0"
+              >
                 <div className="bg-white/20 p-1.5 rounded-full">
                   <Phone className="w-5 h-5" />
                 </div>
                 {sectionData.ctaText}
-              </button>
+              </Link>
             </div>
           </div>
 
@@ -137,16 +141,16 @@ const QuerySection30 = ({ data }: Section30Props) => {
 
                   <div className="relative inline-block z-10">
                     <div className="w-24 h-24 rounded-full bg-gradient-to-b from-orange-400 to-red-500 flex items-center justify-center shadow-xl border-4 border-white mb-4 mx-auto relative">
-                      <span className="text-4xl" role="img" aria-label="Student">
-                        👨‍🎓
+                      <span className="text-4xl" role="img" aria-label="Shopping bag">
+                        🛍️
                       </span>
                       <div className="absolute -top-2 -right-4 bg-orange-500 rounded-full p-2 shadow-md transform rotate-12 animate-pulse">
-                        <Plane className="w-5 h-5 text-white" />
+                        <BookOpen className="w-5 h-5 text-white" />
                       </div>
                     </div>
 
                     <div className="bg-amber-800 text-white rounded-sm px-3 py-2 shadow-lg transform -rotate-6 inline-block hover:rotate-0 transition-transform cursor-pointer border-2 border-amber-900/20">
-                      <div className="text-[10px] font-bold opacity-70 mb-0.5">PASSPORT</div>
+                      <div className="text-[10px] font-bold opacity-70 mb-0.5">NEXAMART</div>
                       <Globe className="w-6 h-6 mx-auto" />
                     </div>
                   </div>

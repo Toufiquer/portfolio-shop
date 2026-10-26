@@ -38,37 +38,11 @@ export interface Section43Props {
 
 export const defaultDataSection43: Section43Data = {
   id: "section-uid-43",
-  title: "Why Choose the United Kingdom for Higher Education?",
-  introduction:
-    "The United Kingdom is a leading global study destination, combining high academic standards, forward-looking research, and an inclusive student experience.",
-  benefits: [
-    {
-      id: "benefit-universities",
-      title: "World-Class Universities:",
-      description:
-        "The UK is home to respected universities offering internationally recognised degrees with a strong focus on research, innovation, and practical skills.",
-    },
-    {
-      id: "benefit-research",
-      title: "Quality Education & Research:",
-      description:
-        "Interactive learning, modern labs, and close links with industry prepare graduates for an international job market.",
-    },
-    {
-      id: "benefit-community",
-      title: "Safe & Welcoming Environment:",
-      description:
-        "Safe student cities, a high quality of life, and welcoming support services help Bangladeshi students settle with confidence.",
-    },
-    {
-      id: "benefit-work",
-      title: "Part-time Work Opportunities:",
-      description:
-        "Eligible students can balance their studies with practical work experience, subject to their residence-permit conditions.",
-    },
-  ],
-  imageUrl: "/images/all-pages-placeholder.png",
-  imageAlt: "Study destination placeholder image",
+  title: "Browse products",
+  introduction: "Explore the products currently available on NexaMart.",
+  benefits: [],
+  imageUrl: "/Logo.png",
+  imageAlt: "NexaMart logo",
   backgroundColor: "#f8f9fb",
   headingColor: "#24349a",
   textColor: "#202641",

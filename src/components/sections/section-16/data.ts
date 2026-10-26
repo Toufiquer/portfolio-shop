@@ -38,8 +38,8 @@ export const defaultLayout = { paddingX: 0, paddingY: 0 };
 export const defaultDataSection16: Section16Data = {
   id: "section-uid-16",
   sectionUid: "section-uid-16",
-  buttonName: "View Guidelines",
+  buttonName: "Browse products",
   buttonIcon: "doc-icon",
-  buttonPath: "/guidelines/student-guidenes",
-  isNewTab: true,
+  buttonPath: "/products",
+  isNewTab: false,
 };

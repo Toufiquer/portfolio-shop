@@ -36,15 +36,16 @@ const geistMono = Geist_Mono({
 export async function generateMetadata(): Promise<Metadata> {
   const setting = await getSeoSettings({ type: "layout" });
   const title = setting?.title || "NexaMart";
-  const description = setting?.description || "NexaMart progressive web application";
+  const description =
+    setting?.description || "NexaMart is an online shopping platform serving customers across Bangladesh.";
   const images = setting?.socialImage ? [setting.socialImage] : undefined;
   return {
     metadataBase: getCanonicalAppUrl(),
     title,
     description,
-    applicationName: "NexaMart",
+    applicationName: "NxMart",
     icons: { icon: "/Logo.png" },
-    appleWebApp: { capable: true, statusBarStyle: "default", title: "NexaMart" },
+    appleWebApp: { capable: true, statusBarStyle: "default", title: "NxMart" },
     formatDetection: { telephone: false },
     openGraph: {
       title,

@@ -52,6 +52,8 @@ const QueryPage7 = ({ data }: Page7Props) => {
     };
   }, [sections]);
 
+  if (sections.length === 0) return null;
+
   const selectSection = (index: number) => {
     setActiveSection(index);
     document.getElementById(`refund-${index + 1}`)?.scrollIntoView({ behavior: "smooth", block: "start" });

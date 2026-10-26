@@ -8,7 +8,7 @@
 
 /*
 |-----------------------------------------
-| Study Abroad experience hero data for Section 37
+| Bilingual shopping hero data for Section 37
 |-----------------------------------------
 */
 
@@ -45,17 +45,17 @@ export interface Section37Props {
 
 export const defaultDataSection37: Section37Data = {
   id: "section-uid-37",
-  titleLineOne: "১৬ বছরের অভিজ্ঞতায়",
-  titleEnglish: "STUDY ABROAD",
-  titleEnglishSuffix: "START",
-  titleHighlight: "YOUR STORY.",
-  descriptionLead: "স্বপ্ন আপনার,",
-  descriptionAccent: "16 YEARS OF TRUST",
-  descriptionTail: "সঠিক পথ দেখানোর দায়িত্ব আমাদের।",
-  primaryButtonText: "ফ্রি কাউন্সেলিং",
-  primaryButtonLink: "/application",
-  secondaryButtonText: "Apply Now",
-  secondaryButtonLink: "/application",
+  titleLineOne: "NexaMart · NxMart",
+  titleEnglish: "ONLINE",
+  titleEnglishSuffix: "SHOPPING",
+  titleHighlight: "ACROSS BANGLADESH.",
+  descriptionLead: "Browse",
+  descriptionAccent: "AVAILABLE PRODUCTS",
+  descriptionTail: "and shop online with NexaMart.",
+  primaryButtonText: "Browse products",
+  primaryButtonLink: "/products",
+  secondaryButtonText: "Contact us",
+  secondaryButtonLink: "/contact-us",
   backgroundColor: "#fafaf9",
   gridColor: "#e5e7eb",
   headingColor: "#111827",

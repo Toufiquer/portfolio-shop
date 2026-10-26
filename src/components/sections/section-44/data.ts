@@ -38,36 +38,11 @@ export interface Section44Props {
 
 export const defaultDataSection44: Section44Data = {
   id: "section-uid-44",
-  title: "United Kingdom Student Visa Requirements",
-  introduction:
-    "Bangladeshi students normally apply for a UK Student visa after receiving a Confirmation of Acceptance for Studies (CAS) from a licensed student sponsor. Prepare your application carefully and provide clear, complete evidence for the key requirements below:",
-  requirements: [
-    {
-      id: "requirement-admission",
-      title: "Official Admission:",
-      description: "A valid offer and CAS from a licensed UK education provider.",
-    },
-    {
-      id: "requirement-finance",
-      title: "Proof of Financial Support:",
-      description:
-        "Evidence that you can support your living costs and pay any required tuition fees for your period of study.",
-    },
-    {
-      id: "requirement-language",
-      title: "Language Proficiency:",
-      description:
-        "Meet the English-language requirement for your chosen programme, using accepted test results where required.",
-    },
-    {
-      id: "requirement-records",
-      title: "Clear Records & Medicals:",
-      description:
-        "Provide a valid passport and a tuberculosis test certificate or other evidence where required for your application.",
-    },
-  ],
-  imageUrl: "/images/all-pages-placeholder.png",
-  imageAlt: "Study destination placeholder image",
+  title: "Product information",
+  introduction: "Review the information shown with each product before placing an order.",
+  requirements: [],
+  imageUrl: "/Logo.png",
+  imageAlt: "NexaMart logo",
   backgroundColor: "#f8f9fb",
   headingColor: "#24349a",
   textColor: "#202641",

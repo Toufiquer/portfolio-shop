@@ -11,8 +11,8 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "NexaMart",
-    short_name: "NexaMart",
-    description: "NexaMart progressive web application",
+    short_name: "NxMart",
+    description: "Online shopping across Bangladesh.",
     start_url: "/",
     display: "standalone",
     background_color: "#fafafa",

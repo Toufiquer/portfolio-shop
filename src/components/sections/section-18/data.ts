@@ -45,28 +45,11 @@ export const defaultDataSection18: Section18Data = {
   slides: [
     {
       id: "1",
-      image: "/images/section-18/ecommerce-collection-hero.png",
-      title: "New season, beautifully curated.",
-      description:
-        "Discover everyday essentials and statement pieces chosen to make your next favourite find feel special.",
-      buttonText: "Shop the collection",
-      buttonLink: "/shop",
-    },
-    {
-      id: "2",
-      image: "/images/section-18/ecommerce-fashion-collection.png",
-      title: "Your style, your everyday.",
-      description: "Thoughtful pieces, effortless comfort, and fresh arrivals made for the moments that matter.",
-      buttonText: "Explore new arrivals",
-      buttonLink: "/shop?sort=newest",
-    },
-    {
-      id: "3",
-      image: "/images/section-18/ecommerce-gifting-collection.png",
-      title: "Little luxuries, delivered.",
-      description: "From gifts worth keeping to essentials worth reordering, find more to love in every detail.",
-      buttonText: "Find your favourites",
-      buttonLink: "/shop",
+      image: "/Logo.png",
+      title: "NexaMart",
+      description: "Online shopping across Bangladesh.",
+      buttonText: "Browse products",
+      buttonLink: "/products",
     },
   ],
   autoplaySpeed: 5000,

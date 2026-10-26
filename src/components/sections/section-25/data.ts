@@ -24,29 +24,7 @@ export interface Section25Props {
 
 export const defaultDataSection25: Section25Data = {
   id: "section-uid-25",
-  cards: [
-    {
-      title: "Authentic Practice Tests",
-      description:
-        "Experience real IELTS exam conditions with our carefully crafted mock tests that mirror the actual exam format and difficulty level.",
-      iconName: "FileText",
-      gradient: "from-blue-500 to-blue-600",
-    },
-    {
-      title: "Instant Score Analysis",
-      description:
-        "Get immediate feedback with detailed band score breakdown and performance analytics to track your progress effectively.",
-      iconName: "Target",
-      gradient: "from-green-500 to-green-600",
-    },
-    {
-      title: "Expert Explanations",
-      description:
-        "Learn from comprehensive explanations for every question, written by IELTS experts to help you understand concepts deeply.",
-      iconName: "BookOpen",
-      gradient: "from-purple-500 to-purple-600",
-    },
-  ],
+  cards: [],
 };
 
 export interface Section25Payload extends Section25Data {

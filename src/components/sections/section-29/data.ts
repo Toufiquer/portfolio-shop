@@ -27,12 +27,12 @@ export interface Section29Props {
 
 export const defaultDataSection29: Section29Data = {
   id: "section-uid-29",
-  title: "Ready to Start Your IELTS Journey?",
-  subtitle: "Join thousands of successful students who achieved their target band scores",
-  buttonPrimaryText: "Book Free Consultation",
-  buttonSecondaryText: "Watch Class Demo",
-  contactLabel: "Call us now for immediate enrollment",
-  contactNumber: "📞 +880 1XXX-XXXXXX",
+  title: "Questions about shopping with NexaMart?",
+  subtitle: "Contact NexaMart by phone or WhatsApp.",
+  buttonPrimaryText: "Browse products",
+  buttonSecondaryText: "Contact us",
+  contactLabel: "Call NexaMart",
+  contactNumber: "01711111111",
 };
 
 export const defaultLayout = {

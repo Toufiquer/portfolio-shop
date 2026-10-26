@@ -46,16 +46,7 @@ export const defaultDataSection36: Section36Data = {
   iconHoverBackgroundColor: "#2563eb",
   showNavigationButtons: true,
   loop: true,
-  categories: [
-    { id: 1, name: "Grocery", icon: "shopping-basket" },
-    { id: 2, name: "Agriculture", icon: "wheat" },
-    { id: 3, name: "Beauty", icon: "sparkles" },
-    { id: 4, name: "Digital Product", icon: "laptop" },
-    { id: 5, name: "Electronics", icon: "plug" },
-    { id: 6, name: "Health", icon: "heart" },
-    { id: 7, name: "Fashion", icon: "shopping-basket" },
-    { id: 8, name: "Home", icon: "wheat" },
-  ],
+  categories: [],
 };
 
 export const defaultData = defaultDataSection36;

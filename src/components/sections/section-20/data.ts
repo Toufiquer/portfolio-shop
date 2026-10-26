@@ -42,18 +42,7 @@ export interface Section20Data {
 export const defaultDataSection20: Section20Data = {
   id: "section-uid-20",
   sectionUid: "section-uid-20",
-  logos: [
-    { id: "1", image: "https://upload.wikimedia.org/wikipedia/commons/2/2f/Google_2015_logo.svg", alt: "Google" },
-    {
-      id: "2",
-      image: "https://upload.wikimedia.org/wikipedia/commons/5/51/Facebook_f_logo_%282019%29.svg",
-      alt: "Facebook",
-    },
-    { id: "3", image: "https://upload.wikimedia.org/wikipedia/commons/6/6f/Logo_of_Twitter.svg", alt: "Twitter" },
-    { id: "4", image: "https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg", alt: "Instagram" },
-    { id: "5", image: "https://upload.wikimedia.org/wikipedia/commons/0/08/Netflix_2015_logo.svg", alt: "Netflix" },
-    { id: "6", image: "https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg", alt: "Amazon" },
-  ],
+  logos: [],
   responsive: {
     mobile: 2,
     tablet: 3,

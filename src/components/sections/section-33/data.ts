@@ -46,23 +46,13 @@ export const defaultDataSection33: Section33Data = {
   id: "section-uid-33",
   pageUid: "section-uid-33",
   pageName: "Section 33",
-  badgeText: "🇧🇩 Made for Bangladeshi Creators",
+  badgeText: "NexaMart · NxMart",
   showEyebrow: true,
-  titleLine1: "Premium WordPress",
-  titleLine2: "Templates & Plugins",
-  subtitle: "One-click import. Elementor ready. Build stunning websites without writing a single line of code.",
-  stats: [
-    { id: 1, value: "500+", label: "Templates" },
-    { id: 2, value: "50+", label: "Plugins" },
-    { id: 3, value: "10K+", label: "Happy Customers" },
-    { id: 4, value: "99.9%", label: "Uptime" },
-  ],
-  features: [
-    { id: 1, icon: "ti-world", label: "Free Domain" },
-    { id: 2, icon: "ti-shield-check", label: "Free SSL" },
-    { id: 3, icon: "ti-bolt", label: "LiteSpeed" },
-    { id: 4, icon: "ti-server", label: "99.9% Uptime" },
-  ],
+  titleLine1: "Online shopping",
+  titleLine2: "across Bangladesh",
+  subtitle: "Browse available products on NexaMart.",
+  stats: [],
+  features: [],
 };
 
 export const defaultData = defaultDataSection33;
