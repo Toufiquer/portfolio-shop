@@ -227,7 +227,7 @@ export const pageIndex: Record<AllPageKind, Definition> = {
   "about-the-country": {
     defaultData: aboutTheCountry as unknown as AllPageData,
     title: "Home Page Layout",
-    description: "Reusable landing-page layout with NexaMart defaults",
+    description: "Reusable landing-page layout with defaults data",
     Mutation: ({ data, onChange }) => (
       <AboutTheCountryMutation
         data={data as unknown as typeof aboutTheCountry}

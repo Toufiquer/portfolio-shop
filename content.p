@@ -1,5 +1,5 @@
-## 1. Company Information
-
+=================================================================================================================================================
+## Section 1. Company Information
 - Company name: NexaMart
 - Short name: NxMart
 - Business description: NexaMart is an online shopping platform in Bangladesh.
@@ -13,75 +13,139 @@
 - Additional information: Not provided
 
 ## Content Rules
-
 1. Treat Section 1 as the single source of truth for company branding, industry, services, contacts, and audience.
 2. Automatically rewrite all public website content to match the company information, even if the previous project belongs to a different industry.
 3. Update company names, descriptions, headings, images, alt text, navigation, CTAs, phone/WhatsApp links, social links, footer, and SEO metadata.
 4. Remove outdated branding, unrelated services, and legacy content. Preserve existing functionality and architecture.
-5. Do not invent products, prices, addresses, policies, partnerships, testimonials, team members, or business claims.
+5. Do not invent products, prices, and business claims.
 6. Adapt industry-specific pages and terminology. Keep irrelevant templates technically intact without publishing unrelated content.
 7. Update CMS defaults and review existing published CMS records, which may retain old content.
 8. Do not modify authentication, database schemas, dashboard functionality, or unrelated technical components.
 9. Preserve responsive design, Next.js conventions, TypeScript compatibility, and existing UI functionality.
 10. Section 1 is the only configurable section. Never require changes elsewhere in this prompt.
 
-## 2. Pages and Components List to Update
-
-### Site-wide
+## Section 2. Pages and Components List to Update
+- `src/app/action.ts`
+- `src/app/layout.tsx`
+- `src/app/loading.tsx`
 - `src/app/manifest.ts`
+- `src/app/page.tsx`
 - `src/app/robots.ts`
 - `src/app/sitemap.ts`
-- `src/app/layout.tsx`
-- `src/app/page.tsx`
 - `src/app/[...pagePath]/page.tsx`
 - `src/components/whatsapp/WhatsAppButton.tsx`
+=================================================================================================================================================
+Do the same task for,
+- `src/components/topbanner/topbanner-1/data.ts`
+- `src/components/topbanner/topbanner-2/data.ts`
+- `src/components/topbanner/topbanner-3/data.ts`
 
-### Top Banners, Menus & Footers
-- `src/components/topbanner/topbanner-1/` through `topbanner-3/`
-- `src/components/menu/menu-1/` through `menu-3/`
-- `src/components/footer/footer-1/` through `footer-3/`
+- `src/components/menu/menu-1/data.ts`
+- `src/components/menu/menu-2/data.ts`
+- `src/components/menu/menu-3/data.ts`
 
-### Forms & Containers
-- `src/components/form/form-1/` through `form-3/`
-- `src/components/container/container-1/` through `container-2/`
+- `src/components/footer/footer-1/data.ts`
+- `src/components/footer/footer-2/data.ts`
+- `src/components/footer/footer-3/data.ts`
 
-### All 48 Section Variants
-- `src/components/sections/section-1/` through `section-48/`
+=================================================================================================================================================
+Do the same task for,
+- `src/components/form/form-1/data.ts`
+- `src/components/form/form-2/data.ts`
+- `src/components/form/form-3/data.ts`
 
-Review every variant, including unused ones, for outdated content, contact details, links, images, and CTAs.
+- `src/components/container/container-1/data.ts`
+- `src/components/container/container-1/cart.ts`
+- `src/components/container/container-3/data.ts`
+- `src/components/container/container-2/cart.ts`
 
-### Page Templates
-Review all directories under `src/components/pages/`, including:
+=================================================================================================================================================
+Do the same task for,
+- `src/components/sections/section-1/data.ts`
+- `src/components/sections/section-2/data.ts`
+- `src/components/sections/section-3/data.ts`
+- `src/components/sections/section-4/data.ts`
+- `src/components/sections/section-5/data.ts`
+- `src/components/sections/section-6/data.ts`
+- `src/components/sections/section-7/data.ts`
+- `src/components/sections/section-8/data.ts`
+- `src/components/sections/section-9/data.ts`
+- `src/components/sections/section-10/data.ts`
+- `src/components/sections/section-11/data.ts`
+- `src/components/sections/section-12/data.ts`
 
-- `home/`, `about-us/`, `company-story/`, `about-the-country/`, `contact-us/`
-- `program-pages/data.ts`
-- `country-directory/`, `visa-requirements/`, `visa-services/`, `visa-service-catalogue/`, `visa-consultancy/`, `visa-application-support/`, `visa-insights/`
-- `frequently-ask-questions/`, `whatsapp-faq/`
-- `leadership-team/`, `team-member/`
-- `privacy-policy/`, `refund-policy/`, `cookie-policy/`, `security/`, `delivery-policy/`, `site-terms-and-conditions/`, `terms-and-condition/`
+=================================================================================================================================================
+Do the same task for,
+- `src/components/sections/section-13/data.ts`
+- `src/components/sections/section-14/data.ts`
+- `src/components/sections/section-15/data.ts`
+- `src/components/sections/section-16/data.ts`
+- `src/components/sections/section-17/data.ts`
+- `src/components/sections/section-18/data.ts`
+- `src/components/sections/section-19/data.ts`
+- `src/components/sections/section-20/data.ts`
+- `src/components/sections/section-21/data.ts`
+- `src/components/sections/section-22/data.ts`
+- `src/components/sections/section-23/data.ts`
+- `src/components/sections/section-24/data.ts`
 
-Adapt public content to Section 1. Do not assume the company offers services suggested by existing template names.
+=================================================================================================================================================
+Do the same task for,
+- `src/components/sections/section-25/data.ts`
+- `src/components/sections/section-26/data.ts`
+- `src/components/sections/section-27/data.ts`
+- `src/components/sections/section-28/data.ts`
+- `src/components/sections/section-29/data.ts`
+- `src/components/sections/section-30/data.ts`
+- `src/components/sections/section-31/data.ts`
+- `src/components/sections/section-32/data.ts`
+- `src/components/sections/section-33/data.ts`
+- `src/components/sections/section-34/data.ts`
+- `src/components/sections/section-35/data.ts`
+- `src/components/sections/section-36/data.ts`
 
-### CMS & Default Data
-- `src/components/pages/PageIndex.tsx`
-- `src/components/pages/PageBlocks.tsx`
-- `src/redux/features/dashboard/pages/pagesSlice.ts`
-- `src/lib/defaults/import-data.ts`
+=================================================================================================================================================
+Do the same task for,
+- `src/components/sections/section-37/data.ts`
+- `src/components/sections/section-38/data.ts`
+- `src/components/sections/section-39/data.ts`
+- `src/components/sections/section-40/data.ts`
+- `src/components/sections/section-41/data.ts`
+- `src/components/sections/section-42/data.ts`
+- `src/components/sections/section-43/data.ts`
+- `src/components/sections/section-44/data.ts`
+- `src/components/sections/section-45/data.ts`
+- `src/components/sections/section-46/data.ts`
+- `src/components/sections/section-47/data.ts`
+- `src/components/sections/section-48/data.ts`
 
-Update relevant defaults and registrations while preserving CMS functionality. Review saved published pages for outdated content.
+=================================================================================================================================================
+Do the same task for,
+- `src/components/pages/about-the-country/data.ts`
+- `src/components/pages/about-us/data.ts`
+- `src/components/pages/company-story/data.ts`
+- `src/components/pages/contact-us/data.ts`
+- `src/components/pages/cookie-policy/data.ts`
+- `src/components/pages/country-directory/data.ts`
+- `src/components/pages/delivery-policy/data.ts`
+- `src/components/pages/details-page/data.ts`
+- `src/components/pages/frequently-ask-questions/data.ts`
+- `src/components/pages/home/data.ts`
+- `src/components/pages/leadership-team/data.ts`
+- `src/components/pages/privacy-policy/data.ts`
+- `src/components/pages/refund-policy/data.ts'
 
-### Additional Files
-Search the entire project for old branding, contact information, social links, industry-specific content, metadata, logos, and hardcoded public text. Update additional relevant files as necessary.
-
-## 3. Execution Instructions
-
-1. Analyze: Read Section 1 and inspect the complete project.
-2. Update: Modify all relevant public components, page templates, CMS defaults, branding, content, images, links, and SEO.
-3. Adapt: Rewrite content for the new business industry without inventing unconfirmed information.
-4. Preserve: Keep existing functionality, reusable architecture, responsive design, and technical integrations intact.
-5. Verify: Search for outdated branding; run available TypeScript, lint, test, and build checks.
-6. Report: Summarize modified files, completed changes, validation results, and any unresolved issues.
-
-Mandatory: Implement changes directly in the project, not just provide suggestions. Do not stop after updating the homepage. Review all 48 sections, component variants, and public page templates. Do not alter unrelated technical functionality.
-
-FINAL RULE: Only Section 1 may change between businesses. All other sections must remain reusable without editing.
+=================================================================================================================================================
+Do the same task for,
+- `src/components/pages/security/data.ts'
+- `src/components/pages/shared/data.ts'
+- `src/components/pages/site-terms-and-conditions/data.ts'
+- `src/components/pages/team-member/data.ts'
+- `src/components/pages/terms-and-condition/data.ts'
+- `src/components/pages/visa-application-support/data.ts'
+- `src/components/pages/visa-consultancy/data.ts'
+- `src/components/pages/visa-insights/data.ts'
+- `src/components/pages/visa-requirements/data.ts'
+- `src/components/pages/visa-service-catalogue/data.ts'
+- `src/components/pages/visa-services/data.ts'
+- `src/components/pages/whatsapp-faq/data.ts'

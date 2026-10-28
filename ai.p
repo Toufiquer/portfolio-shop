@@ -1,86 +1,59 @@
-# Please Follow the Unified Design Standards & Project Requirements
 
+### Site-wide
+- `src/app/manifest.ts`
+- `src/app/robots.ts`
+- `src/app/sitemap.ts`
+- `src/app/layout.tsx`
+- `src/app/page.tsx`
+- `src/app/[...pagePath]/page.tsx`
+- `src/components/whatsapp/WhatsAppButton.tsx`
 
-## UI Standards
+### Top Banners, Menus & Footers
+- `src/components/topbanner/topbanner-1/` through `topbanner-3/`
+- `src/components/menu/menu-1/` through `menu-3/`
+- `src/components/footer/footer-1/` through `footer-3/`
+### Forms & Containers
+- `src/components/form/form-1/` through `form-3/`
+- `src/components/container/container-1/` through `container-2/`
 
-- Use Shadcn UI, creamy-white/white backgrounds, `max-w-7xl`, rounded-sm borders, responsive layouts, and minimal/no custom padding or margins.
-- Use `border-[#eadfca]` for borders.
-- All section root borders must use:
+### All 48 Section Variants
+- `src/components/sections/section-1/` through `section-48/`
 
-```css
-.custom-parent-border {
-  border-block: 1px solid #eadfca;
-  border-inline: 1px solid #eadfca;
-}
-```
+Review every variant, including unused ones, for outdated content, contact details, links, images, and CTAs.
 
-- Add `custom-parent-border` to the root of `Query.tsx` and `Mutation.tsx`.
-- Remove only root-level direct `border-x`/`border-y` classes. Preserve internal borders.
-- Buttons must use Shadcn `size="sm"`, `cursor-pointer`, 0.7s transitions, and non-black colors:
-  - Amber: normal actions
-  - Light green: submit/save
-  - Light red: destructive actions
+### Page Templates
+Review all directories under `src/components/pages/`, including:
 
-## Data, API, and State
+- `home/`, `about-us/`, `company-story/`, `about-the-country/`, `contact-us/`
+- `program-pages/data.ts`
+- `country-directory/`, `visa-requirements/`, `visa-services/`, `visa-service-catalogue/`, `visa-consultancy/`, `visa-application-support/`, `visa-insights/`
+- `frequently-ask-questions/`, `whatsapp-faq/`
+- `leadership-team/`, `team-member/`
+- `privacy-policy/`, `refund-policy/`, `cookie-policy/`, `security/`, `delivery-policy/`, `site-terms-and-conditions/`, `terms-and-condition/`
+======================================================================================
 
-- Use Redux/RTK Query for dashboard fetching, caching, and mutations.
-- Secure and rate-limit every API.
-- Reuse existing APIs, schemas, company resolver, icon registry, UI components, and editor patterns.
-- Do not create duplicate APIs, schemas, or company settings.
-- Use `global.ts` for company defaults: name, email, phone, WhatsApp, logo, description, address, bio, and social links.
-- Company data priority:
+Adapt public content to Section 1. Do not assume the company offers services suggested by existing template names.
 
-```text
-Dashboard company data → global.ts defaults → section-54 data.ts fallback
-```
+### CMS & Default Data
+- `src/components/pages/PageIndex.tsx`
+- `src/components/pages/PageBlocks.tsx`
+- `src/redux/features/dashboard/pages/pagesSlice.ts`
+- `src/lib/defaults/import-data.ts`
 
-- Keep section-specific content independent from company information.
-- Do not hardcode company-specific data inside `section-54`.
+Update relevant defaults and registrations while preserving CMS functionality. Review saved published pages for outdated content.
 
-## Loading, Feedback, and Dialogs
+### Additional Files
+Search the entire project for old branding, contact information, social links, industry-specific content, metadata, logos, and hardcoded public text. Update additional relevant files as necessary.
 
-- Show success/error toasts for updates, deletes, and relevant actions.
-- Include loading and disabled states.
-- Use Skeleton loaders while loading.
-- Use `AlertDialog` + `ScrollArea` for delete confirmation.
-- Use `Dialog` + `ScrollArea` for view/edit/icon/media pickers.
-- Refresh buttons require a 60-second cooldown countdown.
+## 3. Execution Instructions
 
-## Media, Icons, and Navigation
+1. Analyze: Read Section 1 and inspect the complete project.
+2. Update: Modify all relevant public components, page templates, CMS defaults, branding, content, images, links, and SEO.
+3. Adapt: Rewrite content for the new business industry without inventing unconfirmed information.
+4. Preserve: Keep existing functionality, reusable architecture, responsive design, and technical integrations intact.
+5. Verify: Search for outdated branding; run available TypeScript, lint, test, and build checks.
+6. Report: Summarize modified files, completed changes, validation results, and any unresolved issues.
 
-- Use icons only from `src/components/all-icons`.
-- Use the existing media-library picker with search, type filters, Upload, and `ScrollArea`.
-- Use `next/image` with `alt`, `width`, and `height`; use `unoptimized` for dashboard, user, or external URLs.
-- Use `next/link` for internal navigation.
-- Use `<a>` only for external, mailto, tel, hash, download, or new-tab links.
+Mandatory: Implement changes directly in the project, not just provide suggestions. Do not stop after updating the homepage. Review all 48 sections, component variants, and public page templates. Do not alter unrelated technical functionality.
 
-## Lists and Text
-
-- Lists with more than 10 items must include working pagination and an items-per-page Select: `10`, `25`, `50`, `100`.
-- Truncate long text with `...`; show the full value through a tooltip or View modal.
-- Ensure all pages and dialogs work on mobile, tablet, and desktop.
-- Keep the implementation type-safe and safe when data is missing.
-
-============================================================================================================================
-============================================================================================================================
-============================================================================================================================
-Only create the plan; do not execute any task.
-
-Review the work involving folders and prepare a short, step-by-step plan in Bangla. Ensure the plan covers checking every folder, updating files where necessary, and verifying that everything works.
-
-For each step, provide:
-1. The task in Bangla
-2. A ready-to-use English prompt for that step
-
-I will execute each step later, one by one.
-
-Here is the problem That I want to solve:
-I want to only Update Mutation.tsx with the following instructions. 
-1. Create a global Image picker form modal and it will load full media and reuse it in all Mutation if needed with same design. also there is a button 'Edit' and it will open the modal and I can edit the select image. 
-2. If there is any layout is need to change for Good Looking Editor UI than change it. 
----------------------------------------------------------
-Now pleas generate step by step of  prompt. and at the top please add a line 'Please do the following task one after another. and after completing one then do the next one.
-
-============================================================================================================================
-============================================================================================================================
-============================================================================================================================
+FINAL RULE: Only Section 1 may change between businesses. All other sections must remain reusable without editing.
