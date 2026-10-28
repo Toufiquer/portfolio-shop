@@ -1,7 +1,8 @@
 /*
 |-----------------------------------------
 | setting up Leads Excel rows share the normal create validation
-| @author: Codex
+| @author: Toufiquer Rahman<toufiquer.0@gmail.com>
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
 

@@ -1,7 +1,8 @@
 /*
 |-----------------------------------------
 | setting up Leads list, overview, and create endpoints
-| @author: Codex
+| @author: Toufiquer Rahman<toufiquer.0@gmail.com>
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
 
@@ -23,9 +24,9 @@ export async function GET(request: Request) {
         ? await leadOptions(actor, query)
         : query.get("councilorSummaries") === "true"
           ? await leadsCouncilorSummaries(actor)
-        : query.get("overview") === "true"
-          ? await leadsOverview(actor)
-          : await listLeads(actor, query),
+          : query.get("overview") === "true"
+            ? await leadsOverview(actor)
+            : await listLeads(actor, query),
     );
   });
 }

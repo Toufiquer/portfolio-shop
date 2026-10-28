@@ -1,7 +1,8 @@
 /*
 |-----------------------------------------
-| setting up Leads item mutations and atomic assignment
-| @author: Codex
+| setting up Leads for the apps
+| @author: Toufiquer Rahman<toufiquer.0@gmail.com>
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
 
