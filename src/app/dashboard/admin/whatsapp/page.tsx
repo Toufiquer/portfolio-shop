@@ -2,7 +2,7 @@
 |-----------------------------------------
 | setting up page.tsx for the App
 | @author: Toufiquer Rahman<toufiquer.0@gmail.com>
-| @copyright: Toufiquer, 14 August 2026
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
 
@@ -64,13 +64,18 @@ export default function WhatsAppPage() {
     return () => window.clearTimeout(task);
   }, [loadSettings]);
 
-  if (!settings)
-    return <LoadingState error={error} onRetry={loadSettings} />;
+  if (!settings) return <LoadingState error={error} onRetry={loadSettings} />;
 
   return <WhatsAppEditor initialSettings={settings} key={JSON.stringify(settings)} onRefresh={loadSettings} />;
 }
 
-function WhatsAppEditor({ initialSettings: savedSettings, onRefresh }: { initialSettings: WhatsAppSettings; onRefresh: () => Promise<void> }) {
+function WhatsAppEditor({
+  initialSettings: savedSettings,
+  onRefresh,
+}: {
+  initialSettings: WhatsAppSettings;
+  onRefresh: () => Promise<void>;
+}) {
   const [settings, setSettings] = useState<WhatsAppSettings>(savedSettings);
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; error?: boolean } | null>(null);
@@ -91,13 +96,19 @@ function WhatsAppEditor({ initialSettings: savedSettings, onRefresh }: { initial
         headers: { "content-type": "application/json" },
         body: JSON.stringify(settings),
       });
-      const result = (await response.json().catch(() => null)) as { settings?: WhatsAppSettings; error?: string } | null;
+      const result = (await response.json().catch(() => null)) as {
+        settings?: WhatsAppSettings;
+        error?: string;
+      } | null;
       if (!response.ok || !result?.settings) throw new Error(result?.error ?? "Could not update WhatsApp settings.");
       setSettings(result.settings);
       await onRefresh();
       setToast({ message: "WhatsApp settings updated." });
     } catch (error) {
-      setToast({ message: error instanceof Error ? error.message : "Could not update WhatsApp settings.", error: true });
+      setToast({
+        message: error instanceof Error ? error.message : "Could not update WhatsApp settings.",
+        error: true,
+      });
     } finally {
       setIsSaving(false);
     }
@@ -114,9 +125,15 @@ function WhatsAppEditor({ initialSettings: savedSettings, onRefresh }: { initial
         </div>
       )}
       {isSaving && (
-        <div className="fixed inset-0 z-[80] grid place-items-center bg-stone-950/15 p-4 backdrop-blur-[1px]" role="status">
+        <div
+          className="fixed inset-0 z-[80] grid place-items-center bg-stone-950/15 p-4 backdrop-blur-[1px]"
+          role="status"
+        >
           <div className="flex items-center gap-3 rounded-sm border border-[#eadfca] bg-white px-5 py-4 text-sm font-semibold text-stone-800 shadow-xl">
-            <span aria-hidden="true" className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-100 border-t-emerald-600" />
+            <span
+              aria-hidden="true"
+              className="h-5 w-5 animate-spin rounded-full border-2 border-emerald-100 border-t-emerald-600"
+            />
             Updating WhatsApp settings…
           </div>
         </div>
@@ -181,10 +198,16 @@ function WhatsAppEditor({ initialSettings: savedSettings, onRefresh }: { initial
               <Field label="Padding Y">
                 <select
                   className="input cursor-pointer"
-                  onChange={(event) => setSettings({ ...settings, paddingY: event.target.value as WhatsAppSettings["paddingY"] })}
+                  onChange={(event) =>
+                    setSettings({ ...settings, paddingY: event.target.value as WhatsAppSettings["paddingY"] })
+                  }
                   value={settings.paddingY}
                 >
-                  {paddingOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  {paddingOptions.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </Field>
             </div>
@@ -192,19 +215,31 @@ function WhatsAppEditor({ initialSettings: savedSettings, onRefresh }: { initial
               <Field label="Margin X">
                 <select
                   className="input cursor-pointer"
-                  onChange={(event) => setSettings({ ...settings, marginX: event.target.value as WhatsAppSettings["marginX"] })}
+                  onChange={(event) =>
+                    setSettings({ ...settings, marginX: event.target.value as WhatsAppSettings["marginX"] })
+                  }
                   value={settings.marginX}
                 >
-                  {paddingOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  {paddingOptions.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </Field>
               <Field label="Margin Y">
                 <select
                   className="input cursor-pointer"
-                  onChange={(event) => setSettings({ ...settings, marginY: event.target.value as WhatsAppSettings["marginY"] })}
+                  onChange={(event) =>
+                    setSettings({ ...settings, marginY: event.target.value as WhatsAppSettings["marginY"] })
+                  }
                   value={settings.marginY}
                 >
-                  {paddingOptions.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  {paddingOptions.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
                 </select>
               </Field>
             </div>
@@ -247,11 +282,20 @@ function LoadingState({ error, onRetry }: { error: string | null; onRetry: () =>
         {error ? (
           <>
             <p className="text-sm font-medium text-red-700 break-words">{error}</p>
-            <button className="mt-5 cursor-pointer rounded-sm bg-stone-900 px-3 py-1.5 text-sm font-semibold text-white transition duration-700 hover:bg-emerald-700" onClick={() => void onRetry()} type="button">Try again</button>
+            <button
+              className="mt-5 cursor-pointer rounded-sm bg-stone-900 px-3 py-1.5 text-sm font-semibold text-white transition duration-700 hover:bg-emerald-700"
+              onClick={() => void onRetry()}
+              type="button"
+            >
+              Try again
+            </button>
           </>
         ) : (
           <>
-            <span aria-hidden="true" className="mx-auto block h-12 w-12 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-600" />
+            <span
+              aria-hidden="true"
+              className="mx-auto block h-12 w-12 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-600"
+            />
             <p className="mt-4 text-sm font-semibold text-stone-800">Loading WhatsApp settings…</p>
           </>
         )}
@@ -268,12 +312,50 @@ function Field({ children, label }: { children: React.ReactNode; label: string }
     </label>
   );
 }
-function VisibilityToggle({ checked, label, onChange }: { checked: boolean; label: string; onChange: (value: boolean) => void }) {
-  return <div className={`flex items-center justify-between rounded-sm border px-4 py-3 transition duration-700 ${checked ? "border-emerald-200 bg-emerald-50/60" : "border-[#eadfca] bg-[#fffaf0]"}`}><span className="text-sm font-medium text-stone-700">{label}</span><button aria-checked={checked} aria-label={`Toggle ${label}`} className={`group relative h-8 w-14 cursor-pointer rounded-full border p-1 shadow-inner transition duration-700 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 ${checked ? "border-emerald-500 bg-emerald-500 shadow-emerald-200" : "border-stone-300 bg-stone-300"}`} onClick={() => onChange(!checked)} role="switch" type="button"><span className={`grid h-6 w-6 place-items-center rounded-full bg-white text-[10px] font-bold shadow-md transition duration-700 ${checked ? "translate-x-6 text-emerald-600" : "translate-x-0 text-stone-400"}`}>{checked ? "✓" : "×"}</span></button></div>;
+function VisibilityToggle({
+  checked,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  label: string;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-between rounded-sm border px-4 py-3 transition duration-700 ${checked ? "border-emerald-200 bg-emerald-50/60" : "border-[#eadfca] bg-[#fffaf0]"}`}
+    >
+      <span className="text-sm font-medium text-stone-700">{label}</span>
+      <button
+        aria-checked={checked}
+        aria-label={`Toggle ${label}`}
+        className={`group relative h-8 w-14 cursor-pointer rounded-full border p-1 shadow-inner transition duration-700 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:ring-offset-2 ${checked ? "border-emerald-500 bg-emerald-500 shadow-emerald-200" : "border-stone-300 bg-stone-300"}`}
+        onClick={() => onChange(!checked)}
+        role="switch"
+        type="button"
+      >
+        <span
+          className={`grid h-6 w-6 place-items-center rounded-full bg-white text-[10px] font-bold shadow-md transition duration-700 ${checked ? "translate-x-6 text-emerald-600" : "translate-x-0 text-stone-400"}`}
+        >
+          {checked ? "✓" : "×"}
+        </span>
+      </button>
+    </div>
+  );
 }
 function Preview({ settings }: { settings: WhatsAppSettings }) {
   const location = settings.position.replace("-", " ");
-  const spacing = { "0": 0, small: 4, medium: 8, large: 12, "extra-large": 16, xxl: 20, "3xl": 24, "4xl": 32, "5xl": 40 };
+  const spacing = {
+    "0": 0,
+    small: 4,
+    medium: 8,
+    large: 12,
+    "extra-large": 16,
+    xxl: 20,
+    "3xl": 24,
+    "4xl": 32,
+    "5xl": 40,
+  };
   return (
     <aside className="overflow-hidden rounded-sm border border-[#eadfca] bg-[#fffaf0] p-4">
       <p className="text-xs font-semibold uppercase tracking-[.16em] text-stone-500">Preview</p>
@@ -283,7 +365,12 @@ function Preview({ settings }: { settings: WhatsAppSettings }) {
         >
           <span
             className={`flex items-center gap-2 rounded-full bg-emerald-600 text-white shadow-lg transition-all duration-700 ${settings.desktopTextVisible ? "w-auto" : "justify-center"} ${settings.isVisible ? "scale-100 opacity-100" : "scale-75 opacity-0"}`}
-            style={{ paddingInline: spacing[settings.paddingX], paddingBlock: spacing[settings.paddingY], marginInline: spacing[settings.marginX], marginBlock: spacing[settings.marginY] }}
+            style={{
+              paddingInline: spacing[settings.paddingX],
+              paddingBlock: spacing[settings.paddingY],
+              marginInline: spacing[settings.marginX],
+              marginBlock: spacing[settings.marginY],
+            }}
           >
             <FaWhatsapp size={22} />
             {settings.desktopTextVisible && <span className="hidden text-sm font-semibold md:inline">WhatsApp</span>}

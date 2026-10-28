@@ -2,7 +2,7 @@
 |-----------------------------------------
 | setting up page.tsx for the App
 | @author: Toufiquer Rahman<toufiquer.0@gmail.com>
-| @copyright: Toufiquer, 01 September, 2026
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
 
@@ -65,11 +65,7 @@ export default function OrderSettingsPage() {
               When enabled, customer checkout frequency is restricted according to your configured rate limit.
             </p>
           </div>
-          <button
-            className="secondary-button"
-            onClick={() => setModalOpen(true)}
-            type="button"
-          >
+          <button className="secondary-button" onClick={() => setModalOpen(true)} type="button">
             Configure limit
           </button>
         </div>
@@ -128,11 +124,7 @@ export default function OrderSettingsPage() {
                 Switch presets like [1 min / 10 orders], [5 min / 1 order], or set custom minutes and order limits.
               </p>
             </div>
-            <button
-              className="primary-button"
-              onClick={() => setModalOpen(true)}
-              type="button"
-            >
+            <button className="primary-button" onClick={() => setModalOpen(true)} type="button">
               Open Settings Modal
             </button>
           </div>

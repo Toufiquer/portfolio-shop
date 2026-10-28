@@ -1,7 +1,8 @@
 /*
 |-----------------------------------------
 | setting up grouped import data controls
-| @author: Codex
+| @author: Toufiquer Rahman<toufiquer.0@gmail.com>
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
 
