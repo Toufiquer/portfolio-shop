@@ -7,5 +7,5 @@
 */
 
 declare module "jspdf" {
-  export const jsPDF: any;
+  export const jsPDF: unknown;
 }
