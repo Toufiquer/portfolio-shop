@@ -2,7 +2,7 @@
 |-----------------------------------------
 | setting up product-data.ts for the App
 | @author: Toufiquer Rahman<toufiquer.0@gmail.com>
-| @copyright: NexaMart, September, 2026
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
 
