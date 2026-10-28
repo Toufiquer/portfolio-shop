@@ -2,16 +2,9 @@
 |-----------------------------------------
 | setting up Mutation.tsx for the App
 | @author: Toufiquer Rahman<toufiquer.0@gmail.com>
-| @copyright: Toufiquer, 24 August, 2026
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
-
-/*
-|-----------------------------------------
-| Study Abroad experience hero editor for Section 37
-|-----------------------------------------
-*/
-
 "use client";
 
 import { useEffect, useRef, useState } from "react";

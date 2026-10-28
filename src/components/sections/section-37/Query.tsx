@@ -2,13 +2,7 @@
 |-----------------------------------------
 | setting up Query.tsx for the App
 | @author: Toufiquer Rahman<toufiquer.0@gmail.com>
-| @copyright: Toufiquer, 24 August, 2026
-|-----------------------------------------
-*/
-
-/*
-|-----------------------------------------
-| Bilingual shopping hero renderer for Section 37
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
 

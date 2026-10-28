@@ -2,13 +2,7 @@
 |-----------------------------------------
 | setting up Mutation.tsx for the App
 | @author: Toufiquer Rahman<toufiquer.0@gmail.com>
-| @copyright: Toufiquer, 24 August, 2026
-|-----------------------------------------
-*/
-
-/*
-|-----------------------------------------
-| dashboard editor for section-4
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
 
