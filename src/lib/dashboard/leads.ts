@@ -1,7 +1,8 @@
 /*
 |-----------------------------------------
 | setting up Leads contracts and input validation
-| @author: Codex
+| @author: Toufiquer Rahman<toufiquer.0@gmail.com>
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
 
@@ -32,7 +33,10 @@ export type LeadCouncilorSummary = LeadCouncilor & {
     statuses: Record<LeadStatus, number>;
   }[];
 };
-export type LeadOtherCustomerSummary = Pick<LeadCouncilorSummary, "id" | "name" | "customerCount" | "customerStatuses" | "funnels">;
+export type LeadOtherCustomerSummary = Pick<
+  LeadCouncilorSummary,
+  "id" | "name" | "customerCount" | "customerStatuses" | "funnels"
+>;
 export type LeadCouncilorSummaries = { items: LeadCouncilorSummary[]; others: LeadOtherCustomerSummary[] };
 export type LeadNote = {
   id: string;

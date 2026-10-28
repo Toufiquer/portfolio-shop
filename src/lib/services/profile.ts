@@ -1,4 +1,11 @@
-/* profile service */
+/*
+|-----------------------------------------
+| setting up service for the App
+| @author: Toufiquer Rahman<toufiquer.0@gmail.com>
+| @copyright: Toufiquer, 1 November, 2026
+|-----------------------------------------
+*/
+
 import "server-only";
 import { findProfileUser, saveProfileUser } from "@/lib/models/auth";
 const genders = new Set(["", "Male", "Female", "Other"]);

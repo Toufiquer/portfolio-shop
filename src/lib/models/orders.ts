@@ -1,3 +1,11 @@
+/*
+|-----------------------------------------
+| setting up Order.tsx for the App
+| @author: Toufiquer Rahman<toufiquer.0@gmail.com>
+| @copyright: Toufiquer, 1 November, 2026
+|-----------------------------------------
+*/
+
 import "server-only";
 
 import type { Order, OrderSettings } from "@/lib/dashboard/orders";

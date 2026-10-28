@@ -2,13 +2,7 @@
 |-----------------------------------------
 | setting up provider.tsx for the App
 | @author: Toufiquer Rahman<toufiquer.0@gmail.com>
-| @copyright: Toufiquer, 14 August, 2026
-|-----------------------------------------
-*/
-
-/*
-|-----------------------------------------
-| client Redux provider for RTK Query cache
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
 

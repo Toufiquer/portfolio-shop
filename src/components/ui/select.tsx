@@ -2,16 +2,10 @@
 |-----------------------------------------
 | setting up select.tsx for the App
 | @author: Toufiquer Rahman<toufiquer.0@gmail.com>
-| @copyright: Toufiquer, 24 August, 2026
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
-
-/*
-|-----------------------------------------
-| reusable select UI primitive
-|-----------------------------------------
-*/
-
+ 
 "use client";
 
 import * as React from "react";

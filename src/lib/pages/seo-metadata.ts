@@ -2,7 +2,7 @@
 |-----------------------------------------
 | setting up seo-metadata.ts for the App
 | @author: Toufiquer Rahman<toufiquer.0@gmail.com>
-| @copyright: Toufiquer, 22 October 2026
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
 

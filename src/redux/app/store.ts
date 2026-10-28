@@ -2,13 +2,7 @@
 |-----------------------------------------
 | setting up store.ts for the App
 | @author: Toufiquer Rahman<toufiquer.0@gmail.com>
-| @copyright: Toufiquer, 14 August, 2026
-|-----------------------------------------
-*/
-
-/*
-|-----------------------------------------
-| RTK Query cache store
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
 

@@ -1,7 +1,8 @@
 /*
 |-----------------------------------------
 | setting up Leads uses the dashboard RTK Query service
-| @author: Codex
+| @author: Toufiquer Rahman<toufiquer.0@gmail.com>
+| @copyright: Toufiquer, 1 November, 2026
 |-----------------------------------------
 */
 
